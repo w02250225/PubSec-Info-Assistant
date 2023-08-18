@@ -97,6 +97,9 @@ export const Answer = ({
                     </Stack>
                 </Stack.Item>
             )}
+            <Stack.Item grow>
+                <div className={styles.answerTextRequestId}>Request ID: {answer.request_id}</div>
+            </Stack.Item>
             <Stack.Item align="center">
                 <RAIPanel onAdjustClick={onAdjustClick}/>
             </Stack.Item>

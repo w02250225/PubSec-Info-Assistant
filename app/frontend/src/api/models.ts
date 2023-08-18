@@ -37,7 +37,7 @@ export type AskResponse = {
     // citation_lookup: {}
     // added this for citation bug. aparmar.
     citation_lookup: { [key: string]: { citation: string; source_path: string; page_number: string } };
-    
+    request_id: string;
     error?: string;
 };
 

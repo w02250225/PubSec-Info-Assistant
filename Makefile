@@ -26,6 +26,9 @@ deploy-webapp: extract-env ## Deploys the web app code to Azure App Service
 deploy-functions: extract-env ## Deploys the function code to Azure Function Host
 	@./scripts/deploy-functions.sh
 
+run-search-indexer: extract-env ## Run search indexer
+	@./scripts/run-search-indexer.sh
+
 deploy-search-indexes: extract-env ## Deploy search indexes
 	@./scripts/deploy-search-indexes.sh
 

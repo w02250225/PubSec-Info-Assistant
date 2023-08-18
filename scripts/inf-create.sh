@@ -49,50 +49,50 @@ fi
 randomString="${randomString,,}"
 export RANDOM_STRING=$randomString
 
-if [ -n "${IN_AUTOMATION}" ]; then
-  signedInUserId=$ARM_CLIENT_ID
-  workspace=$WORKSPACE
-  if [[ $workspace = tmp* ]]; then
-    # if in automation for PR builds, get the app registration and service principal values from the already logged in SP
-    aadAppId=$ARM_CLIENT_ID
-    aadSPId=$ARM_SERVICE_PRINCIPAL_ID
-  else
-    # if in automation for non-PR builds, get the app registration and service principal values from the manually created AD objects
-    aadAppId=$AD_WEBAPP_CLIENT_ID
-    if [ -z $aadAppId ]; then
-      echo "An Azure AD App Registration and Service Principal must be manually created for the targeted workspace."
-      echo "Please create the Azure AD objects using the script at /scripts/create-ad-objs-for-deployment.sh and set the AD_WEBAPP_CLIENT_ID pipeline variable in Azure DevOps."
-      exit 1  
-    fi
-  fi
-else
-  signedInUserId=$(az ad signed-in-user show --query id --output tsv)
-  #if not in automation, create the app registration and service principal values
-  #set up azure ad app registration since there is no bicep support for this yet
-  aadAppId=$(az ad app list --display-name infoasst_web_access_$RANDOM_STRING --output tsv --query [].appId)
-  if [ -z $aadAppId ]
-    then
-      aadAppId=$(az ad app create --display-name infoasst_web_access_$RANDOM_STRING --sign-in-audience AzureADMyOrg --identifier-uris "api://infoasst-$RANDOM_STRING" --web-redirect-uris "https://infoasst-web-$RANDOM_STRING.azurewebsites.net/.auth/login/aad/callback" --enable-access-token-issuance true --enable-id-token-issuance true --output tsv --query "[].appId")
-      aadAppId=$(az ad app list --display-name infoasst_web_access_$RANDOM_STRING --output tsv --query [].appId)
-    fi
+# if [ -n "${IN_AUTOMATION}" ]; then
+#   signedInUserId=$ARM_CLIENT_ID
+#   workspace=$WORKSPACE
+#   if [[ $workspace = tmp* ]]; then
+#     # if in automation for PR builds, get the app registration and service principal values from the already logged in SP
+#     aadAppId=$ARM_CLIENT_ID
+#     aadSPId=$ARM_SERVICE_PRINCIPAL_ID
+#   else
+#     # if in automation for non-PR builds, get the app registration and service principal values from the manually created AD objects
+#     aadAppId=$AD_WEBAPP_CLIENT_ID
+#     if [ -z $aadAppId ]; then
+#       echo "An Azure AD App Registration and Service Principal must be manually created for the targeted workspace."
+#       echo "Please create the Azure AD objects using the script at /scripts/create-ad-objs-for-deployment.sh and set the AD_WEBAPP_CLIENT_ID pipeline variable in Azure DevOps."
+#       exit 1  
+#     fi
+#   fi
+# else
+#   signedInUserId=$(az ad signed-in-user show --query id --output tsv)
+#   #if not in automation, create the app registration and service principal values
+#   #set up azure ad app registration since there is no bicep support for this yet
+#   aadAppId=$(az ad app list --display-name infoasst_web_access_$RANDOM_STRING --output tsv --query [].appId)
+#   if [ -z $aadAppId ]
+#     then
+#       aadAppId=$(az ad app create --display-name infoasst_web_access_$RANDOM_STRING --sign-in-audience AzureADMyOrg --identifier-uris "api://infoasst-$RANDOM_STRING" --web-redirect-uris "https://infoasst-web-$RANDOM_STRING.azurewebsites.net/.auth/login/aad/callback" --enable-access-token-issuance true --enable-id-token-issuance true --output tsv --query "[].appId")
+#       aadAppId=$(az ad app list --display-name infoasst_web_access_$RANDOM_STRING --output tsv --query [].appId)
+#     fi
   
-  aadSPId=$(az ad sp list --display-name infoasst_web_access_$RANDOM_STRING --output tsv --query "[].id")
-  if [ -z $aadSPId ]; then
-      aadSPId=$(az ad sp create --id $aadAppId --output tsv --query "[].id")
-      aadSPId=$(az ad sp list --display-name infoasst_web_access_$RANDOM_STRING --output tsv --query "[].id")
-  fi
+#   aadSPId=$(az ad sp list --display-name infoasst_web_access_$RANDOM_STRING --output tsv --query "[].id")
+#   if [ -z $aadSPId ]; then
+#       aadSPId=$(az ad sp create --id $aadAppId --output tsv --query "[].id")
+#       aadSPId=$(az ad sp list --display-name infoasst_web_access_$RANDOM_STRING --output tsv --query "[].id")
+#   fi
 
-  if [ $REQUIRE_WEBSITE_SECURITY_MEMBERSHIP ]; then
-    # if the REQUIRE_WEBSITE_SECURITY_MEMBERSHIP is set to true, then we need to update the app registration to require assignment
-    az ad sp update --id $aadSPId --set "appRoleAssignmentRequired=true"
-  else
-    # otherwise the default is to allow all users in the tenant to access the app
-    az ad sp update --id $aadSPId --set "appRoleAssignmentRequired=false"
-  fi
-fi
+#   if [ $REQUIRE_WEBSITE_SECURITY_MEMBERSHIP ]; then
+#     # if the REQUIRE_WEBSITE_SECURITY_MEMBERSHIP is set to true, then we need to update the app registration to require assignment
+#     az ad sp update --id $aadSPId --set "appRoleAssignmentRequired=true"
+#   else
+#     # otherwise the default is to allow all users in the tenant to access the app
+#     az ad sp update --id $aadSPId --set "appRoleAssignmentRequired=false"
+#   fi
+# fi
 
 export SINGED_IN_USER_PRINCIPAL=$signedInUserId
-export AZURE_AD_APP_CLIENT_ID=$aadAppId
+export AZURE_AD_APP_CLIENT_ID="2a962703-32d6-45dc-8a43-29ab6a459169" #$aadAppId
 
 if [ -n "${IN_AUTOMATION}" ]; then 
   export IS_IN_AUTOMATION=true 
