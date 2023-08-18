@@ -85,7 +85,7 @@ module appServicePlan 'core/host/appserviceplan.bicep' = {
     location: location
     tags: tags
     sku: {
-      name: 'B2'
+      name: 'B3'
       capacity: 3
     }
     kind: 'linux'
@@ -293,7 +293,7 @@ module functions 'core/function/function.bicep' = {
 }
 
 // USER ROLES
-module openAiRoleUser 'core/security/role.bicep' = {
+module openAiRoleUser 'core/security/role.bicep'  = if (principalId != '') {
   scope: rg
   name: 'openai-role-user'
   params: {
@@ -303,7 +303,7 @@ module openAiRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module storageRoleUser 'core/security/role.bicep' = {
+module storageRoleUser 'core/security/role.bicep' = if (principalId != '') {
   scope: rg
   name: 'storage-role-user'
   params: {
@@ -313,7 +313,7 @@ module storageRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module storageContribRoleUser 'core/security/role.bicep' = {
+module storageContribRoleUser 'core/security/role.bicep' = if (principalId != '') {
   scope: rg
   name: 'storage-contribrole-user'
   params: {
@@ -323,7 +323,7 @@ module storageContribRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module searchRoleUser 'core/security/role.bicep' = {
+module searchRoleUser 'core/security/role.bicep' = if (principalId != '') {
   scope: rg
   name: 'search-role-user'
   params: {
@@ -333,7 +333,7 @@ module searchRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module searchContribRoleUser 'core/security/role.bicep' = {
+module searchContribRoleUser 'core/security/role.bicep' = if (principalId != '') {
   scope: rg
   name: 'search-contrib-role-user'
   params: {
