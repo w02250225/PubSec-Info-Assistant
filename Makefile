@@ -17,7 +17,7 @@ build: ## Build application code
 infrastructure: check-subscription ## Deploy infrastructure
 	@./scripts/inf-create.sh
 
-extract-env: extract-env-debug-webapp extract-env-debug-functions ## Extract infrastructure.env file from BICEP output
+extract-env: #extract-env-debug-webapp extract-env-debug-functions ## Extract infrastructure.env file from BICEP output
 	@./scripts/json-to-env.sh < infra_output.json > ./scripts/environments/infrastructure.env
 
 deploy-webapp: extract-env ## Deploys the web app code to Azure App Service
