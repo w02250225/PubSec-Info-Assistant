@@ -99,7 +99,6 @@ blob_client = BlobServiceClient(
 )
 blob_container = blob_client.get_container_client(AZURE_BLOB_STORAGE_CONTAINER)
 
-
 chat_approaches = {
     "rrr": ChatReadRetrieveReadApproach(
         search_client,
@@ -114,7 +113,6 @@ chat_approaches = {
 }
 
 app = Flask(__name__)
-
 
 @app.route("/", defaults={"path": "index.html"})
 @app.route("/<path:path>")
@@ -170,11 +168,11 @@ def chat():
                 "request_id": request_id,
             }
         )
-
+        
         finish_time = datetime.now()
 
         # Log the request/response to CosmosDB
-        requestLog.log_request_response(logger, request_id, request.json, response.json, start_time, finish_time)
+        requestLog.log_request_response(logger, request_id, request.json, r, start_time, finish_time)
 
         return response
 

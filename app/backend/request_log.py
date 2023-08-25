@@ -1,6 +1,8 @@
 from azure.cosmos import CosmosClient, PartitionKey
 from flask import jsonify
 
+import base64
+
 class RequestLog:
 
     def __init__(self, url, key, database_name, container_name):
@@ -24,22 +26,27 @@ class RequestLog:
         if self._container_name not in [container['id'] for container
                                         in self.database.list_containers()]:
             self.container = self.database.create_container(id=self._container_name,
-                                                            partition_key=PartitionKey(path="/requestId"))
+                                                            partition_key=PartitionKey(path="/request_id"))
 
     def log_request_response(self, logger, request_id, request_body, response_body, start_time, finish_time):
         """Log the JSON Request and Response into CosmosDB"""
 
-        json_document = ""
         try:
             logger.info('Logging Request ID %s', request_id)
+
+            document_id = base64.urlsafe_b64encode(request_id.encode()).decode()
+
+            # Remove request_id if present in response_body
+            response_body.pop("request_id", None)
+
             json_document = jsonify(
                 {
-                "id": request_id,
+                "id": document_id,
                 "request_id": request_id,
-                "requestBody": request_body,
-                "responseBody": response_body,
-                "startTimestamp": str(start_time.strftime('%Y-%m-%d %H:%M:%S')),
-                "finishTimestamp": str(finish_time.strftime('%Y-%m-%d %H:%M:%S'))
+                "request_body": request_body,
+                "response_body": response_body,
+                "start_timestamp": str(start_time.strftime('%Y-%m-%d %H:%M:%S')),
+                "finish_timestamp": str(finish_time.strftime('%Y-%m-%d %H:%M:%S')),
                 }
             )
 

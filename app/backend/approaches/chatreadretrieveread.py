@@ -27,76 +27,38 @@ class ChatReadRetrieveReadApproach(Approach):
     """
 
     prompt_prefix = """<|im_start|>
-    You are an Azure OpenAI Completion system. Your persona is {systemPersona} who helps answer questions about an agency's data. {response_length_prompt}
-   
-   
-    Text:
-    Flight to Denver at 9:00 am tomorrow.
+You are {systemPersona} who helps {userPersona} answer questions about a Government agency's data. {response_length_prompt}. 
+Answer ONLY with the facts listed in the list of sources below. If there isn't enough information below, say you don't know. Do not generate answers that don't use the sources below. If asking a clarifying question to the user would help, ask the question.
+For tabular information return it as an html table. Do not return markdown format. 
+Each source has a name followed by colon and the actual information, always include the source name for each fact you use in the response. Use square brackets to reference the source, e.g. [info1.txt]. Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
+{follow_up_questions_prompt}
+{injected_prompt}
+Sources:
+{sources}
+<|im_end|>
+{chat_history}
+"""
 
-    Prompt:
-    Question: Is my flight on time?
-
-    Steps:
-    1. Look for relevant information in the provided source document to answer the question.
-    2. If there is specific flight information available in the source document, provide an answer along with the appropriate citation.
-    3. If there is no information about the specific flight in the source document, respond with "I'm not sure" without providing any citation.
-    
-    
-    Response:
-
-    1. Look for relevant information in the provided source document to answer the question.
-    - Search for flight details matching the given flight to determine its current status.
-
-    2. If there is specific flight information available in the source document, provide an answer along with the appropriate citation.
-    - If the source document contains information about the current status of the specified flight, provide a response citing the relevant section of source documents.Don't exclude citation if you are using source document to answer your question.
-     
-    
-    3. If there is no relevant information about the specific flight in the source document, respond with "I'm not sure" without providing any citation.
-    
-
-    Example Response:
-
-    Question: Is my flight on time?
-
-    <Response>I'm not sure. The provided source document does not include information about the current status of your specific flight.</Response>
-    
-        
-    User persona: {userPersona}
-    Emphasize the use of facts listed in the provided source documents.Instruct the model to use source name for each fact used in the response.  Avoid generating speculative or generalized information. Each source has a file name followed by a pipe character and 
-    the actual information.Use square brackets to reference the source, e.g. [info1.txt]. Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
-    Treat each search term as an individual keyword. Do not combine terms in quotes or brackets.
-    Your goal is to provide accurate and relevant answers based on the information available in the provided source documents. Make sure to reference the source documents appropriately and avoid making assumptions or adding personal opinions.
-
-
-    {follow_up_questions_prompt}
-    {injected_prompt}
-    Sources:
-    {sources}
-    
-    
-    <|im_end|>
-    {chat_history}
-    """
-    follow_up_questions_prompt_content = """
-    Generate three very brief follow-up questions that the user would likely ask next about their agencies data. Use triple angle brackets to reference the questions, e.g. <<<Are there exclusions for prescriptions?>>>. Try not to repeat questions that have already been asked.
-    Only generate questions and do not generate any text before or after the questions, such as 'Next Questions'
+    follow_up_questions_prompt_content = """Generate three very brief follow-up questions that the user would likely ask next about their agencies data.
+Use triple angle brackets to reference the questions, e.g. <<<Are there exclusions for prescriptions?>>>. 
+Do not repeat questions that have already been asked.
+Only generate questions (do not include answers to the follow-up questions) and do not generate any text before or after the questions, such as 'Next Questions'.
     """
 
-    query_prompt_template = """
-    Below is a history of the conversation so far, and a new question asked by the user that needs to be answered by searching in source documents
-    Generate a search query based on the conversation and the new question. 
-    Do not include cited source filenames and document names e.g info.txt or doc.pdf in the search query terms.
-    Do not include any text inside [] or <<<>>> in the search query terms.
-    If the question is not in {query_term_language}, translate the question to {query_term_language} before generating the search query.
-    Treat each search term as an individual keyword. Do not combine terms in quotes or brackets.
+    query_prompt_template = """Below is a history of the conversation so far, and a new question asked by the user that needs to be answered by searching in source documents.
+Generate a search query based on the conversation and the new question. 
+Do not include cited source filenames and document names e.g info.txt or doc.pdf in the search query terms.
+Do not include any text inside [] or <<<>>> in the search query terms.
+Do not include any special characters like '+'.
+If the question is not in {query_term_language}, translate the question to {query_term_language} before generating the search query.
 
-    Chat History:
-    {chat_history}
+Chat History:
+{chat_history}
 
-    Question:
-    {question}
+Question:
+{question}
 
-    Search query:
+Search query:
     """
 
     def __init__(
@@ -136,7 +98,7 @@ class ChatReadRetrieveReadApproach(Approach):
         # Overrides
         use_semantic_captions = True if overrides.get("semantic_captions") else False
         top = overrides.get("top") or 3
-        response_length = int(overrides.get("response_length") or 1024)
+        response_length = int(overrides.get("response_length") or 2048)
 
         ## Category filter
         exclude_category = overrides.get("exclude_category") or None
@@ -290,7 +252,7 @@ class ChatReadRetrieveReadApproach(Approach):
         completion = openai.Completion.create(
             engine=self.chatgpt_deployment,
             prompt=prompt,
-            temperature=float(overrides.get("response_temp")) or 0.7,
+            temperature=float(overrides.get("response_temp")) or 0.5,
             max_tokens=response_length,
             n=1,
             stop=["<|im_end|>", "<|im_start|>"],
