@@ -7,13 +7,12 @@ import json
 from enum import Enum
 from io import BytesIO
 import azure.functions as func
-from azure.storage.blob import generate_blob_sas
 from azure.storage.queue import QueueClient, TextBase64EncodePolicy
 from shared_code.status_log import StatusLog, State, StatusClassification
 from shared_code.utilities import Utilities
+from xlsx2html import xlsx2html
 import mammoth
 import requests
-
 
 azure_blob_storage_account = os.environ["BLOB_STORAGE_ACCOUNT"]
 azure_blob_drop_storage_container = os.environ["BLOB_STORAGE_ACCOUNT_UPLOAD_CONTAINER_NAME"]
@@ -32,55 +31,78 @@ text_enrichment_queue = os.environ["TEXT_ENRICHMENT_QUEUE"]
 CHUNK_TARGET_SIZE = int(os.environ["CHUNK_TARGET_SIZE"])
 
 
-utilities = Utilities(azure_blob_storage_account, azure_blob_drop_storage_container, azure_blob_content_storage_container, azure_blob_storage_key)
+utilities = Utilities(azure_blob_storage_account, azure_blob_drop_storage_container,
+                      azure_blob_content_storage_container, azure_blob_storage_key)
 function_name = "FileLayoutParsingOther"
 
 def main(msg: func.QueueMessage) -> None:
     try:
-        statusLog = StatusLog(cosmosdb_url, cosmosdb_key, cosmosdb_database_name, cosmosdb_container_name)
+        status_log = StatusLog(cosmosdb_url, cosmosdb_key,
+                              cosmosdb_database_name, cosmosdb_container_name)
         logging.info('Python queue trigger function processed a queue item: %s',
-                    msg.get_body().decode('utf-8'))
+                     msg.get_body().decode('utf-8'))
 
         # Receive message from the queue
         message_body = msg.get_body().decode('utf-8')
         message_json = json.loads(message_body)
-        blob_name =  message_json['blob_name']
-        blob_uri =  message_json['blob_uri']
-        statusLog.upsert_document(blob_name, f'{function_name} - Starting to parse the non-PDF file', StatusClassification.INFO, State.PROCESSING)
-        statusLog.upsert_document(blob_name, f'{function_name} - Message received from non-pdf submit queue', StatusClassification.DEBUG)
+        blob_name = message_json['blob_name']
+        blob_uri = message_json['blob_uri']
+        status_log.upsert_document(
+            blob_name, f'{function_name} - Starting to parse the non-PDF file', StatusClassification.INFO, State.PROCESSING)
+        status_log.upsert_document(
+            blob_name, f'{function_name} - Message received from non-pdf submit queue', StatusClassification.DEBUG)
 
         # construct blob url
         blob_path_plus_sas = utilities.get_blob_and_sas(blob_name)
-        statusLog.upsert_document(blob_name, f'{function_name} - SAS token generated to access the file', StatusClassification.DEBUG)
+        status_log.upsert_document(
+            blob_name, f'{function_name} - SAS token generated to access the file', StatusClassification.DEBUG)
 
-        file_name, file_extension, file_directory  = utilities.get_filename_and_extension(blob_name)
+        file_name, file_extension, file_directory = utilities.get_filename_and_extension(blob_name)
 
         response = requests.get(blob_path_plus_sas)
         response.raise_for_status()
-        if file_extension in ['.docx']:   
+        if file_extension in ['.docx']:
             docx_file = BytesIO(response.content)
             # Convert the downloaded Word document to HTML
             result = mammoth.convert_to_html(docx_file)
-            statusLog.upsert_document(blob_name, f'{function_name} - HTML generated from DocX by mammoth', StatusClassification.DEBUG)
-            html = result.value # The generated HTML
+            status_log.upsert_document(
+                blob_name, f'{function_name} - HTML generated from DocX by mammoth', StatusClassification.DEBUG)
+            html = result.value  # The generated HTML
+        elif file_extension in ['.xlsx']:
+            xlsx_file = BytesIO(response.content)
+            # Convert the downloaded Excel document to HTML
+            xlsx_stream = xlsx2html(xlsx_file)
+            xlsx_stream.seek(0)
+            result_html = xlsx_stream.read()
+            status_log.upsert_document(
+                blob_name, f'{function_name} - HTML generated from XLSX by xlsx2html', StatusClassification.DEBUG)
+            html = result_html
         else:
-            html = response.text 
-                            
+            html = response.text
+
         # build the document map from HTML for all non-pdf file types
-        statusLog.upsert_document(blob_name, f'{function_name} - Starting document map build', StatusClassification.DEBUG)
-        document_map = utilities.build_document_map_html(blob_name, blob_uri, html, azure_blob_log_storage_container)
-        statusLog.upsert_document(blob_name, f'{function_name} - Document map build complete, starting chunking', StatusClassification.DEBUG)
-        chunk_count = utilities.build_chunks(document_map, blob_name, blob_uri, CHUNK_TARGET_SIZE)
-        statusLog.upsert_document(blob_name, f'{function_name} - Chunking complete. {chunk_count} chunks created', StatusClassification.DEBUG)       
-        
-        # submit message to the enrichment queue to continue processing                
-        queue_client = QueueClient.from_connection_string(azure_blob_connection_string, queue_name=text_enrichment_queue, message_encode_policy=TextBase64EncodePolicy())
+        status_log.upsert_document(
+            blob_name, f'{function_name} - Starting document map build', StatusClassification.DEBUG)
+        document_map = utilities.build_document_map_html(
+            blob_name, blob_uri, html, azure_blob_log_storage_container)
+        status_log.upsert_document(
+            blob_name, f'{function_name} - Document map build complete, starting chunking', StatusClassification.DEBUG)
+        chunk_count = utilities.build_chunks(
+            document_map, blob_name, blob_uri, CHUNK_TARGET_SIZE)
+        status_log.upsert_document(
+            blob_name, f'{function_name} - Chunking complete. {chunk_count} chunks created', StatusClassification.DEBUG)
+
+        # submit message to the enrichment queue to continue processing
+        queue_client = QueueClient.from_connection_string(
+            azure_blob_connection_string, queue_name=text_enrichment_queue, message_encode_policy=TextBase64EncodePolicy())
         message_json["enrichment_queued_count"] = 1
         message_string = json.dumps(message_json)
         queue_client.send_message(message_string)
-        statusLog.upsert_document(blob_name, f"{function_name} - message sent to enrichment queue", StatusClassification.DEBUG, State.QUEUED)      
-             
-    except Exception as e:
-        statusLog.upsert_document(blob_name, f"{function_name} - An error occurred - {str(e)}", StatusClassification.ERROR, State.ERROR)
+        status_log.upsert_document(
+            blob_name, f"{function_name} - message sent to enrichment queue", StatusClassification.DEBUG, State.QUEUED)
 
-    statusLog.save_document()
+    except Exception as e:
+        status_log.upsert_document(
+            blob_name, f"{function_name} - An error occurred - {str(e)}", StatusClassification.ERROR, State.ERROR)
+
+    status_log.save_document()

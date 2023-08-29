@@ -190,7 +190,6 @@ module formrecognizer 'core/ai/formrecognizer.bicep' = {
   }
 }
 
-<<<<<<< HEAD
 module enrichment 'core/ai/enrichment.bicep' = {
   scope: rg
   name: 'enrichment'
@@ -202,8 +201,6 @@ module enrichment 'core/ai/enrichment.bicep' = {
   }
 }
 
-=======
->>>>>>> main
 module searchServices 'core/search/search-services.bicep' = {
   scope: rg
   name: 'search-services'
@@ -273,19 +270,74 @@ module storage 'core/storage/storage-account.bicep' = {
       }
       {
         name: nonPdfSubmitQueue
-<<<<<<< HEAD
       }  
       {
         name: mediaSubmitQueue
       }          
       {
         name: textEnrichmentQueue
-=======
->>>>>>> main
       }
     ]
   }
 }
+
+
+// module storageDev 'core/storage/storage-account.bicep' = {
+//   name: 'storageDev'
+//   scope: rg
+//   params: {
+//     name: !empty(storageAccountName) ? '${storageAccountName}dev' : '${prefix}${abbrs.storageStorageAccounts}${randomString}dev'
+//     location: location
+//     tags: tags
+//     publicNetworkAccess: 'Enabled'
+//     sku: {
+//       name: 'Standard_LRS'
+//     }
+//     deleteRetentionPolicy: {
+//       enabled: true
+//       days: 7
+//     }
+//     containers: [
+//       {
+//         name: containerName
+//         publicAccess: 'None'
+//       }
+//       {
+//         name: 'website'
+//         publicAccess: 'None'
+//       }
+//       {
+//         name: uploadContainerName
+//         publicAccess: 'None'
+//       }
+//       {
+//         name: 'function'
+//         publicAccess: 'None'
+//       }
+//       {
+//         name: functionLogsContainerName
+//         publicAccess: 'None'
+//       }
+//     ]
+//     queueNames: [
+//       {
+//         name: pdfSubmitQueue
+//       }
+//       {
+//         name: pdfPollingQueue
+//       }
+//       {
+//         name: nonPdfSubmitQueue
+//       }  
+//       {
+//         name: mediaSubmitQueue
+//       }          
+//       {
+//         name: textEnrichmentQueue
+//       }
+//     ]
+//   }
+// }
 
 module storageMedia 'core/storage/storage-account.bicep' = {
   name: 'storage-media'
