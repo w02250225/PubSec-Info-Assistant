@@ -72,7 +72,6 @@ param enableDevCode bool = false
 
 
 
-
 @description('Id of the user or app to assign application roles')
 param principalId string = ''
 
@@ -108,7 +107,7 @@ module appServicePlan 'core/host/appserviceplan.bicep' = {
     location: location
     tags: tags
     sku: {
-      name: 'B2'
+      name: 'B3'
       capacity: 3
     }
     kind: 'linux'
@@ -191,6 +190,7 @@ module formrecognizer 'core/ai/formrecognizer.bicep' = {
   }
 }
 
+<<<<<<< HEAD
 module enrichment 'core/ai/enrichment.bicep' = {
   scope: rg
   name: 'enrichment'
@@ -202,6 +202,8 @@ module enrichment 'core/ai/enrichment.bicep' = {
   }
 }
 
+=======
+>>>>>>> main
 module searchServices 'core/search/search-services.bicep' = {
   scope: rg
   name: 'search-services'
@@ -271,12 +273,15 @@ module storage 'core/storage/storage-account.bicep' = {
       }
       {
         name: nonPdfSubmitQueue
+<<<<<<< HEAD
       }  
       {
         name: mediaSubmitQueue
       }          
       {
         name: textEnrichmentQueue
+=======
+>>>>>>> main
       }
     ]
   }
@@ -393,7 +398,7 @@ module avam 'core/video_indexer/video_indexer.bicep' = {
 
 
 // USER ROLES
-module openAiRoleUser 'core/security/role.bicep' = {
+module openAiRoleUser 'core/security/role.bicep'  = if (principalId != '') {
   scope: rg
   name: 'openai-role-user'
   params: {
@@ -403,7 +408,7 @@ module openAiRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module storageRoleUser 'core/security/role.bicep' = {
+module storageRoleUser 'core/security/role.bicep' = if (principalId != '') {
   scope: rg
   name: 'storage-role-user'
   params: {
@@ -413,7 +418,7 @@ module storageRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module storageContribRoleUser 'core/security/role.bicep' = {
+module storageContribRoleUser 'core/security/role.bicep' = if (principalId != '') {
   scope: rg
   name: 'storage-contribrole-user'
   params: {
@@ -423,7 +428,7 @@ module storageContribRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module searchRoleUser 'core/security/role.bicep' = {
+module searchRoleUser 'core/security/role.bicep' = if (principalId != '') {
   scope: rg
   name: 'search-role-user'
   params: {
@@ -433,7 +438,7 @@ module searchRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module searchContribRoleUser 'core/security/role.bicep' = {
+module searchContribRoleUser 'core/security/role.bicep' = if (principalId != '') {
   scope: rg
   name: 'search-contrib-role-user'
   params: {

@@ -35,8 +35,7 @@ class ChatReadRetrieveReadApproach(Approach):
     USER = "user"
     ASSISTANT = "assistant"
      
-    system_message_chat_conversation = """You are an Azure OpenAI Completion system.
-    Your persona is {systemPersona} who helps answer questions about an agency's data.
+    system_message_chat_conversation = """You are {systemPersona} who helps {userPersona} answer questions about a Government agency's data.
     {response_length_prompt}
     User persona is {userPersona}.
     Answer ONLY with the facts listed in the list of sources above.

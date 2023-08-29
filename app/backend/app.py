@@ -5,6 +5,7 @@ import logging
 import mimetypes
 import os
 import urllib.parse
+import uuid
 from datetime import datetime, timedelta
 
 import openai
@@ -19,7 +20,9 @@ from azure.storage.blob import (
     generate_account_sas,
 )
 from flask import Flask, jsonify, request
+from opencensus.ext.azure.log_exporter import AzureLogHandler
 from shared_code.status_log import State, StatusLog
+from request_log import RequestLog
 
 # Replace these with your own values, either in environment variables or directly here
 AZURE_BLOB_STORAGE_ACCOUNT = (
@@ -47,6 +50,9 @@ COSMODB_KEY = os.environ.get("COSMOSDB_KEY")
 COSMOSDB_DATABASE_NAME = os.environ.get("COSMOSDB_DATABASE_NAME") or "statusdb"
 COSMOSDB_CONTAINER_NAME = os.environ.get("COSMOSDB_CONTAINER_NAME") or "statuscontainer"
 
+COSMOSDB_REQUESTLOG_DATABASE_NAME = os.environ.get("COSMOSDB_REQUESTLOG_DATABASE_NAME") 
+COSMOSDB_REQUESTLOG_CONTAINER_NAME = os.environ.get("COSMOSDB_REQUESTLOG_CONTAINER_NAME") 
+
 QUERY_TERM_LANGUAGE = os.environ.get("QUERY_TERM_LANGUAGE") or "English"
 
 # Use the current user identity to authenticate with Azure OpenAI, Cognitive Search and Blob Storage (no secrets needed,
@@ -61,9 +67,18 @@ openai.api_type = "azure"
 openai.api_base = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com"
 openai.api_version = "2023-06-01-preview"
 
+# Setup logger
+logger = logging.getLogger(__name__)
+logger.addHandler(AzureLogHandler())
+
 # Setup StatusLog to allow access to CosmosDB for logging
 statusLog = StatusLog(
     COSMOSDB_URL, COSMODB_KEY, COSMOSDB_DATABASE_NAME, COSMOSDB_CONTAINER_NAME
+)
+
+# Setup RequestLog to allow access to CosmosDB for request logging
+requestLog = RequestLog(
+    COSMOSDB_URL, COSMODB_KEY, COSMOSDB_REQUESTLOG_DATABASE_NAME, COSMOSDB_REQUESTLOG_CONTAINER_NAME
 )
 
 # Comment these two lines out if using keys, set your API key in the OPENAI_API_KEY environment variable instead
@@ -82,7 +97,6 @@ blob_client = BlobServiceClient(
     credential=AZURE_BLOB_STORAGE_KEY,
 )
 blob_container = blob_client.get_container_client(AZURE_BLOB_STORAGE_CONTAINER)
-
 
 chat_approaches = {
     "rrr": ChatReadRetrieveReadApproach(
@@ -136,6 +150,8 @@ def content_file(path):
 def chat():
     approach = request.json["approach"]
     try:
+        request_id = str(uuid.uuid4())
+        start_time = datetime.now()
         impl = chat_approaches.get(approach)
         if not impl:
             return jsonify({"error": "unknown approach"}), 400
@@ -143,17 +159,25 @@ def chat():
 
         # return jsonify(r)
         # To fix citation bug,below code is added.aparmar
-        return jsonify(
+        response = jsonify(
             {
                 "data_points": r["data_points"],
                 "answer": r["answer"],
                 "thoughts": r["thoughts"],
                 "citation_lookup": r["citation_lookup"],
+                "request_id": request_id,
             }
         )
+        
+        finish_time = datetime.now()
+
+        # Log the request/response to CosmosDB
+        requestLog.log_request_response(logger, request_id, request.json, r, start_time, finish_time)
+
+        return response
 
     except Exception as e:
-        logging.exception("Exception in /chat")
+        logger.exception("Exception in /chat")
         return jsonify({"error": str(e)}), 500
 
 
@@ -189,7 +213,7 @@ def get_all_upload_status():
     try:
         results = statusLog.read_files_status_by_timeframe(timeframe, State[state])
     except Exception as e:
-        logging.exception("Exception in /getalluploadstatus")
+        logger.exception("Exception in /getalluploadstatus")
         return jsonify({"error": str(e)}), 500
     return jsonify(results)
 

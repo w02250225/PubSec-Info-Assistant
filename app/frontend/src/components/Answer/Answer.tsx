@@ -87,7 +87,7 @@ export const Answer = ({
 
             {!!parsedAnswer.followupQuestions.length && showFollowupQuestions && onFollowupQuestionClicked && (
                 <Stack.Item>
-                    <Stack horizontal wrap className={`${!!parsedAnswer.citations.length ? styles.followupQuestionsList : ""}`} tokens={{ childrenGap: 6 }}>
+                    <Stack horizontal wrap className={`${!!parsedAnswer.followupQuestions.length ? styles.followupQuestionsList : ""}`} tokens={{ childrenGap: 6 }}>
                         <span className={styles.followupQuestionLearnMore}>Follow-up questions:</span>
                         {parsedAnswer.followupQuestions.map((x, i) => {
                             return (
@@ -99,6 +99,9 @@ export const Answer = ({
                     </Stack>
                 </Stack.Item>
             )}
+            <Stack.Item grow>
+                <div className={styles.answerTextRequestId}>Request ID: {answer.request_id}</div>
+            </Stack.Item>
             <Stack.Item align="center">
                 <RAIPanel onAdjustClick={onAdjustClick} onRegenerateClick={onRegenerateClick}/>
             </Stack.Item>

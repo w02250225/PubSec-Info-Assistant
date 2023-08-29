@@ -7,6 +7,7 @@ param sku object = {
   name: 'standard'
 }
 
+param customSubDomainName string = cogServicesName
 param authOptions object = {}
 param semanticSearch string = 'disabled'
 param kind string = 'CognitiveServices'
@@ -42,12 +43,13 @@ resource search 'Microsoft.Search/searchServices@2021-04-01-preview' = {
   sku: sku
 }
 
-resource cogService 'Microsoft.CognitiveServices/accounts@2022-10-01' = {
+resource cogService 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
   name: cogServicesName
   location: location
   tags: tags
   kind: kind
   properties: {
+    customSubDomainName: customSubDomainName
     publicNetworkAccess: publicNetworkAccess
   }
   sku: cogServicesSku

@@ -11,6 +11,10 @@
     justify-content: center;
 }
 
+.examplesNavListItem {
+    flex-basis: 25%;
+}
+
 .example {
     word-break: break-word;
     background: #dbdbdb;
@@ -20,6 +24,7 @@
     padding: 20px;
     margin-bottom: 5px;
     cursor: pointer;
+    text-align: center;
 }
 
 .example:hover {
@@ -30,8 +35,7 @@
 .exampleText {
     margin: 0;
     font-size: 21px;
-    width: 280px;
-    height: 90px;
+    height: 70px;
 }
 
 @media only screen and (max-height: 780px) {

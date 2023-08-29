@@ -5,6 +5,9 @@
     "environmentName": {
       "value": "${WORKSPACE}"
     },
+    "resourceGroupName": {
+      "value": "${WORKSPACE}"
+    },
     "location": {
       "value": "${LOCATION}"
     },
