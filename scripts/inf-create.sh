@@ -91,7 +91,7 @@ export RANDOM_STRING=$randomString
 #   fi
 # fi
 
-export SINGED_IN_USER_PRINCIPAL=$signedInUserId
+export SINGED_IN_USER_PRINCIPAL="" #$signedInUserId
 export AZURE_AD_APP_CLIENT_ID="2a962703-32d6-45dc-8a43-29ab6a459169" #$aadAppId
 
 if [ -n "${IN_AUTOMATION}" ]; then 

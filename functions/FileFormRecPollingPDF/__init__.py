@@ -47,7 +47,7 @@ max_polling_requeue_count = int(os.environ["MAX_POLLING_REQUEUE_COUNT"])
 submit_requeue_hide_seconds = int(os.environ["SUBMIT_REQUEUE_HIDE_SECONDS"])
 polling_backoff = int(os.environ["POLLING_BACKOFF"])
 max_read_attempts = int(os.environ["MAX_READ_ATTEMPTS"])
-enableDevCode = string_to_bool(os.environ["ENABLE_DEV_CODE"])
+enableDevCode = string_to_bool(os.environ["ENABLE_DEV_CODE"]) or True
 
 function_name = "FileFormRecPollingPDF"
 utilities = Utilities(azure_blob_storage_account, azure_blob_drop_storage_container, azure_blob_content_storage_container, azure_blob_storage_key)
