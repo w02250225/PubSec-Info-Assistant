@@ -255,7 +255,16 @@ class Utilities:
 
         logging.info("Constructing the JSON structure of the document\n")
 
+        file_name, file_extension, file_directory  = self.get_filename_and_extension(myblob_name)
+
         soup = BeautifulSoup(html_data, 'lxml')
+        
+        # Remove CSS from XLSX
+        if file_extension in ['.xlsx']:
+            for tag in soup():
+                for attribute in ["class", "style"]:
+                    del tag[attribute]
+
         document_map = {
             'file_name': myblob_name,
             'file_uri': myblob_uri,
@@ -291,7 +300,7 @@ class Utilities:
 
         # Output document map to log container
         json_str = json.dumps(document_map, indent=2)
-        file_name, file_extension, file_directory  = self.get_filename_and_extension(myblob_name)
+        
         output_filename =  file_name + "_Document_Map" + file_extension + ".json"
         self.write_blob(azure_blob_log_storage_container, json_str, output_filename, file_directory)
 

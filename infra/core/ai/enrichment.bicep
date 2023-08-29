@@ -15,6 +15,11 @@ resource cognitiveService 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
     apiProperties: {
       statisticsEnabled: false
     }
+    networkAcls: {
+      defaultAction: 'Allow'
+      virtualNetworkRules: []
+      ipRules: []
+    }
   }
 }
 
