@@ -91,5 +91,6 @@ export const enum FileState {
 
 export type GetInfoResponse = {
     AZURE_OPENAI_CHATGPT_DEPLOYMENT: string;
+    AZURE_OPENAI_CHATGPT_MODEL: string;
     error?: string;
 };

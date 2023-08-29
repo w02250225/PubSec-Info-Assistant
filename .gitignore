@@ -360,6 +360,7 @@ local.env
 main.parameters.json
 infrastructure.env
 infrastructure.debug.env
+infrastructure.local.env
 infra_output.json
 random.txt
 .state

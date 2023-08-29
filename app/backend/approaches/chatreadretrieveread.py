@@ -91,6 +91,7 @@ class ChatReadRetrieveReadApproach(Approach):
         oai_service_name: str,
         oai_service_key: str,
         chatgpt_deployment: str,
+        chatgpt_model: str,
         source_page_field: str,
         content_field: str,
         blob_client: BlobServiceClient,
@@ -98,11 +99,12 @@ class ChatReadRetrieveReadApproach(Approach):
     ):
         self.search_client = search_client
         self.chatgpt_deployment = chatgpt_deployment
+        self.chatgpt_model = chatgpt_model
         self.source_page_field = source_page_field
         self.content_field = content_field
         self.blob_client = blob_client
         self.query_term_language = query_term_language
-        self.chatgpt_token_limit = get_token_limit(chatgpt_deployment)
+        self.chatgpt_token_limit = get_token_limit(chatgpt_model)
 
         openai.api_base = 'https://' + oai_service_name + '.openai.azure.com/'
         openai.api_type = 'azure'
@@ -125,7 +127,7 @@ class ChatReadRetrieveReadApproach(Approach):
         # STEP 1: Generate an optimized keyword search query based on the chat history and the last question
         messages = self.get_messages_from_history(
             query_prompt,
-            self.chatgpt_deployment,
+            self.chatgpt_model,
             history,
             user_q,
             self.query_prompt_few_shots,
@@ -135,7 +137,7 @@ class ChatReadRetrieveReadApproach(Approach):
         chat_completion = openai.ChatCompletion.create(
 
             deployment_id=self.chatgpt_deployment,
-            model=self.chatgpt_deployment,
+            model=self.chatgpt_model,
             messages=messages,
             temperature=0.0,
             max_tokens=32,
@@ -260,7 +262,7 @@ class ChatReadRetrieveReadApproach(Approach):
         messages = self.get_messages_from_history(
             "Sources:\n"+ content + "\n\n" + system_message,
             # system_message + "\n\nSources:\n" + content,
-            self.chatgpt_deployment,
+            self.chatgpt_model,
             history,
             history[-1]["user"],
             self.response_prompt_few_shots,
@@ -275,7 +277,7 @@ class ChatReadRetrieveReadApproach(Approach):
 
         chat_completion = openai.ChatCompletion.create(
             deployment_id=self.chatgpt_deployment,
-            model=self.chatgpt_deployment,
+            model=self.chatgpt_model,
             messages=messages,
             temperature=float(overrides.get("response_temp")) or 0.6,
             max_tokens=response_length,
