@@ -35,17 +35,17 @@ def main(myblob: func.InputStream):
         
         # Create message structure to send to queue
       
-        file_extension = os.path.splitext(myblob.name)[1][1:].lower()     
+        file_extension = os.path.splitext(myblob.name)[1][1:].lower()
         if file_extension == 'pdf':
              # If the file is a PDF a message is sent to the PDF processing queue.
             queue_name = pdf_submit_queue
   
-        elif file_extension in ['htm', 'html', 'docx']:
+        elif file_extension in ['htm', 'html', 'docx', 'xlsx']:
             # Else a message is sent to the non PDF processing queue
             queue_name = non_pdf_submit_queue
             
         elif file_extension in ['flv', 'mxf', 'gxf', 'ts', 'ps', '3gp', '3gpp', 'mpg', 'wmv', 'asf', 'avi', 'wmv', 'mp4', 'm4a', 'm4v', 'isma', 'ismv', 'dvr-ms', 'mkv', 'wav', 'mov']:
-            # Else a message is sent to the non PDF processing queue
+            # Else a message is sent to the media processing queue
             queue_name = media_submit_queue
                  
         else:
