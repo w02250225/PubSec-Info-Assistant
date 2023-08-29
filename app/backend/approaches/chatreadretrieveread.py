@@ -127,7 +127,7 @@ class ChatReadRetrieveReadApproach(Approach):
         # STEP 1: Generate an optimized keyword search query based on the chat history and the last question
         messages = self.get_messages_from_history(
             query_prompt,
-            self.chatgpt_deployment,
+            self.chatgpt_model,
             history,
             user_q,
             self.query_prompt_few_shots,
@@ -137,7 +137,7 @@ class ChatReadRetrieveReadApproach(Approach):
         chat_completion = openai.ChatCompletion.create(
 
             deployment_id=self.chatgpt_deployment,
-            model=self.chatgpt_deployment,
+            model=self.chatgpt_model,
             messages=messages,
             temperature=0.0,
             max_tokens=32,
@@ -262,7 +262,7 @@ class ChatReadRetrieveReadApproach(Approach):
         messages = self.get_messages_from_history(
             "Sources:\n"+ content + "\n\n" + system_message,
             # system_message + "\n\nSources:\n" + content,
-            self.chatgpt_deployment,
+            self.chatgpt_model,
             history,
             history[-1]["user"],
             self.response_prompt_few_shots,

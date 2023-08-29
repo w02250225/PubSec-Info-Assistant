@@ -5,7 +5,7 @@
 // Licensed under the MIT license.
 
 import React, { useEffect, useState } from "react";
-import { Text } from "@fluentui/react";
+import { Label, Text } from "@fluentui/react";
 import { getInfoData, GetInfoResponse } from "../../api";
 
 interface Props {
@@ -32,7 +32,10 @@ export const InfoContent = ({ className }: Props) => {
 
     return (
         <div>
-            <Text>Azure OpenAI model used: {infoData?.AZURE_OPENAI_CHATGPT_DEPLOYMENT}</Text>
+            <Label>Azure OpenAI Deployment Name:</Label>
+            <Text> {infoData?.AZURE_OPENAI_CHATGPT_DEPLOYMENT}</Text>
+            <Label>Azure OpenAI Model Name:</Label>
+            <Text>{infoData?.AZURE_OPENAI_CHATGPT_MODEL}</Text>
         </div>
     );
 };
