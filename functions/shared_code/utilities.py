@@ -262,7 +262,7 @@ class Utilities:
         # Remove CSS from XLSX
         if file_extension in ['.xlsx']:
             for tag in soup():
-                for attribute in ["class", "style"]:
+                for attribute in ["id", "class", "style"]:
                     del tag[attribute]
 
         document_map = {
@@ -274,7 +274,7 @@ class Utilities:
 
         title = ''
         section = ''
-        title = soup.title.string if soup.title else "No title"
+        title = soup.title.string if soup.title else file_name
 
         for tag in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'table']):
             if tag.name in ['h2', 'h3', 'h4', 'h5', 'h6']:

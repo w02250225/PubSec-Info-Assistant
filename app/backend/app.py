@@ -36,9 +36,8 @@ AZURE_SEARCH_SERVICE = os.environ.get("AZURE_SEARCH_SERVICE") or "gptkb"
 AZURE_SEARCH_SERVICE_KEY = os.environ.get("AZURE_SEARCH_SERVICE_KEY")
 AZURE_SEARCH_INDEX = os.environ.get("AZURE_SEARCH_INDEX") or "gptkbindex"
 AZURE_OPENAI_SERVICE = os.environ.get("AZURE_OPENAI_SERVICE") or "myopenai"
-AZURE_OPENAI_CHATGPT_DEPLOYMENT = (
-    os.environ.get("AZURE_OPENAI_CHATGPT_DEPLOYMENT") or "chat"
-)
+AZURE_OPENAI_CHATGPT_DEPLOYMENT = (os.environ.get("AZURE_OPENAI_CHATGPT_DEPLOYMENT") or "chat")
+AZURE_OPENAI_CHATGPT_MODEL = (os.environ.get("AZURE_OPENAI_CHATGPT_MODEL") or "gpt-35-turbo")
 AZURE_OPENAI_SERVICE_KEY = os.environ.get("AZURE_OPENAI_SERVICE_KEY")
 
 KB_FIELDS_CONTENT = os.environ.get("KB_FIELDS_CONTENT") or "merged_content"
@@ -49,9 +48,8 @@ COSMOSDB_URL = os.environ.get("COSMOSDB_URL")
 COSMODB_KEY = os.environ.get("COSMOSDB_KEY")
 COSMOSDB_DATABASE_NAME = os.environ.get("COSMOSDB_DATABASE_NAME") or "statusdb"
 COSMOSDB_CONTAINER_NAME = os.environ.get("COSMOSDB_CONTAINER_NAME") or "statuscontainer"
-
-COSMOSDB_REQUESTLOG_DATABASE_NAME = os.environ.get("COSMOSDB_REQUESTLOG_DATABASE_NAME") 
-COSMOSDB_REQUESTLOG_CONTAINER_NAME = os.environ.get("COSMOSDB_REQUESTLOG_CONTAINER_NAME") 
+COSMOSDB_REQUESTLOG_DATABASE_NAME = os.environ.get("COSMOSDB_REQUESTLOG_DATABASE_NAME")
+COSMOSDB_REQUESTLOG_CONTAINER_NAME = os.environ.get("COSMOSDB_REQUESTLOG_CONTAINER_NAME")
 
 QUERY_TERM_LANGUAGE = os.environ.get("QUERY_TERM_LANGUAGE") or "English"
 
@@ -87,26 +85,27 @@ requestLog = RequestLog(
 openai.api_key = AZURE_OPENAI_SERVICE_KEY
 
 # Set up clients for Cognitive Search and Storage
-search_client = SearchClient(
+SEARCH_CLIENT = SearchClient(
     endpoint=f"https://{AZURE_SEARCH_SERVICE}.search.windows.net",
     index_name=AZURE_SEARCH_INDEX,
     credential=azure_search_key_credential,
 )
-blob_client = BlobServiceClient(
+BLOB_CLIENT = BlobServiceClient(
     account_url=f"https://{AZURE_BLOB_STORAGE_ACCOUNT}.blob.core.windows.net",
     credential=AZURE_BLOB_STORAGE_KEY,
 )
-blob_container = blob_client.get_container_client(AZURE_BLOB_STORAGE_CONTAINER)
+blob_container = BLOB_CLIENT.get_container_client(AZURE_BLOB_STORAGE_CONTAINER)
 
 chat_approaches = {
     "rrr": ChatReadRetrieveReadApproach(
-        search_client,
+        SEARCH_CLIENT,
         AZURE_OPENAI_SERVICE,
         AZURE_OPENAI_SERVICE_KEY,
         AZURE_OPENAI_CHATGPT_DEPLOYMENT,
+        AZURE_OPENAI_CHATGPT_MODEL,
         KB_FIELDS_SOURCEPAGE,
         KB_FIELDS_CONTENT,
-        blob_client,
+        BLOB_CLIENT,
         QUERY_TERM_LANGUAGE,
     )
 }
@@ -199,7 +198,7 @@ def get_blob_client_url():
         ),
         expiry=datetime.utcnow() + timedelta(hours=1),
     )
-    return jsonify({"url": f"{blob_client.url}?{sas_token}"})
+    return jsonify({"url": f"{BLOB_CLIENT.url}?{sas_token}"})
 
 
 if __name__ == "__main__":

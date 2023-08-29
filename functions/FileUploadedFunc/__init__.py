@@ -2,14 +2,14 @@
 # Licensed under the MIT license.
 
 import logging
+import os
+import json
+import random
 import azure.functions as func
 from azure.storage.blob import generate_blob_sas
 from azure.storage.queue import QueueClient, TextBase64EncodePolicy
-import logging
-import os
-import json
 from shared_code.status_log import StatusLog, State, StatusClassification
-import random
+
 
 azure_blob_connection_string = os.environ["BLOB_CONNECTION_STRING"]
 cosmosdb_url = os.environ["COSMOSDB_URL"]
@@ -23,15 +23,12 @@ media_submit_queue = os.environ["MEDIA_SUBMIT_QUEUE"]
 max_seconds_hide_on_upload = int(os.environ["MAX_SECONDS_HIDE_ON_UPLOAD"])
 function_name = "FileUploadedFunc"
 
-
-
-
 def main(myblob: func.InputStream):
     """ Function to read supported file types and pass to the correct queue for processing"""
     try:
-        statusLog = StatusLog(cosmosdb_url, cosmosdb_key, cosmosdb_database_name, cosmosdb_container_name)
-        statusLog.upsert_document(myblob.name, 'File Uploaded', StatusClassification.INFO, State.PROCESSING, True)            
-        statusLog.upsert_document(myblob.name, f'{function_name} - FileUploadedFunc function started', StatusClassification.DEBUG)    
+        status_log = StatusLog(cosmosdb_url, cosmosdb_key, cosmosdb_database_name, cosmosdb_container_name)
+        status_log.upsert_document(myblob.name, 'File Uploaded', StatusClassification.INFO, State.PROCESSING, True)            
+        status_log.upsert_document(myblob.name, f'{function_name} - FileUploadedFunc function started', StatusClassification.DEBUG)    
         
         # Create message structure to send to queue
       
@@ -52,8 +49,8 @@ def main(myblob: func.InputStream):
             # Unknown file type
             logging.info("Unknown file type")
             error_message = f"{function_name} - Unexpected file type submitted {file_extension}"
-            statusLog.state_description = error_message
-            statusLog.upsert_document(myblob.name, error_message, StatusClassification.ERROR, State.SKIPPED) 
+            status_log.state_description = error_message
+            status_log.upsert_document(myblob.name, error_message, StatusClassification.ERROR, State.SKIPPED) 
         
         # Create message
         message = {
@@ -67,9 +64,9 @@ def main(myblob: func.InputStream):
         queue_client = QueueClient.from_connection_string(azure_blob_connection_string, queue_name, message_encode_policy=TextBase64EncodePolicy())
         backoff =  random.randint(1, max_seconds_hide_on_upload)        
         queue_client.send_message(message_string, visibility_timeout = backoff)  
-        statusLog.upsert_document(myblob.name, f'{function_name} - {file_extension} file sent to submit queue. Visible in {backoff} seconds', StatusClassification.DEBUG, State.QUEUED)          
+        status_log.upsert_document(myblob.name, f'{function_name} - {file_extension} file sent to submit queue. Visible in {backoff} seconds', StatusClassification.DEBUG, State.QUEUED)          
         
     except Exception as e:
-        statusLog.upsert_document(myblob.name, f"{function_name} - An error occurred - {str(e)}", StatusClassification.ERROR, State.ERROR)
+        status_log.upsert_document(myblob.name, f"{function_name} - An error occurred - {str(e)}", StatusClassification.ERROR, State.ERROR)
 
-    statusLog.save_document()
+    status_log.save_document()
