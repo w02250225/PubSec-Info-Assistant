@@ -9,7 +9,6 @@ import uuid
 from datetime import datetime, timedelta
 
 import openai
-
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from azure.core.credentials import AzureKeyCredential
 from azure.identity import DefaultAzureCredential
@@ -114,6 +113,7 @@ chat_approaches = {
 
 app = Flask(__name__)
 
+
 @app.route("/", defaults={"path": "index.html"})
 @app.route("/<path:path>")
 def static_file(path):
@@ -216,3 +216,10 @@ def get_all_upload_status():
         logger.exception("Exception in /getalluploadstatus")
         return jsonify({"error": str(e)}), 500
     return jsonify(results)
+
+
+# Return AZURE_OPENAI_CHATGPT_DEPLOYMENT
+@app.route("/getInfoData")
+def get_info_data():
+    response = jsonify({"AZURE_OPENAI_CHATGPT_DEPLOYMENT": f"{AZURE_OPENAI_CHATGPT_DEPLOYMENT}"})
+    return response

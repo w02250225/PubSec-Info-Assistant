@@ -5,6 +5,7 @@ import json
 import logging
 import urllib.parse
 from datetime import datetime, timedelta
+from typing import Any, Sequence
 
 import openai
 from approaches.approach import Approach
@@ -17,49 +18,72 @@ from azure.storage.blob import (
     generate_account_sas,
 )
 from text import nonewlines
+import tiktoken
+from core.messagebuilder import MessageBuilder
+from core.modelhelper import get_token_limit
+from core.modelhelper import num_tokens_from_messages
 
+# Simple retrieve-then-read implementation, using the Cognitive Search and
+# OpenAI APIs directly. It first retrieves top documents from search,
+# then constructs a prompt with them, and then uses OpenAI to generate
+# an completion (answer) with that prompt.
 
 class ChatReadRetrieveReadApproach(Approach):
-    """
-    Simple retrieve-then-read implementation, using the Cognitive Search and OpenAI APIs directly. It first retrieves
-    top documents from search, then constructs a prompt with them, and then uses OpenAI to generate an completion
-    (answer) with that prompt.
-    """
 
-    prompt_prefix = """<|im_start|>
-You are {systemPersona} who helps {userPersona} answer questions about a Government agency's data. {response_length_prompt}. 
-Answer ONLY with the facts listed in the list of sources below. If there isn't enough information below, say you don't know. Do not generate answers that don't use the sources below. If asking a clarifying question to the user would help, ask the question.
-For tabular information return it as an html table. Do not return markdown format. 
-Each source has a name followed by colon and the actual information, always include the source name for each fact you use in the response. Use square brackets to reference the source, e.g. [info1.txt]. Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
-{follow_up_questions_prompt}
-{injected_prompt}
-Sources:
-{sources}
-<|im_end|>
-{chat_history}
-"""
-
-    follow_up_questions_prompt_content = """Generate three very brief follow-up questions that the user would likely ask next about their agencies data.
-Use triple angle brackets to reference the questions, e.g. <<<Are there exclusions for prescriptions?>>>. 
-Do not repeat questions that have already been asked.
-Only generate questions (do not include answers to the follow-up questions) and do not generate any text before or after the questions, such as 'Next Questions'.
+     # Chat roles
+    SYSTEM = "system"
+    USER = "user"
+    ASSISTANT = "assistant"
+     
+    system_message_chat_conversation = """You are {systemPersona} who helps {userPersona} answer questions about a Government agency's data.
+    {response_length_prompt}
+    User persona is {userPersona}.
+    Answer ONLY with the facts listed in the list of sources above.
+    Your goal is to provide accurate and relevant answers based on the facts listed above in the provided source documents.
+    Make sure to reference the above source documents appropriately and avoid making assumptions or adding personal opinions.
+    Emphasize the use of facts listed in the above provided source documents.
+    Instruct the model to use source name for each fact used in the response.
+    Avoid generating speculative or generalized information.
+    Each source has a file name followed by a pipe character and the actual information.
+    Use square brackets to reference the source, e.g. [info1.txt]. Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
+    
+    Here is how you should answer every question:
+    - Look for relevant information in the above source documents to answer the question.       
+    - If there is specific information related to question available in the above sources, provide an answer along with the appropriate citation.Do not forget to include the citation!
+    - Always include citation from sources listed above.
+    - If there is no specific information related to the question available in the source document, respond with "I\'m not sure" without providing any citation. Do not provide personal opinions or assumptions.
+    {follow_up_questions_prompt}
+    {injected_prompt}
     """
-
+    follow_up_questions_prompt_content = """
+    Generate three very brief follow-up questions that the user would likely ask next about their agencies data. Use triple angle brackets to reference the questions, e.g. <<<Are there exclusions for prescriptions?>>>. Try not to repeat questions that have already been asked.
+    Only generate questions and do not generate any text before or after the questions, such as 'Next Questions'
+    """
     query_prompt_template = """Below is a history of the conversation so far, and a new question asked by the user that needs to be answered by searching in source documents.
-Generate a search query based on the conversation and the new question. 
-Do not include cited source filenames and document names e.g info.txt or doc.pdf in the search query terms.
-Do not include any text inside [] or <<<>>> in the search query terms.
-Do not include any special characters like '+'.
-If the question is not in {query_term_language}, translate the question to {query_term_language} before generating the search query.
-
-Chat History:
-{chat_history}
-
-Question:
-{question}
-
-Search query:
+    Generate a search query based on the conversation and the new question.
+    Treat each search term as an individual keyword. Do not combine terms in quotes or brackets.
+    Do not include cited source filenames and document names e.g info.txt or doc.pdf in the search query terms.
+    Do not include any text inside [] or <<<>>> in the search query terms.
+    Do not include any special characters like '+'.
+    If the question is not in {query_term_language}, translate the question to {query_term_language} before generating the search query.
+    If you cannot generate a search query, return just the number 0.
     """
+
+    #Few Shot prompting for Keyword Search Query
+    query_prompt_few_shots = [
+    {'role' : USER, 'content' : 'What are the future plans for public transportation development?' },
+    {'role' : ASSISTANT, 'content' : 'Future plans for public transportation' },
+    {'role' : USER, 'content' : 'how much renewable energy was generated last year?' },
+    {'role' : ASSISTANT, 'content' : 'Renewable energy generation last year' }
+    ]
+
+    #Few Shot prompting for Response. This will feed into Chain of thought system message.
+    response_prompt_few_shots = [
+    {"role": USER ,'content': 'I am looking for information in source documents'},
+    {'role': ASSISTANT, 'content': 'user is looking for information in source documents. Do not provide answers that are not in the source documents'},
+    {'role': USER, 'content': 'What steps are being taken to promote energy conservation?'},
+    {'role': ASSISTANT, 'content': 'Several steps are being taken to promote energy conservation including reducing energy consumption, increasing energy efficiency, and increasing the use of renewable energy sources.[info1.txt]'},
+    ]
 
     def __init__(
         self,
@@ -78,60 +102,50 @@ Search query:
         self.content_field = content_field
         self.blob_client = blob_client
         self.query_term_language = query_term_language
+        self.chatgpt_token_limit = get_token_limit(chatgpt_deployment)
 
-        openai.api_base = "https://" + oai_service_name + ".openai.azure.com/"
-        openai.api_type = "azure"
+        openai.api_base = 'https://' + oai_service_name + '.openai.azure.com/'
+        openai.api_type = 'azure'
         openai.api_key = oai_service_key
 
-    def run(self, history: list[dict], overrides: dict) -> any:
-        """
-        Run the approach on the query and documents.
-
-        Args:
-            history: The chat history. (e.g. [{"user": "hello", "bot": "hi"}])
-            overrides: Overrides from the user interface for the approach. (e.g. temperature, top,
-                semantic_captions etc.)
-
-        Returns:
-            The response from the approach as a dict.
-        """
-        # Overrides
+    # def run(self, history: list[dict], overrides: dict) -> any:
+    def run(self, history: Sequence[dict[str, str]], overrides: dict[str, Any]) -> Any:
         use_semantic_captions = True if overrides.get("semantic_captions") else False
         top = overrides.get("top") or 3
-        response_length = int(overrides.get("response_length") or 2048)
-
-        ## Category filter
         exclude_category = overrides.get("exclude_category") or None
-        category_filter = (
-            "category ne '{}'".format(exclude_category.replace("'", "''"))
-            if exclude_category
-            else None
-        )
-
-        ## Personas
+        category_filter = "category ne '{}'".format(exclude_category.replace("'", "''")) if exclude_category else None
         user_persona = overrides.get("user_persona", "")
         system_persona = overrides.get("system_persona", "")
+        response_length = int(overrides.get("response_length") or 1024)
 
-        # STEP 1: Generate an optimized keyword search query based on the chat history and the last question.
+        user_q = 'Generate search query for: ' + history[-1]["user"]
 
-        prompt = self.query_prompt_template.format(
-            chat_history=self.get_chat_history_as_text(
-                history, include_last_turn=False
-            ),
-            question=history[-1]["user"],
-            query_term_language=self.query_term_language,
-        )
+        query_prompt=self.query_prompt_template.format(query_term_language=self.query_term_language)
 
-        completion = openai.Completion.create(
-            engine=self.chatgpt_deployment,
-            prompt=prompt,
+        # STEP 1: Generate an optimized keyword search query based on the chat history and the last question
+        messages = self.get_messages_from_history(
+            query_prompt,
+            self.chatgpt_deployment,
+            history,
+            user_q,
+            self.query_prompt_few_shots,
+            self.chatgpt_token_limit - len(user_q)
+            )
+
+        chat_completion = openai.ChatCompletion.create(
+
+            deployment_id=self.chatgpt_deployment,
+            model=self.chatgpt_deployment,
+            messages=messages,
             temperature=0.0,
             max_tokens=32,
-            n=1,
-            stop=["\n"],
-        )
-        raw_query_proposal = completion.choices[0].text
-        generated_query = raw_query_proposal.strip('"')
+            n=1)
+
+        generated_query = chat_completion.choices[0].message.content
+
+        #if we fail to generate a query, return the last user question
+        if generated_query.strip() == "0":
+            generated_query = history[-1]["user"]
 
         # STEP 2: Retrieve relevant documents from the search index with the optimized query term
         if overrides.get("semantic_ranker"):
@@ -211,11 +225,10 @@ Search query:
 
         # Allow client to replace the entire prompt, or to inject into the existing prompt using >>>
         prompt_override = overrides.get("prompt_template")
+
         if prompt_override is None:
-            prompt = self.prompt_prefix.format(
+            system_message = self.system_message_chat_conversation.format(
                 injected_prompt="",
-                sources=content,
-                chat_history=self.get_chat_history_as_text(history),
                 follow_up_questions_prompt=follow_up_questions_prompt,
                 response_length_prompt=self.get_response_length_prompt_text(
                     response_length
@@ -224,10 +237,8 @@ Search query:
                 systemPersona=system_persona,
             )
         elif prompt_override.startswith(">>>"):
-            prompt = self.prompt_prefix.format(
+            system_message = self.system_message_chat_conversation.format(
                 injected_prompt=prompt_override[3:] + "\n ",
-                sources=content,
-                chat_history=self.get_chat_history_as_text(history),
                 follow_up_questions_prompt=follow_up_questions_prompt,
                 response_length_prompt=self.get_response_length_prompt_text(
                     response_length
@@ -236,9 +247,7 @@ Search query:
                 systemPersona=system_persona,
             )
         else:
-            prompt = prompt_override.format(
-                sources=content,
-                chat_history=self.get_chat_history_as_text(history),
+            system_message = self.system_message_chat_conversation.format(
                 follow_up_questions_prompt=follow_up_questions_prompt,
                 response_length_prompt=self.get_response_length_prompt_text(
                     response_length
@@ -248,63 +257,81 @@ Search query:
             )
 
         # STEP 3: Generate a contextual and content-specific answer using the search results and chat history
+        messages = self.get_messages_from_history(
+            "Sources:\n"+ content + "\n\n" + system_message,
+            # system_message + "\n\nSources:\n" + content,
+            self.chatgpt_deployment,
+            history,
+            history[-1]["user"],
+            self.response_prompt_few_shots,
+            max_tokens=self.chatgpt_token_limit
+            )
 
-        completion = openai.Completion.create(
-            engine=self.chatgpt_deployment,
-            prompt=prompt,
-            temperature=float(overrides.get("response_temp")) or 0.5,
+        #Aparmar.Token Debugging Code. Uncomment to debug token usage.
+        # print(messages)
+        # total_prompt_tokens = sum(len(token.split()) for token in
+        # (system_message + "\n\nSources:\n" + content).split())
+        # print("Total Prompt Tokens:", total_prompt_tokens)
+
+        chat_completion = openai.ChatCompletion.create(
+            deployment_id=self.chatgpt_deployment,
+            model=self.chatgpt_deployment,
+            messages=messages,
+            temperature=float(overrides.get("response_temp")) or 0.6,
             max_tokens=response_length,
-            n=1,
-            stop=["<|im_end|>", "<|im_start|>"],
+            n=1
+
         )
+        # generated_response = chat_completion.choices[0].message.content
+
+        #Aparmar.Token Debugging Code. Uncomment to debug token usage.
+        # generated_response_message = chat_completion.choices[0].message
+        # # Count the tokens in the generated response message
+        # token_count = num_tokens_from_messages(generated_response_message, 'gpt-4')
+        # print("Generated Response Tokens:", token_count)
+
+        msg_to_display = '\n\n'.join([str(message) for message in messages])
 
         return {
             "data_points": data_points,
-            "answer": f"{urllib.parse.unquote(completion.choices[0].text)}",
-            "thoughts": f"Searched for:<br>{generated_query}<br><br>Prompt:<br>"
-            + prompt.replace("\n", "<br>"),
-            "citation_lookup": citation_lookup,
+            "answer": f"{urllib.parse.unquote(chat_completion.choices[0].message.content)}",
+            "thoughts": f"Searched for:<br>{generated_query}<br><br>Conversations:<br>" + msg_to_display.replace('\n', '<br>'),
+            "citation_lookup": citation_lookup
         }
 
-    def get_chat_history_as_text(self, history, include_last_turn=True) -> str:
-        """
-        Get the chat history as a single string of text for presenting to the user.
+    #Aparmar. Custom method to construct Chat History as opposed to single string of chat History.
+    def get_messages_from_history(
+        self,
+        system_prompt: str,
+        model_id: str,
+        history: Sequence[dict[str, str]],
+        user_conv: str,
+        few_shots = [],
+        max_tokens: int = 4096) -> []:
 
-        Args:
-            history: The chat history. (e.g. [{"user": "hello", "bot": "hi"}])
-            include_last_turn: Whether to include the last turn in the chat history.
+        message_builder = MessageBuilder(system_prompt, model_id)
 
-        Returns:
-            The chat history as a single string of text.
-        """
-        history_text = ""
-        for h in reversed(history if include_last_turn else history[:-1]):
-            history_text = (
-                """User:"""
-                + " "
-                + h["user"]
-                + "\n"
-                + """"""
-                + "\n"
-                + """Assistant:"""
-                + " "
-                + (h.get("bot") + """""" if h.get("bot") else "")
-                + "\n"
-                + history_text
-            )
+        # Few Shot prompting. Add examples to show the chat what responses we want. It will try to mimic any responses and make sure they match the rules laid out in the system message.
+        for shot in few_shots:
+            message_builder.append_message(shot.get('role'), shot.get('content'))
 
-        return history_text
+        user_content = user_conv
+        append_index = len(few_shots) + 1
 
+        message_builder.append_message(self.USER, user_content, index=append_index)
+
+        for h in reversed(history[:-1]):
+            if h.get("bot"):
+                message_builder.append_message(self.ASSISTANT, h.get('bot'), index=append_index)
+            message_builder.append_message(self.USER, h.get('user'), index=append_index)
+            if message_builder.token_length > max_tokens:
+                break
+
+        messages = message_builder.messages
+        return messages
+
+    #Get the prompt text for the response length
     def get_response_length_prompt_text(self, response_length: int):
-        """
-        Get the prompt text for the response length
-
-        Args:
-            response_length: The response length mapped to a prompt text.
-
-        Returns:
-            The prompt text for the response length.
-        """
         levels = {
             1024: "succinct",
             2048: "standard",

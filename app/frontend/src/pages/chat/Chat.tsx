@@ -15,13 +15,16 @@ import { ExampleList } from "../../components/Example";
 import { UserChatMessage } from "../../components/UserChatMessage";
 import { AnalysisPanel, AnalysisPanelTabs } from "../../components/AnalysisPanel";
 import { SettingsButton } from "../../components/SettingsButton";
+import { InfoButton } from "../../components/InfoButton";
 import { ClearChatButton } from "../../components/ClearChatButton";
 import { ResponseLengthButtonGroup } from "../../components/ResponseLengthButtonGroup";
 import { ResponseTempSlider } from "../../components/ResponseTempSlider";
 import { Tooltips } from "../../components/Tooltips"
+import { InfoContent } from "./InfoContent";
 
 const Chat = () => {
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
+    const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
     const [promptTemplate, setPromptTemplate] = useState<string>("");
     const [retrieveCount, setRetrieveCount] = useState<number>(5);
     const [useSemanticRanker, setUseSemanticRanker] = useState<boolean>(true);
@@ -143,14 +146,6 @@ const Chat = () => {
         setRetrieveCount(parseInt(newValue || "5"));
     };
 
-    const onUseSemanticRankerChange = (_ev?: React.FormEvent<HTMLElement | HTMLInputElement>, checked?: boolean) => {
-        setUseSemanticRanker(!!checked);
-    };
-
-    const onUseSemanticCaptionsChange = (_ev?: React.FormEvent<HTMLElement | HTMLInputElement>, checked?: boolean) => {
-        setUseSemanticCaptions(!!checked);
-    };
-
     const onUserPersonaChange = (_ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
         setUserPersona(newValue || "");
     }
@@ -158,10 +153,6 @@ const Chat = () => {
     const onSystemPersonaChange = (_ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
         setSystemPersona(newValue || "");
     }
-
-    const onExcludeCategoryChanged = (_ev?: React.FormEvent, newValue?: string) => {
-        setExcludeCategory(newValue || "");
-    };
 
     const onUseSuggestFollowupQuestionsChange = (_ev?: React.FormEvent<HTMLElement | HTMLInputElement>, checked?: boolean) => {
         setUseSuggestFollowupQuestions(!!checked);
@@ -199,6 +190,7 @@ const Chat = () => {
             <div className={styles.commandsContainer}>
                 <ClearChatButton className={styles.commandButton} onClick={clearChat} disabled={!lastQuestionRef.current || isLoading} />
                 <SettingsButton className={styles.commandButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} />
+                <InfoButton className={styles.commandButton} onClick={() => setIsInfoPanelOpen(!isInfoPanelOpen)} />
             </div>
             <div className={styles.chatRoot}>
                 <div className={styles.chatContainer}>
@@ -228,134 +220,118 @@ const Chat = () => {
                         </div>
                     ) : (
                         <div className={styles.chatMessageStream}>
-                            {answers.map((answer, index) => (
-                                <div key={index}>
-                                    <UserChatMessage message={answer[0]} />
-                                    <div className={styles.chatMessageGpt}>
-                                        <Answer
-                                            key={index}
-                                            answer={answer[1]}
-                                            isSelected={selectedAnswer === index && activeAnalysisPanelTab !== undefined}
-                                            onCitationClicked={(c, s, p) => onShowCitation(c, s, p, index)}
-                                            onThoughtProcessClicked={() => onToggleTab(AnalysisPanelTabs.ThoughtProcessTab, index)}
-                                            onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab, index)}
-                                            onFollowupQuestionClicked={q => makeApiRequest(q)}
-                                            showFollowupQuestions={useSuggestFollowupQuestions && answers.length - 1 === index}
-                                            onAdjustClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
-                                        />
-                                    </div>
+                        {answers.map((answer, index) => (
+                            <div key={index}>
+                                <UserChatMessage message={answer[0]} />
+                                <div className={styles.chatMessageGpt}>
+                                    <Answer
+                                        key={index}
+                                        answer={answer[1]}
+                                        isSelected={selectedAnswer === index && activeAnalysisPanelTab !== undefined}
+                                        onCitationClicked={(c, s, p) => onShowCitation(c, s, p, index)}
+                                        onThoughtProcessClicked={() => onToggleTab(AnalysisPanelTabs.ThoughtProcessTab, index)}
+                                        onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab, index)}
+                                        onFollowupQuestionClicked={q => makeApiRequest(q)}
+                                        showFollowupQuestions={useSuggestFollowupQuestions && answers.length - 1 === index}
+                                        onAdjustClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
+                                        onRegenerateClick={() => makeApiRequest(answers[index][0])}
+                                    />
                                 </div>
-                            ))}
-                            {isLoading && (
-                                <>
-                                    <UserChatMessage message={lastQuestionRef.current} />
-                                    <div className={styles.chatMessageGptMinWidth}>
-                                        <AnswerLoading />
-                                    </div>
-                                </>
-                            )}
-                            {error ? (
-                                <>
-                                    <UserChatMessage message={lastQuestionRef.current} />
-                                    <div className={styles.chatMessageGptMinWidth}>
-                                        <AnswerError error={error.toString()} onRetry={() => makeApiRequest(lastQuestionRef.current)} />
-                                    </div>
-                                </>
-                            ) : null}
-                            <div ref={chatMessageStreamEnd} />
-                        </div>
-                    )}
-
-                    <div className={styles.chatInput}>
-                        <QuestionInput
-                            clearOnSend
-                            placeholder="Type a new question (e.g. Who are Microsoft's top executives, provided as a table?)"
-                            disabled={isLoading}
-                            onSend={question => makeApiRequest(question)}
-                            onAdjustClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
-                            showClearChat={true}
-                            onClearClick={clearChat}
-                        />
+                            </div>
+                        ))}
+                        {isLoading && (
+                            <>
+                                <UserChatMessage message={lastQuestionRef.current} />
+                                <div className={styles.chatMessageGptMinWidth}>
+                                    <AnswerLoading />
+                                </div>
+                            </>
+                        )}
+                        {error ? (
+                            <>
+                                <UserChatMessage message={lastQuestionRef.current} />
+                                <div className={styles.chatMessageGptMinWidth}>
+                                    <AnswerError error={error.toString()} onRetry={() => makeApiRequest(lastQuestionRef.current)} />
+                                </div>
+                            </>
+                        ) : null}
+                        <div ref={chatMessageStreamEnd} />
                     </div>
-                </div>
-
-                {answers.length > 0 && activeAnalysisPanelTab && (
-                    <AnalysisPanel
-                        className={styles.chatAnalysisPanel}
-                        activeCitation={activeCitation}
-                        sourceFile={activeCitationSourceFile}
-                        pageNumber={activeCitationSourceFilePageNumber}
-                        onActiveTabChanged={x => onToggleTab(x, selectedAnswer)}
-                        citationHeight="760px"
-                        answer={answers[selectedAnswer][1]}
-                        activeTab={activeAnalysisPanelTab}
-                    />
                 )}
 
-                <Panel
-                    headerText="Configure answer generation"
-                    isOpen={isConfigPanelOpen}
-                    isBlocking={false}
-                    onDismiss={() => setIsConfigPanelOpen(false)}
-                    closeButtonAriaLabel="Close"
-                    onRenderFooterContent={() => <DefaultButton onClick={() => setIsConfigPanelOpen(false)}>Close</DefaultButton>}
-                    isFooterAtBottom={true}
-                >
-                    <SpinButton
-                        className={styles.chatSettingsSeparator}
-                        label="Retrieve this many documents from search:"
-                        min={1}
-                        max={50}
-                        defaultValue={retrieveCount.toString()}
-                        onChange={onRetrieveCountChange}
+                <div className={styles.chatInput}>
+                    <QuestionInput
+                        clearOnSend
+                        placeholder="Type a new question (e.g. Who are Microsoft's top executives, provided as a table?)"
+                        disabled={isLoading}
+                        onSend={question => makeApiRequest(question)}
+                        onAdjustClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
+                        onInfoClick={() => setIsInfoPanelOpen(!isInfoPanelOpen)}
+                        showClearChat={true}
+                        onClearClick={clearChat}
+                        onRegenerateClick={() => makeApiRequest(lastQuestionRef.current)}
                     />
-                    <TextField className={styles.chatSettingsSeparator} label="Exclude category" onChange={onExcludeCategoryChanged} />
-                    <Checkbox
-                        className={styles.chatSettingsSeparator}
-                        checked={useSemanticRanker}
-                        label="Use semantic ranker for retrieval"
-                        onChange={onUseSemanticRankerChange}
-                    />
-                    <Checkbox
-                        className={styles.chatSettingsSeparator}
-                        checked={useSemanticCaptions}
-                        label="Use query-contextual summaries instead of whole documents"
-                        onChange={onUseSemanticCaptionsChange}
-                        disabled={!useSemanticRanker}
-                    />
-                    <Checkbox
-                        className={styles.chatSettingsSeparator}
-                        checked={useSuggestFollowupQuestions}
-                        label="Suggest follow-up questions"
-                        onChange={onUseSuggestFollowupQuestionsChange}
-                    />
-                    <TextField
-                        className={styles.chatSettingsSeparator}
-                        defaultValue={userPersona}
-                        label="User Persona"
-                        onChange={onUserPersonaChange}
-                    />
-                    <TextField
-                        className={styles.chatSettingsSeparator}
-                        defaultValue={systemPersona}
-                        label="System Persona"
-                        onChange={onSystemPersonaChange}
-                    />
-                    <ResponseLengthButtonGroup
-                        className={styles.chatSettingsSeparator}
-                        onClick={onResponseLengthChange}
-                        defaultValue={responseLength}
-                    />
-                    <ResponseTempSlider
-                        className={styles.chatSettingsSeparator}
-                        onChange={setResponseTemp}
-                        value={responseTemp}
-                    />
-                </Panel>
-                <Tooltips />
+                </div>
             </div>
+
+            {answers.length > 0 && activeAnalysisPanelTab && (
+                <AnalysisPanel
+                    className={styles.chatAnalysisPanel}
+                    activeCitation={activeCitation}
+                    sourceFile={activeCitationSourceFile}
+                    pageNumber={activeCitationSourceFilePageNumber}
+                    onActiveTabChanged={x => onToggleTab(x, selectedAnswer)}
+                    citationHeight="760px"
+                    answer={answers[selectedAnswer][1]}
+                    activeTab={activeAnalysisPanelTab}
+                />
+            )}
+
+            <Panel
+                headerText="Configure answer generation"
+                isOpen={isConfigPanelOpen}
+                isBlocking={false}
+                onDismiss={() => setIsConfigPanelOpen(false)}
+                closeButtonAriaLabel="Close"
+                onRenderFooterContent={() => <DefaultButton onClick={() => setIsConfigPanelOpen(false)}>Close</DefaultButton>}
+                isFooterAtBottom={true}
+            >
+                        <SpinButton
+                            className={styles.chatSettingsSeparator}
+                            label="Retrieve this many documents from search:"
+                            min={1}
+                            max={50}
+                            defaultValue={retrieveCount.toString()}
+                            onChange={onRetrieveCountChange}
+                        />
+                        <Checkbox
+                            className={styles.chatSettingsSeparator}
+                            checked={useSuggestFollowupQuestions}
+                            label="Suggest follow-up questions"
+                            onChange={onUseSuggestFollowupQuestionsChange}
+                        />
+                        <TextField className={styles.chatSettingsSeparator} defaultValue={userPersona} label="User Persona" onChange={onUserPersonaChange} />
+                        <TextField className={styles.chatSettingsSeparator} defaultValue={systemPersona} label="System Persona" onChange={onSystemPersonaChange} />
+                        <ResponseLengthButtonGroup className={styles.chatSettingsSeparator} onClick={onResponseLengthChange} defaultValue={responseLength}/>
+                        <ResponseTempSlider className={styles.chatSettingsSeparator} onChange={setResponseTemp} value={responseTemp}/>
+                        <Tooltips />
+            </Panel>
+
+            <Panel
+                headerText="Information"
+                isOpen={isInfoPanelOpen}
+                isBlocking={false}
+                onDismiss={() => setIsInfoPanelOpen(false)}
+                closeButtonAriaLabel="Close"
+                onRenderFooterContent={() => <DefaultButton onClick={() => setIsInfoPanelOpen(false)}>Close</DefaultButton>}
+                isFooterAtBottom={true}>
+                    <div className={styles.resultspanel}>
+                        <InfoContent/>
+                    </div>
+            </Panel>
         </div>
-    );
+    </div>
+);
 };
 
 export default Chat;

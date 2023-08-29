@@ -1,4 +1,4 @@
-# Configure Local Development Environment
+# Configure Development/Deployment Environment
 
 Follow these steps to get the accelerator up and running in a subscription of your choice.
 
@@ -13,6 +13,8 @@ You can use the bash prompt in your Codespace to issue the following commands:
 ```
 
 This will launch a browser session where you can complete you login.
+
+> **NOTICE:** if your organization requires managed devices, ensure that you are running the Codespace from your managed device's VS Code installation. For more information, please see the [Developing in a Codespace](./developing_in_a_codespaces.md#opening-a-codespace-in-vs-code) documentation.
 
 Next from the bash prompt run:
 
@@ -32,11 +34,12 @@ From this output, grab the Subscription ID of the subscription you intend to dep
     az account set --subscription mysubscription
 ```
 
-## Configure Dev Container and ENV files
+## Configure ENV files
 
 Now that the Codespace is running and logged into Azure, we need to set up your local environment variables.
 
 1. Open `scripts/environments` and copy `local.env.example` to `local.env`.
+   1. Note: choose the best example ENV file for your deployment, specifically if you have non-English language settings.
 1. Then open `local.env` and update values as needed:
 
 Variable | Required | Description
@@ -51,3 +54,7 @@ AZURE_OPENAI_SERVICE_NAME | No | If you have set **USE_EXISTING_AOAI** to "true"
 AZURE_OPENAI_SERVICE_KEY | No | If you have set **USE_EXISTING_AOAI** to "true" then use this parameter to provide the Key for the Azure Open AI service instance in your subscription.
 AZURE_OPENAI_CHATGPT_DEPLOYMENT | No | If you have set **USE_EXISTING_AOAI** to "true" then use this parameter to provide the name of a deployment of the "gpt-35-turbo" model in the Azure Open AI service instance in your subscription.
 DEFAULT_LANGUAGE | Yes | Use the parameter to specify the matching ENV file located in the `scripts/environments/languages` folder. You can then use this file to customize the language settings of the search index, search skillsets, and Azure OpenAI prompts. See [Configuring your own language ENV file](./features/configuring_language_env_files.md) more information.
+ENABLE_CUSTOMER_USAGE_ATTRIBUTION <br>CUSTOMER_USAGE_ATTRIBUTION_ID | false | By default, **ENABLE_CUSTOMER_USAGE_ATTRIBUTION** is set to `false`. To activate, set it to `true` and provide your CUA GUID for **CUSTOMER_USAGE_ATTRIBUTION_ID**. Ensure you understand how to properly notify your customers by reading at <https://learn.microsoft.com/en-us/partner-center/marketplace/azure-partner-customer-usage-attribution#notify-your-customers>
+ENABLE_DEV_CODE | false | Defaults to `false`. It is not recommended to enable this flag, it is for development testing scenarios only.
+
+---
