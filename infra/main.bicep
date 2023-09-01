@@ -138,12 +138,15 @@ module backend 'core/host/appservice.bicep' = {
       AZURE_SEARCH_SERVICE: searchServices.outputs.name
       AZURE_SEARCH_SERVICE_KEY: searchServices.outputs.searchServiceKey
       AZURE_OPENAI_CHATGPT_DEPLOYMENT: !empty(chatGptDeploymentName) ? chatGptDeploymentName : chatGptModelName
+      AZURE_OPENAI_CHATGPT_MODEL: chatGptModelName
       AZURE_OPENAI_SERVICE_KEY: azureOpenAIServiceKey
       APPINSIGHTS_INSTRUMENTATIONKEY: logging.outputs.applicationInsightsInstrumentationKey
       COSMOSDB_URL: cosmosdb.outputs.CosmosDBEndpointURL
       COSMOSDB_KEY: cosmosdb.outputs.CosmosDBKey
       COSMOSDB_DATABASE_NAME: cosmosdb.outputs.CosmosDBDatabaseName
       COSMOSDB_CONTAINER_NAME: cosmosdb.outputs.CosmosDBContainerName
+      COSMOSDB_REQUESTLOG_DATABASE_NAME: cosmosrequestsdb.outputs.CosmosDBDatabaseName
+      COSMOSDB_REQUESTLOG_CONTAINER_NAME: cosmosrequestsdb.outputs.CosmosDBContainerName
       QUERY_TERM_LANGUAGE: queryTermLanguage
     }
     aadClientId: aadClientId
@@ -366,9 +369,23 @@ module cosmosdb 'core/db/cosmosdb.bicep' = {
     tags: tags
     databaseName: 'statusdb'
     containerName: 'statuscontainer'
+    partitionKeyPath: ['/file_name']
   }
 }
 
+module cosmosrequestsdb 'core/db/cosmosdb.bicep' = {
+  name: 'cosmosrequestsdb'
+  scope: rg
+  params: {
+    name: !empty(cosmosdbName) ? cosmosdbName : '${prefix}-${abbrs.cosmosDBAccounts}${randomString}'
+    location: location
+    tags: tags
+    databaseName: 'requestdb'
+    containerName: 'requestcontainer'
+    partitionKeyPath: ['/user_id', '/session_id']
+    autoscaleMaxThroughput: 2000
+  }
+}
 // Function App 
 module functions 'core/function/function.bicep' = {
   name: 'functions'

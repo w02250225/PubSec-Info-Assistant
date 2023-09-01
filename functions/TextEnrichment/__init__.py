@@ -45,6 +45,8 @@ utilities = Utilities(
     azure_blob_storage_key,
 )
 
+status_log = StatusLog(cosmosdb_url, cosmosdb_key, cosmosdb_database_name, cosmosdb_container_name)
+
 def main(msg: func.QueueMessage) -> None:
     '''This function is triggered by a message in the text-enrichment-queue.
     It will first determine the language, and if this differs from
@@ -54,16 +56,12 @@ def main(msg: func.QueueMessage) -> None:
     message_json = json.loads(message_body)
     blob_path = message_json["blob_name"]
     try:
-        
-        statusLog = StatusLog(
-            cosmosdb_url, cosmosdb_key, cosmosdb_database_name, cosmosdb_container_name
-        )        
         logging.info(
             "Python queue trigger function processed a queue item: %s",
             msg.get_body().decode("utf-8"),
         )
         # Receive message from the queue
-        statusLog.upsert_document(
+        status_log.upsert_document(
             blob_path,
             f"{FUNCTION_NAME} - Received message from text-enrichment-queue ",
             StatusClassification.DEBUG,
@@ -99,12 +97,12 @@ def main(msg: func.QueueMessage) -> None:
             'Ocp-Apim-Subscription-Key': enrichmentKey,
             'Content-type': 'application/json',
             'Ocp-Apim-Subscription-Region': endpoint_region
-        }            
+        }
         data = [{"text": chunk_content}]
         response = requests.post(API_DETECT_ENDPOINT, headers=headers, json=data)
         if response.status_code == 200:
             detected_language = response.json()[0]['language']
-            statusLog.upsert_document(
+            status_log.upsert_document(
                 blob_path,
                 f"{FUNCTION_NAME} - detected language of text is {detected_language}.",
                 StatusClassification.DEBUG,
@@ -117,7 +115,7 @@ def main(msg: func.QueueMessage) -> None:
             
         # If the language of the document is not equal to target language then translate the generated chunks
         if detected_language != targetTranslationLanguage:
-            statusLog.upsert_document(
+            status_log.upsert_document(
                 blob_path,
                 f"{FUNCTION_NAME} - Non-target language detected",
                 StatusClassification.DEBUG,
@@ -152,8 +150,7 @@ def main(msg: func.QueueMessage) -> None:
                 block_blob_client = blob_service_client.get_blob_client(container=azure_blob_content_storage_container, blob=chunk.name)
                 block_blob_client.upload_blob(json_str, overwrite=True)
   
-   
-        statusLog.upsert_document(
+        status_log.upsert_document(
             blob_path,
             f"{FUNCTION_NAME} - Text enrichment is complete",
             StatusClassification.DEBUG,
@@ -161,16 +158,15 @@ def main(msg: func.QueueMessage) -> None:
         )
    
     except Exception as error:
-        statusLog.upsert_document(
+        status_log.upsert_document(
             blob_path,
             f"{FUNCTION_NAME} - An error occurred - {str(error)}",
             StatusClassification.ERROR,
             State.ERROR,
         )
         
-    statusLog.save_document()
-    
-    
+    status_log.save_document()
+
 def trim_content(sentence, n):
     '''This function trims a sentence to w max char count and a word boundary'''
     if len(sentence) <= n:
@@ -208,7 +204,7 @@ def requeue(response, message_json):
             )
             message_json_str = json.dumps(message_json)
             queue_client.send_message(message_json_str, visibility_timeout=backoff)
-            statusLog.upsert_document(
+            status_log.upsert_document(
                 blob_path,
                 f"{FUNCTION_NAME} - message resent to enrichment-queue. Visible in {backoff} seconds.",
                 StatusClassification.DEBUG,
@@ -216,8 +212,8 @@ def requeue(response, message_json):
             )       
     else:
         # general error occurred
-        statusLog.upsert_document(
+        status_log.upsert_document(
             blob_path,
             f"{FUNCTION_NAME} - Error on language detection - {response.status_code} - {response.reason}",
             StatusClassification.ERROR
-        )     
+            )

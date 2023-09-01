@@ -39,4 +39,4 @@ cd $DIR
 
 # Build the Azure Functions
 cd ${FUNCTIONS_ROOT_PATH}
-zip -r ${BINARIES_OUTPUT_PATH}/functions.zip . -x ".venv/*"
+zip -r ${BINARIES_OUTPUT_PATH}/functions.zip .

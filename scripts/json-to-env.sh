@@ -54,6 +54,10 @@ jq -r  '
             "env_var": "AZURE_OPENAI_CHATGPT_DEPLOYMENT"
         },
         {
+            "path": "azurE_OPENAI_CHATGPT_MODEL",
+            "env_var": "AZURE_OPENAI_CHATGPT_MODEL"
+        },
+        {
             "path": "azurE_OPENAI_SERVICE_KEY",
             "env_var": "AZURE_OPENAI_SERVICE_KEY"
         },

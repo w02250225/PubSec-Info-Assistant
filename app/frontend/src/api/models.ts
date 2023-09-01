@@ -94,3 +94,14 @@ export type GetInfoResponse = {
     AZURE_OPENAI_CHATGPT_MODEL: string;
     error?: string;
 };
+
+export type GetUserResponse = {
+    id: string;
+    session_id: string;
+    displayName: string;
+    givenName: string;
+    jobTitle: string;
+    mail: string;
+    userPrincipalName: string;
+    error?: string;
+};

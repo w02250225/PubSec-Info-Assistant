@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { AskRequest, AskResponse, ChatRequest, BlobClientUrlResponse, AllFilesUploadStatus, GetUploadStatusRequest, GetInfoResponse } from "./models";
+import { AskRequest, AskResponse, ChatRequest, BlobClientUrlResponse, AllFilesUploadStatus, GetUploadStatusRequest, GetInfoResponse, GetUserResponse } from "./models";
 
 export async function askApi(options: AskRequest): Promise<AskResponse> {
     const response = await fetch("/ask", {
@@ -120,6 +120,23 @@ export async function getInfoData(): Promise<GetInfoResponse> {
         }
     });
     const parsedResponse: GetInfoResponse = await response.json();
+    if (response.status > 299 || !response.ok) {
+        console.log(response);
+        throw Error(parsedResponse.error || "Unknown error");
+    }
+    console.log(parsedResponse);
+    return parsedResponse;
+}
+
+
+export async function getUserData(): Promise<GetUserResponse> {
+    const response = await fetch("/user", {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+    const parsedResponse: GetUserResponse = await response.json();
     if (response.status > 299 || !response.ok) {
         console.log(response);
         throw Error(parsedResponse.error || "Unknown error");

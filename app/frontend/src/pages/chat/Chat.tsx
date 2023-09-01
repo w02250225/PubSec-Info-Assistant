@@ -21,6 +21,7 @@ import { ResponseLengthButtonGroup } from "../../components/ResponseLengthButton
 import { ResponseTempSlider } from "../../components/ResponseTempSlider";
 import { Tooltips } from "../../components/Tooltips"
 import { InfoContent } from "./InfoContent";
+import { UserInfo } from "./UserInfo";
 
 const Chat = () => {
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
@@ -319,14 +320,14 @@ const Chat = () => {
             <Panel
                 headerText="Information"
                 isOpen={isInfoPanelOpen}
+                className={styles.resultspanel}
                 isBlocking={false}
                 onDismiss={() => setIsInfoPanelOpen(false)}
                 closeButtonAriaLabel="Close"
                 onRenderFooterContent={() => <DefaultButton onClick={() => setIsInfoPanelOpen(false)}>Close</DefaultButton>}
                 isFooterAtBottom={true}>
-                    <div className={styles.resultspanel}>
-                        <InfoContent/>
-                    </div>
+                    <InfoContent className={styles.chatSettingsSeparator}/>
+                    <UserInfo className={styles.chatSettingsSeparator}/>
             </Panel>
             <Tooltips />
         </div>

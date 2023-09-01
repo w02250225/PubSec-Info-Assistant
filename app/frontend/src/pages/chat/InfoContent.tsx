@@ -1,9 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 import React, { useEffect, useState } from "react";
 import { Label, Text } from "@fluentui/react";
 import { getInfoData, GetInfoResponse } from "../../api";
@@ -31,10 +28,11 @@ export const InfoContent = ({ className }: Props) => {
     }, []);
 
     return (
-        <div>
-            <Label>Azure OpenAI Deployment Name:</Label>
+        <div className={`${className ?? ""}`}>
+            <h6>Open AI Model Information</h6>
+            <Label>Deployment Name</Label>
             <Text> {infoData?.AZURE_OPENAI_CHATGPT_DEPLOYMENT}</Text>
-            <Label>Azure OpenAI Model Name:</Label>
+            <Label>Model Name</Label>
             <Text>{infoData?.AZURE_OPENAI_CHATGPT_MODEL}</Text>
         </div>
     );
