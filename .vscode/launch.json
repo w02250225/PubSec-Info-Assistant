@@ -25,7 +25,8 @@
             "args": [
                 "run",
                 // "--no-debugger",
-                "--no-reload",
+                "--debug",
+                // "--no-reload",
                 "-p 5000"
             ],
             "console": "integratedTerminal",

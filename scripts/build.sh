@@ -34,9 +34,9 @@ cp  ../../functions/shared_code/status_log.py ./shared_code
 cp  ../../functions/shared_code/__init__.py ./shared_code
 
 # zip the webapp content from app/backend to the ./artifacts folders
-zip -r ${BINARIES_OUTPUT_PATH}/webapp.zip .
+zip -r ${BINARIES_OUTPUT_PATH}/webapp.zip . 2>&1 | pv > /dev/null
 cd $DIR
 
 # Build the Azure Functions
 cd ${FUNCTIONS_ROOT_PATH}
-zip -r ${BINARIES_OUTPUT_PATH}/functions.zip .
+zip -r ${BINARIES_OUTPUT_PATH}/functions.zip . 2>&1 | pv > /dev/null

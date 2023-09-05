@@ -28,15 +28,15 @@ class RequestLog:
             self.container = self.database.create_container(id=self._container_name,
                                                             partition_key=PartitionKey("/user_id", "/session_id"))
 
-    def log_request_response(self, logger, session_id, request_id, request_body, response_body, start_time, finish_time):
+    def log_request_response(self, logger, request_id, request_body, response_body, start_time, finish_time):
         """Log the JSON Request and Response into CosmosDB"""
 
         try:
-            logger.info('Logging Request ID %s for Session ID %s', request_id, session_id)
-
             document_id = base64.urlsafe_b64encode(request_id.encode()).decode()
-            session_id = session['session_id']
+            session_id = session['user_info']['session_id']
             user_id = session['user_info']['userPrincipalName'] or "Unknown User"
+
+            logger.info('Logging Request ID %s for Session ID %s', request_id, session_id)
 
             # Remove request_id if present in response_body
             response_body.pop("request_id", None)
@@ -53,7 +53,6 @@ class RequestLog:
                 "finish_timestamp": str(finish_time.strftime('%Y-%m-%d %H:%M:%S')),
                 }
             )
-            self.container.create_item(PartitionKey)
 
             self.container.create_item(body = json_document.json)
 

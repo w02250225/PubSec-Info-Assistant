@@ -124,7 +124,7 @@ export async function getInfoData(): Promise<GetInfoResponse> {
         console.log(response);
         throw Error(parsedResponse.error || "Unknown error");
     }
-    console.log(parsedResponse);
+    // console.log(parsedResponse);
     return parsedResponse;
 }
 
@@ -141,6 +141,6 @@ export async function getUserData(): Promise<GetUserResponse> {
         console.log(response);
         throw Error(parsedResponse.error || "Unknown error");
     }
-    console.log(parsedResponse);
+    // console.log(parsedResponse);
     return parsedResponse;
 }

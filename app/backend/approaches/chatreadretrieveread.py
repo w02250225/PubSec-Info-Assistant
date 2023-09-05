@@ -291,6 +291,9 @@ class ChatReadRetrieveReadApproach(Approach):
         # # Count the tokens in the generated response message
         # token_count = num_tokens_from_messages(generated_response_message, 'gpt-4')
         # print("Generated Response Tokens:", token_count)
+        
+        #TODO 
+        #completion.usage.total_tokens
 
         msg_to_display = '\n\n'.join([str(message) for message in messages])
 

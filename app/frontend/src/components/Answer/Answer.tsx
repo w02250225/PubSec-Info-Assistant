@@ -75,9 +75,13 @@ export const Answer = ({
                         <span className={styles.citationLearnMore}>Citations:</span>
                         {parsedAnswer.citations.map((x, i) => {
                             const path = getCitationFilePath(x);
+                            const originalFile = x.split("/")[0]
+                            const pageNumbers = parsedAnswer.pageNumbers[x]
+                            const sourceFiles = parsedAnswer.sourceFiles[x]
+                            const linkName = `${originalFile} ${!isNaN(pageNumbers) ? `(Page ${pageNumbers})` : ''}`;
                             return (
-                                <a key={i} className={styles.citation} title={x} onClick={() => onCitationClicked(path, (parsedAnswer.sourceFiles as any)[x], (parsedAnswer.pageNumbers as any)[x])}>
-                                    {`${++i}. ${x}`}
+                                <a key={i} className={styles.citation} title={x} onClick={() => onCitationClicked(path, sourceFiles as any, pageNumbers as any)}>
+                                    {`${++i}. ${linkName}`}
                                 </a>
                             );
                         })}

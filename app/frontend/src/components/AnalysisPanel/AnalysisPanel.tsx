@@ -32,7 +32,7 @@ export const AnalysisPanel = ({ answer, activeTab, activeCitation, sourceFile, p
     
     const sanitizedThoughts = DOMPurify.sanitize(answer.thoughts!);
     
-    console.log(sourceFile?.split("?")[0].split(".").pop())
+    // console.log(sourceFile?.split("?")[0].split(".").pop())
 
     return (
         <Pivot
@@ -60,18 +60,18 @@ export const AnalysisPanel = ({ answer, activeTab, activeCitation, sourceFile, p
                 headerButtonProps={isDisabledCitationTab ? pivotItemDisabledStyle : undefined}
             >
                 <Pivot className={className}>
-                    <PivotItem itemKey="indexedFile" headerText="Document Section">
-                        <iframe title="Document Section" src={activeCitation} width="100%" height={citationHeight} />
-                    </PivotItem>
                     <PivotItem itemKey="rawFile" headerText="Document">
                         { sourceFileExt === "pdf" ? (
                             //use object tag for pdfs because iframe does not support page numbers
                             <object data={sourceFile + "#page=" + pageNumber} type="application/pdf" width="100%" height={citationHeight} />
-                        ) : ( sourceFileExt === "docx" ? (
+                        ) : ( sourceFileExt === "docx" || sourceFileExt === "xlsx" ? (
                             <iframe title="Source File" src={'https://view.officeapps.live.com/op/view.aspx?src='+encodeURIComponent(sourceFile as string)+"&action=embedview&wdStartOn="+pageNumber} width="100%" height={citationHeight} />
                         ) : (
                             <iframe title="Source File" src={sourceFile} width="100%" height={citationHeight} />
                         )) }
+                    </PivotItem>
+                    <PivotItem itemKey="indexedFile" headerText="Document Section">
+                        <iframe title="Document Section" src={activeCitation} width="100%" height={citationHeight} />
                     </PivotItem>
                 </Pivot>
             </PivotItem>
