@@ -14,6 +14,9 @@ deploy: build infrastructure extract-env deploy-search-indexes deploy-webapp dep
 build: ## Build application code
 	@./scripts/build.sh
 
+build-webapp: ## Build WebApp code only
+	@./scripts/build-webapp.sh
+
 infrastructure: check-subscription ## Deploy infrastructure
 	@./scripts/inf-create.sh
 
