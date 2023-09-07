@@ -176,10 +176,18 @@ def authorized():
             redirect_uri=url_for("authorized", _external=True, _scheme=SCHEME)
         )
         if "error" in token_response:
-            return "Error: " + token_response["error_description"]
+            return "Error: " + token_response["error_description"]       
 
         session["access_token"] = token_response["access_token"]
         session["token_expires_at"] = token_response["expires_in"] + time.time()
+
+        graph_data = requests.get(
+            "https://graph.microsoft.com/v1.0/me",
+            timeout=30,
+            headers={"Authorization": "Bearer " + session["access_token"]},
+        ).json()
+
+        session["user_data"] = graph_data
 
         return redirect("/")
 
@@ -187,13 +195,9 @@ def authorized():
 
 @app.route("/user")
 def get_user_info():
-    if "access_token" in session:
-        graph_data = requests.get(
-            "https://graph.microsoft.com/v1.0/me",
-            timeout=30,
-            headers={"Authorization": "Bearer " + session["access_token"]},
-        ).json()
-    return jsonify(graph_data)
+    user_data = session["user_data"]
+    user_data["session_id"] = session["session_id"]
+    return jsonify(user_data)
 
 
 @app.route("/logout")
