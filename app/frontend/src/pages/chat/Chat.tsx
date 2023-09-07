@@ -3,7 +3,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { Checkbox, Panel, DefaultButton, TextField, SpinButton } from "@fluentui/react";
-import CoatOfArms from "../../assets/Coat_of_Arms_of_Queensland.png";
+import Coeus from "../../assets/coeus.png";
 
 import styles from "./Chat.module.css";
 import rlbgstyles from "../../components/ResponseLengthButtonGroup/ResponseLengthButtonGroup.module.css";
@@ -197,7 +197,7 @@ const Chat = () => {
                 <div className={styles.chatContainer}>
                     {!lastQuestionRef.current ? (
                         <div className={styles.chatEmptyState}>
-                            <img src={CoatOfArms} className={styles.chatLogo} />
+                            <img src={Coeus} className={styles.chatLogo} />
                             {/* <h1 className={styles.chatEmptyStateTitle}>Have a conversation with your private data</h1>
                             <span className={styles.chatEmptyObjectives}>
                                 The objective of the Information Assistant powered by Azure OpenAI is to leverage a combination of AI components 

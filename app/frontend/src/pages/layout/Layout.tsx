@@ -14,7 +14,6 @@ const Layout = () => {
                 <div className={styles.headerContainer}>
                     <Link to="/" className={styles.headerTitleContainer}>
                         <img src={qtlogo} className={styles.headerLogo} />
-                        <h3 className={styles.headerTitle}>Information Assistant - Internal Use Only</h3>
                     </Link>
                     <nav>
                         <ul className={styles.headerNavList}>
