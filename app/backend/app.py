@@ -1,11 +1,16 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+from datetime import datetime, timedelta
+
 import logging
 import mimetypes
 import os
+import requests
+import time
 import urllib.parse
 import uuid
+import msal
 import openai
 
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
@@ -18,12 +23,10 @@ from azure.storage.blob import (
     ResourceTypes,
     generate_account_sas,
 )
-from datetime import datetime, timedelta
 from flask import Flask, jsonify, redirect, request, session, url_for
 from opencensus.ext.azure.log_exporter import AzureLogHandler
 from shared_code.status_log import State, StatusLog
 from request_log import RequestLog
-from requests_oauthlib import OAuth2Session
 
 AZURE_BLOB_STORAGE_ACCOUNT = os.environ.get("AZURE_BLOB_STORAGE_ACCOUNT") or "mystorageaccount"
 AZURE_BLOB_STORAGE_KEY = os.environ.get("AZURE_BLOB_STORAGE_KEY")
@@ -49,22 +52,29 @@ COSMOSDB_REQUESTLOG_DATABASE_NAME = os.environ.get("COSMOSDB_REQUESTLOG_DATABASE
 COSMOSDB_REQUESTLOG_CONTAINER_NAME = os.environ.get("COSMOSDB_REQUESTLOG_CONTAINER_NAME")
 QUERY_TERM_LANGUAGE = os.environ.get("QUERY_TERM_LANGUAGE") or "English"
 
-# Setup OAuth
-APP_SECRET = os.getenv("APP_SECRET")
+# Oauth
 CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 TENANT_ID = os.getenv("TENANT_ID")
 REDIRECT_URI = os.getenv("REDIRECT_URI") or "http://localhost:5000/authorized"
-AUTHORITY = os.getenv("AUTHORITY") or f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0"
-SCOPES = ["openid", "User.Read", "profile", "email"]
+AUTHORITY = os.getenv("AUTHORITY") or f"https://login.microsoftonline.com/{TENANT_ID}"
+SCOPES = ["User.Read"]
+
+# Misc app settings
+APP_SECRET = os.getenv("APP_SECRET")
+DEBUG = os.getenv("CODESPACES") == "true"
+SCHEME = "http" if DEBUG else "https"
+LOGOUT_URL = os.getenv("LOGOUT_URL") or "https://treasuryqld.sharepoint.com/sites/corporate/"
 
 app = Flask(__name__)
-# app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 app.config['SECRET_KEY'] = APP_SECRET
-# app.config['SESSION_TYPE'] = "filesystem"
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
 
-oauth = OAuth2Session(
-    CLIENT_ID, redirect_uri=REDIRECT_URI, scope=SCOPES)
+msal_client = msal.ConfidentialClientApplication(
+    CLIENT_ID, authority=AUTHORITY,
+    client_credential=CLIENT_SECRET,
+)
 
 # Use the current user identity to authenticate with Azure OpenAI, Cognitive Search and Blob Storage (no secrets needed,
 # just use 'az login' locally, and managed identity when deployed on Azure). If you need to use keys, use separate AzureKeyCredential instances with the
@@ -81,7 +91,8 @@ openai.api_version = "2023-06-01-preview"
 # Setup logger
 logger = logging.getLogger(__name__)
 logger.addHandler(AzureLogHandler())
-# logger.setLevel(logging.DEBUG)
+if DEBUG:
+    logger.setLevel(logging.DEBUG)
 
 # Setup StatusLog to allow access to CosmosDB for logging
 statusLog = StatusLog(
@@ -124,59 +135,71 @@ chat_approaches = {
     )
 }
 
-def check_authenticated():
-    if 'oauth_token' not in session and request.endpoint not in ['authorized', 'login', 'logout']:
-        return redirect(url_for('login'))
+def token_is_valid():
+    if "token_expires_at" in session:
+        expiration_time = session["token_expires_at"]
+        current_time = time.time()
+        return current_time < expiration_time # Check if token has expired
+    return False  # Token expiration time not found in session
 
-# def auth_required(f):
-#     @wraps(f)
-#     def decorated_route(*args, **kwargs):
-#         if 'oauth_token' not in session:
-#             return redirect(url_for('login'))
-#         return f(*args, **kwargs)
-#     return decorated_route
+
+def check_authenticated():
+    non_auth_endpoints = ['authorized', 'login', 'logout']
+    if request.endpoint not in non_auth_endpoints and not token_is_valid():
+        return redirect(url_for('login'))
+    return None
+
 
 @app.route("/login")
 def login():
-    # Redirect to the OAuth2 flow
-    authorization_url, _ = oauth.authorization_url(AUTHORITY + "/authorize")
-
-    return redirect(authorization_url)
+    session["session_id"] = str(uuid.uuid4())
+    auth_url = msal_client.get_authorization_request_url(
+        scopes=SCOPES,
+        state=session["session_id"],
+        redirect_uri=url_for("authorized", _external=True, _scheme=SCHEME)
+    )
+    return redirect(auth_url)
 
 
 @app.route("/authorized")
 def authorized():
-    authorization_response_url = request.url.replace("http:", "https:")
+    if request.args.get("state") != session.get("session_id"):
+        return redirect("/")  # State mismatch, abort.
 
-    token = oauth.fetch_token(
-        AUTHORITY + "/token",
-        client_secret=CLIENT_SECRET,
-        authorization_response=authorization_response_url
-    )
+    if "error" in request.args:
+        return "Error: " + request.args["error_description"]
 
-    # Get user info from Graph API
-    user_info = oauth.get(
-        "https://graph.microsoft.com/v1.0/me?$select=id,displayName,givenName,jobTitle,mail,userPrincipalName").json()
+    if request.args.get("code"):
+        token_response = msal_client.acquire_token_by_authorization_code(
+            request.args["code"],
+            scopes=SCOPES,
+            redirect_uri=url_for("authorized", _external=True, _scheme=SCHEME)
+        )
+        if "error" in token_response:
+            return "Error: " + token_response["error_description"]
 
-    # Store token and user information in the session
-    user_info["session_id"] = str(uuid.uuid4())
-    user_info.pop("@odata.context", None)
-    session["oauth_token"] = token
-    session["user_info"] = user_info
+        session["access_token"] = token_response["access_token"]
+        session["token_expires_at"] = token_response["expires_in"] + time.time()
 
-    return redirect("/")
+        return redirect("/")
 
+    return redirect(url_for("login"))
 
 @app.route("/user")
 def get_user_info():
-    user_info = session["user_info"]
-    return jsonify(user_info)
+    if "access_token" in session:
+        graph_data = requests.get(
+            "https://graph.microsoft.com/v1.0/me",
+            timeout=30,
+            headers={"Authorization": "Bearer " + session["access_token"]},
+        ).json()
+    return jsonify(graph_data)
 
 
 @app.route("/logout")
 def logout():
-    session.clear()  # Wipe out user and its token cache from session
-    return redirect(AUTHORITY + "/logout")
+    session.clear()
+    return redirect(LOGOUT_URL)
 
 
 @app.route("/", defaults={"path": "index.html"})
@@ -269,10 +292,6 @@ def get_blob_client_url():
     return jsonify({"url": f"{BLOB_CLIENT.url}?{sas_token}"})
 
 
-if __name__ == "__main__":
-    app.run()
-
-
 @app.route("/getalluploadstatus", methods=["POST"])
 def get_all_upload_status():
     timeframe = request.json["timeframe"]
@@ -286,7 +305,6 @@ def get_all_upload_status():
     return jsonify(results)
 
 
-# Return AZURE_OPENAI_CHATGPT_DEPLOYMENT
 @app.route("/getInfoData")
 def get_info_data():
     response = jsonify(
@@ -295,5 +313,10 @@ def get_info_data():
             "AZURE_OPENAI_CHATGPT_MODEL": f"{AZURE_OPENAI_CHATGPT_MODEL}",
         })
     return response
+
+
+if __name__ == "__main__":
+    app.run()
+
 
 app.before_request(check_authenticated)
