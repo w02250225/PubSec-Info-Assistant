@@ -21,6 +21,7 @@ param aadMgmtServicePrincipalId string = ''
 param buildNumber string = 'local'
 param isInAutomation bool = false
 param useExistingAOAIService bool
+param azureOpenAIAccountName string
 param azureOpenAIServiceName string
 param azureOpenAIResourceGroup string
 param azureOpenAIServiceKey string
@@ -140,6 +141,7 @@ module backend 'core/host/appservice.bicep' = {
       AZURE_BLOB_STORAGE_ACCOUNT: storage.outputs.name
       AZURE_BLOB_STORAGE_CONTAINER: containerName
       AZURE_BLOB_STORAGE_KEY: storage.outputs.key
+      AZURE_OPENAI_ACCOUNT_NAME: useExistingAOAIService ? azureOpenAIAccountName : cognitiveServices.outputs.name
       AZURE_OPENAI_SERVICE: useExistingAOAIService ? azureOpenAIServiceName : cognitiveServices.outputs.name
       AZURE_OPENAI_RESOURCE_GROUP: useExistingAOAIService ? azureOpenAIResourceGroup : rg.name
       AZURE_SEARCH_INDEX: searchIndexName
@@ -596,7 +598,8 @@ resource customerAttribution 'Microsoft.Resources/deployments@2021-04-01' = if (
 }
 
 output AZURE_LOCATION string = location
-output AZURE_OPENAI_SERVICE string = azureOpenAIServiceName //cognitiveServices.outputs.name
+output AZURE_OPENAI_ACCOUNT_NAME string = azureOpenAIAccountName
+output AZURE_OPENAI_SERVICE string = azureOpenAIServiceName
 output AZURE_SEARCH_INDEX string = searchIndexName
 output AZURE_SEARCH_SERVICE string = searchServices.outputs.name
 output AZURE_SEARCH_KEY string = searchServices.outputs.searchServiceKey
