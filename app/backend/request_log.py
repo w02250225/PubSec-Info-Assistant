@@ -33,7 +33,7 @@ class RequestLog:
 
         try:
             document_id = base64.urlsafe_b64encode(request_id.encode()).decode()
-            session_id = session["session_id"]
+            session_id = session["state"]
             user_id = session["user_info"]["userPrincipalName"] or "Unknown User"
 
             logger.info('Logging Request ID %s for Session ID %s', request_id, session_id)

@@ -5,12 +5,11 @@ from datetime import datetime, timedelta
 
 import json
 import logging
-import mimetypes
 import os
-import requests
 import time
 import urllib.parse
 import uuid
+import requests
 import msal
 import openai
 
@@ -36,9 +35,9 @@ AZURE_BLOB_STORAGE_CONTAINER = os.environ.get("AZURE_BLOB_STORAGE_CONTAINER") or
 AZURE_SEARCH_SERVICE = os.environ.get("AZURE_SEARCH_SERVICE") or "gptkb"
 AZURE_SEARCH_SERVICE_KEY = os.environ.get("AZURE_SEARCH_SERVICE_KEY")
 AZURE_SEARCH_INDEX = os.environ.get("AZURE_SEARCH_INDEX") or "gptkbindex"
-AZURE_OPENAI_SERVICE = os.environ.get("AZURE_OPENAI_SERVICE") or "myopenai"
+AZURE_OPENAI_ACCOUNT_NAME = os.environ.get("AZURE_OPENAI_ACCOUNT_NAME") or "myopenai"
+AZURE_OPENAI_SERVICE = os.environ.get("AZURE_OPENAI_SERVICE") or AZURE_OPENAI_ACCOUNT_NAME
 AZURE_OPENAI_CHATGPT_DEPLOYMENT = os.environ.get("AZURE_OPENAI_CHATGPT_DEPLOYMENT") or "chat"
-# AZURE_OPENAI_CHATGPT_MODEL = os.environ.get("AZURE_OPENAI_CHATGPT_MODEL") or "gpt-35-turbo"
 AZURE_OPENAI_RESOURCE_GROUP = os.environ.get("AZURE_OPENAI_RESOURCE_GROUP") or ""
 AZURE_OPENAI_SERVICE_KEY = os.environ.get("AZURE_OPENAI_SERVICE_KEY")
 AZURE_SUBSCRIPTION_ID = os.environ.get("AZURE_SUBSCRIPTION_ID")
@@ -131,7 +130,7 @@ openai_mgmt_client = CognitiveServicesManagementClient(
 
 deployment = openai_mgmt_client.deployments.get(
     resource_group_name=AZURE_OPENAI_RESOURCE_GROUP,
-    account_name=AZURE_OPENAI_SERVICE,
+    account_name=AZURE_OPENAI_ACCOUNT_NAME,
     deployment_name=AZURE_OPENAI_CHATGPT_DEPLOYMENT)
 
 chat_approaches = {
@@ -166,10 +165,10 @@ def check_authenticated():
 
 @app.route("/login")
 def login():
-    session["session_id"] = str(uuid.uuid4())
+    session["state"] = str(uuid.uuid4())
     auth_url = msal_client.get_authorization_request_url(
         scopes=SCOPES,
-        state=session["session_id"],
+        state=session["state"],
         redirect_uri=url_for("authorized", _external=True, _scheme=SCHEME)
     )
     return redirect(auth_url)
@@ -177,7 +176,7 @@ def login():
 
 @app.route("/authorized")
 def authorized():
-    if request.args.get("state") != session.get("session_id"):
+    if request.args.get("state") != session.get("state"):
         return redirect("/")  # State mismatch, abort.
 
     if "error" in request.args:
@@ -190,7 +189,7 @@ def authorized():
             redirect_uri=url_for("authorized", _external=True, _scheme=SCHEME)
         )
         if "error" in token_response:
-            return "Error: " + token_response["error_description"]       
+            return "Error: " + token_response["error_description"]
 
         session["access_token"] = token_response["access_token"]
         session["token_expires_at"] = token_response["expires_in"] + time.time()
@@ -210,7 +209,7 @@ def authorized():
 @app.route("/user")
 def get_user_info():
     user_data = session["user_data"]
-    user_data["session_id"] = session["session_id"]
+    user_data["session_id"] = session["state"]
     return jsonify(user_data)
 
 
