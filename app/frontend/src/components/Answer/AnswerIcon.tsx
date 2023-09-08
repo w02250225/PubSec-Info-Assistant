@@ -4,5 +4,5 @@
 import CoeusIcon from "../../assets/coeus-icon.png";
 
 export const AnswerIcon = () => {
-    return <CoeusIcon aria-hidden="true" aria-label="Answer logo" />;
+    return <img src={CoeusIcon} width="50px" aria-hidden="true" aria-label="Answer logo" />;
 };
