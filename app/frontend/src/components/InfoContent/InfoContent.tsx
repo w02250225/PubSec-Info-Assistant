@@ -17,7 +17,6 @@ export const InfoContent = ({ className }: Props) => {
     const [userData, setUserData] = useState<GetUserResponse | null>(null);
 
     async function fetchInfoData() {
-        console.log("InfoContent 1");
         try {
             const fetchedInfoData = await getInfoData();
             setInfoData(fetchedInfoData);

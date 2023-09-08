@@ -80,7 +80,7 @@ export const Answer = ({
                             const sourceFiles = parsedAnswer.sourceFiles[x]
                             const linkName = `${originalFile} ${!isNaN(pageNumbers) ? `(Page ${pageNumbers})` : ''}`;
                             return (
-                                <a key={i} className={styles.citation} title={x} onClick={() => onCitationClicked(path, sourceFiles as any, pageNumbers as any)}>
+                                <a key={i} className={styles.citation} title={originalFile} onClick={() => onCitationClicked(path, sourceFiles as any, pageNumbers as any)}>
                                     {`${++i}. ${linkName}`}
                                 </a>
                             );

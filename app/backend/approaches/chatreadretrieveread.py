@@ -197,7 +197,7 @@ class ChatReadRetrieveReadApproach(Approach):
                     + nonewlines(doc[self.content_field])
                 )
                 # uncomment to debug size of each search result content_field
-                print(f"File{idx}: ", self.num_tokens_from_string(f"File{idx} " + "| " + nonewlines(doc[self.content_field]), "cl100k_base"))
+                # print(f"File{idx}: ", self.num_tokens_from_string(f"File{idx} " + "| " + nonewlines(doc[self.content_field]), "cl100k_base"))
             # add the "FileX" moniker and full file name to the citation lookup
 
             citation_lookup[f"File{idx}"] = {

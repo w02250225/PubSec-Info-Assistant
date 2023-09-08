@@ -251,8 +251,7 @@ def chat():
         finish_time = datetime.now()
 
         # Log the request/response to CosmosDB
-        requestLog.log_request_response(
-            logger, request_id, request.json, r, start_time, finish_time)
+        requestLog.log_request_response(request_id, request.json, r, start_time, finish_time)
 
         return response
 
