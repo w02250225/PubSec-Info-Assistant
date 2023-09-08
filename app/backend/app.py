@@ -326,22 +326,25 @@ def get_citation():
 @app.route('/exportAnswer', methods=["POST"])
 def export():
     try:
-        export_name = exporthelper.export_to_blob(request, BLOB_CLIENT)
+        export_name = exporthelper.export_to_blob(request.json,
+                                                  BLOB_CLIENT,
+                                                  AZURE_BLOB_EXPORT_CONTAINER)
 
-        blob = export_container.get_blob_client(export_name).download_blob()
-        decoded_text = blob.readall().decode()
-        results = jsonify(json.loads(decoded_text))
-
+        # TODO
+        # blob = export_container.get_blob_client(export_name).download_blob()
+        # decoded_text = blob.readall().decode()
+        # results = jsonify(json.loads(decoded_text))
+        
     except Exception as ex:
         logging.exception("Exception in /exportAnswer")
         return jsonify({"error": str(ex)}), 500
 
     return jsonify({
         "file_name": export_name,
-        "download_link": export_name
+        "download_link": export_name # TODO
     })
 
-app.before_request(check_authenticated)
+# app.before_request(check_authenticated)
 
 if __name__ == "__main__":
     app.run(debug=True)

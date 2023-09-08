@@ -1,15 +1,15 @@
 import logging
 import io
-import os
-import uuid
+import time
 from docx import Document
 from htmldocx import HtmlToDocx
 from azure.storage.blob import (BlobServiceClient)
-from flask import jsonify, session
+from flask import session
 
 def export_to_blob(request: str, blob_service_client: BlobServiceClient, container_name: str):
     try:
-        user_id = session["user_data"]["userPrincipalName"] or "Unknown User"
+        user_id = session.get('user_data', {}).get('userPrincipalName') or "Unknown User"
+        
         export = create_docx(request["title"],
                              request["answer"],
                              request["citations"])
@@ -24,13 +24,13 @@ def export_to_blob(request: str, blob_service_client: BlobServiceClient, contain
 
     except Exception as ex:
         logging.exception("Exception in export_to_blob")
-        return jsonify({"error": str(ex)}), 500
+        return str(ex)
 
 def create_docx(title: str, answer: str, citations: str):
     try:
         document = Document()
         html_parser = HtmlToDocx()
-        stream = io.StringIO()
+        stream = io.BytesIO()
 
         document._body.clear_content() #Remove blank lines from new document
 
@@ -47,13 +47,14 @@ def create_docx(title: str, answer: str, citations: str):
 
     except Exception as ex:
         logging.exception("Exception in create_docx")
-        return jsonify({"error": str(ex)}), 500
+        return str(ex)
 
-def upload_to_blob(input_stream: io.StringIO, request_id: str,
+def upload_to_blob(input_stream: io.BytesIO(), request_id: str,
                    user_id: str, blob_service_client: BlobServiceClient,
                    container_name: str):
     try:
-        blob_name = ("%s/%s.docx", user_id, request_id)
+        timestamp = time.strftime("%Y%m%d%H%M%S")
+        blob_name = f"{user_id}/{timestamp}_{request_id}.docx"
         blob_client = blob_service_client.get_blob_client(container=container_name,
                                                           blob=blob_name)
         blob_client.upload_blob(input_stream, blob_type="BlockBlob")
@@ -62,4 +63,4 @@ def upload_to_blob(input_stream: io.StringIO, request_id: str,
 
     except Exception as ex:
         logging.exception("Exception in upload_to_blob")
-        return jsonify({"error": str(ex)}), 500
+        return str(ex)
