@@ -52,6 +52,18 @@ export type ChatRequest = {
     overrides?: AskRequestOverrides;
 };
 
+export type ExportRequest ={
+    request_id: string;
+    title: string;
+    answer: string;
+    citations: string;
+}
+
+export type ExportResponse = {
+    link: string;
+    error?: string;
+};
+
 export type BlobClientUrlResponse = {
     url: string;
     error?: string;

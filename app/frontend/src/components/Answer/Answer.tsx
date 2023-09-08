@@ -8,7 +8,7 @@ import DOMPurify from "dompurify";
 import styles from "./Answer.module.css";
 
 import { AskResponse, getCitationFilePath } from "../../api";
-import { parseAnswerToHtml } from "./AnswerParser";
+import { parseAnswerToHtml, parseAnswerToHtmlExport } from "./AnswerParser";
 import { AnswerIcon } from "./AnswerIcon";
 import { RAIPanel } from "../RAIPanel";
 
@@ -22,6 +22,7 @@ interface Props {
     showFollowupQuestions?: boolean;
     onAdjustClick?: () => void;
     onRegenerateClick?: () => void;
+    onExportClick?: () => void;
 }
 
 export const Answer = ({
@@ -33,9 +34,11 @@ export const Answer = ({
     onFollowupQuestionClicked,
     showFollowupQuestions,
     onAdjustClick,
-    onRegenerateClick
+    onRegenerateClick,
+    onExportClick
 }: Props) => {
     const parsedAnswer = useMemo(() => parseAnswerToHtml(answer.answer, answer.citation_lookup, onCitationClicked), [answer]);
+    const parsedAnswerExport = parseAnswerToHtmlExport(answer.answer, answer.citation_lookup);
 
     const sanitizedAnswerHtml = DOMPurify.sanitize(parsedAnswer.answerHtml);
 
@@ -107,7 +110,7 @@ export const Answer = ({
                 <div className={styles.answerTextRequestId}>Request ID: {answer.request_id}</div>
             </Stack.Item>
             <Stack.Item align="center">
-                <RAIPanel onAdjustClick={onAdjustClick} onRegenerateClick={onRegenerateClick}/>
+                <RAIPanel onAdjustClick={onAdjustClick} onRegenerateClick={onRegenerateClick}  onExportClick={onExportClick}/>
             </Stack.Item>
         </Stack>
     );

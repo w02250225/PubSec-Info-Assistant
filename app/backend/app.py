@@ -9,9 +9,10 @@ import os
 import time
 import urllib.parse
 import uuid
-import requests
+import core.exporthelper as exporthelper
 import msal
 import openai
+import requests
 
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from azure.core.credentials import AzureKeyCredential
@@ -24,13 +25,15 @@ from azure.storage.blob import (
     ResourceTypes,
     generate_account_sas,
 )
-from flask import Flask, jsonify, redirect, request, session, url_for
+
+from flask import Flask, jsonify, redirect, request, send_file, session, url_for
 from opencensus.ext.azure.log_exporter import AzureLogHandler
 from shared_code.status_log import State, StatusLog
 from request_log import RequestLog
 
 AZURE_BLOB_STORAGE_ACCOUNT = os.environ.get("AZURE_BLOB_STORAGE_ACCOUNT") or "mystorageaccount"
 AZURE_BLOB_STORAGE_KEY = os.environ.get("AZURE_BLOB_STORAGE_KEY")
+AZURE_BLOB_EXPORT_CONTAINER = os.environ.get("AZURE_BLOB_EXPORT_CONTAINER") or "export"
 AZURE_BLOB_STORAGE_CONTAINER = os.environ.get("AZURE_BLOB_STORAGE_CONTAINER") or "content"
 AZURE_SEARCH_SERVICE = os.environ.get("AZURE_SEARCH_SERVICE") or "gptkb"
 AZURE_SEARCH_SERVICE_KEY = os.environ.get("AZURE_SEARCH_SERVICE_KEY")
@@ -122,6 +125,7 @@ BLOB_CLIENT = BlobServiceClient(
     credential=AZURE_BLOB_STORAGE_KEY,
 )
 blob_container = BLOB_CLIENT.get_container_client(AZURE_BLOB_STORAGE_CONTAINER)
+export_container = BLOB_CLIENT.get_container_client(AZURE_BLOB_EXPORT_CONTAINER)
 
 # Set up OpenAI management client
 openai_mgmt_client = CognitiveServicesManagementClient(
@@ -256,7 +260,7 @@ def chat():
         return response
 
     except Exception as e:
-        logger.exception("Exception in /chat")
+        logging.exception("Exception in /chat")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/getblobclienturl")
@@ -289,7 +293,7 @@ def get_all_upload_status():
         results = statusLog.read_files_status_by_timeframe(
             timeframe, State[state])
     except Exception as e:
-        logger.exception("Exception in /getalluploadstatus")
+        logging.exception("Exception in /getalluploadstatus")
         return jsonify({"error": str(e)}), 500
     return jsonify(results)
 
@@ -315,11 +319,29 @@ def get_citation():
         decoded_text = blob.readall().decode()
         results = jsonify(json.loads(decoded_text))
     except Exception as e:
-        logging.exception("Exception in /getalluploadstatus")
+        logging.exception("Exception in /getcitation")
         return jsonify({"error": str(e)}), 500
     return jsonify(results.json)
+
+@app.route('/exportAnswer', methods=["POST"])
+def export():
+    try:
+        export_name = exporthelper.export_to_blob(request, BLOB_CLIENT)
+
+        blob = export_container.get_blob_client(export_name).download_blob()
+        decoded_text = blob.readall().decode()
+        results = jsonify(json.loads(decoded_text))
+
+    except Exception as ex:
+        logging.exception("Exception in /exportAnswer")
+        return jsonify({"error": str(ex)}), 500
+
+    return jsonify({
+        "file_name": export_name,
+        "download_link": export_name
+    })
 
 app.before_request(check_authenticated)
 
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True)
