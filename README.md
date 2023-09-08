@@ -23,6 +23,22 @@ For a detailed review see our [Features](/docs/features/features.md) page.
 
 ---
 
+## Data Collection Notice
+
+The software may collect information about you and your use of the software and send it to Microsoft. Microsoft may use this information to provide services and improve our products and services. You may turn off the telemetry as described in the repository. There are also some features in the software that may enable you and Microsoft to collect data from users of your applications. If you use these features, you must comply with applicable law, including providing appropriate notices to users of your applications together with a copy of Microsoft’s privacy statement. Our privacy statement is located at https://go.microsoft.com/fwlink/?LinkID=824704. You can learn more about data collection and use in the help documentation and our privacy statement. Your use of the software operates as your consent to these practices.
+
+### About Data Collection
+
+Data collection by the software in this repository is used by Microsoft solely to help justify the efforts of the teams who build and maintain this accelerator for our customers. It is your choice to leave this enabled, or to disable data collection.
+
+Data collection is implemented by the presence of a tracking GUID in the environment variables at deployment time. The GUID is associated with each Azure resource deployed by the installation scripts. This GUID is used by Microsoft to track the Azure consumption this open source solution generates.
+
+### How to Disable Data Collection
+
+To disable data collection, follow the instructions in the [Configure ENV files](/docs/development_environment.md#configure-env-files) section for `ENABLE_CUSTOMER_USAGE_ATTRIBUTION` variable before deploying.
+
+---
+
 ## Responsible AI
 
 The Information Assistant (IA) Accelerator and Microsoft are committed to the advancement of AI driven by ethical principles that put people first. 
@@ -53,7 +69,18 @@ You can sign up for an Azure subscription [here](https://azure.microsoft.com/en-
 
 Once you have your prerequisite items, please move on to the Deployment Configuration step.
 
-**NOTICE:** * This codebase relies on the Azure OpenAI Service which must be procured first separately, subject to any applicable license agreement. Access to this code does not grant you a license or right to use Azure OpenAI Service. 
+**NOTICE:** * This codebase relies on the Azure OpenAI Service which must be procured first separately, subject to any applicable license agreement. Access to this code does not grant you a license or right to use Azure OpenAI Service.
+
+The Information Assistant Accelerator requires access to one of the following Azure OpenAI models.
+
+Model Name | Supported Versions
+---|---
+gpt-35-turbo | 0301, 0613
+gpt-35-turbo-16k | N/A
+**gpt-4** | N/A
+gpt-4-32k | N/A
+
+**Important:** It is recommended to use gpt-4 models to achieve the best results from the IA Accelerator. Access to gpt-4 requires approval which can be requested [here](https://aka.ms/oai/get-gpt4). If gpt-4 access is not available gpt-35-turbo (0613) is recommended.
 
 ---
 
@@ -104,6 +131,30 @@ To use the IA Accelerator, you need to follow these steps:
 > 3. Begin [having conversations with your data](/docs/features/features.md#having-a-conversation-with-your-data) by selecting the appropriate interaction method.
 
 For more detailed information review the [Features](/docs/features/features.md) section of the documentation.
+
+---
+
+## Navigating the Source Code
+
+This project has the following structure:
+
+File/Folder | Description
+---|---
+.devcontainer/ | Dockerfile, devcontainer configuration, and supporting script to enable both CodeSpaces and local DevContainers.
+app/backend/ | The middleware part of the IA website that contains the prompt engineering and provides an API layer for the client code to pass through when communicating with the various Azure services. This code is python based and hosted as a Flask app.
+app/frontend/ | The User Experience layer of the IA website. This code is Typescript based and hosted as a Vite app and compiled using npm.
+azure_search/ | The configuration of the Azure Search Index, Indexer, Skillsets, and Data Source that are applied in the deployment scripts.
+docs/adoption_workshop/ | PPT files that match what is covered in the Adoption Workshop videos in Discussions.
+docs/features/ | Detailed documentation of specific features and development level configuration for Information Assistant.
+docs/ | Deployment and other supporting documentation that is primarily linked to from the README.md
+functions/ | The pipeline of Azure Functions that handle the document extraction and chunking as well as the custom CosmosDB logging.
+infra/ | The BICEP scripts that deploy the entire IA Accelerator. The overall accelerator is orchestrated via the `main.bicep` file but most of the resource deployments are modularized under the **core** folder. 
+pipelines/ | Azure DevOps pipelines that can be used to enable CI/CD deployments of the accelerator.
+scripts/environments/ | Deployment configuration files. This is where all external configuration values will be set.
+scripts/ | Supporting scripts that perform the various deployment tasks such as infrastructure deployment, Azure WebApp and Function deployments, building of the webapp and functions source code, etc. These scripts align to the available commands in the `Makefile`.
+Makefile | Deployment command definitions and configurations. You can use `make help` to get more details on available commands.
+README.md | Starting point for this repo. It covers overviews of the Accelerator, Responsible AI, Environment, Deployment, and Usage of the Accelerator.
+
 
 ---
 

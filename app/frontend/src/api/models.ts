@@ -90,8 +90,14 @@ export const enum FileState {
 
 
 export type GetInfoResponse = {
+    AZURE_OPENAI_SERVICE: string;
     AZURE_OPENAI_CHATGPT_DEPLOYMENT: string;
     AZURE_OPENAI_CHATGPT_MODEL: string;
+    AZURE_OPENAI_MODEL_NAME: string;
+    AZURE_OPENAI_MODEL_VERSION: string;
+    AZURE_SEARCH_SERVICE: string;
+    AZURE_SEARCH_INDEX: string;
+    TARGET_LANGUAGE: string;
     error?: string;
 };
 
@@ -109,3 +115,15 @@ export type GetUserResponse = {
     userPrincipalName: string;
     error?: string;
 };
+
+export type ActiveCitation = {
+    file_name: string;
+    file_uri: string;
+    processed_datetime: string;
+    title: string;
+    section: string;
+    pages: number[];
+    token_count: number;
+    content: string;
+    error?: string;
+}

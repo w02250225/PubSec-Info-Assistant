@@ -46,3 +46,5 @@ resource deployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01
 output endpoint string = account.properties.endpoint
 output id string = account.id
 output name string = account.name
+#disable-next-line outputs-should-not-contain-secrets
+output key string = account.listKeys().key1

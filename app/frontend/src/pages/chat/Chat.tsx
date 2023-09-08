@@ -20,8 +20,8 @@ import { ClearChatButton } from "../../components/ClearChatButton";
 import { ResponseLengthButtonGroup } from "../../components/ResponseLengthButtonGroup";
 import { ResponseTempSlider } from "../../components/ResponseTempSlider";
 import { Tooltips } from "../../components/Tooltips"
-import { InfoContent } from "./InfoContent";
-import { UserInfo } from "./UserInfo";
+import { InfoContent } from "../../components/InfoContent/InfoContent";
+import { UserInfo } from "../../components/UserInfo";
 
 const Chat = () => {
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);

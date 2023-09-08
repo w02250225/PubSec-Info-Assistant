@@ -3,6 +3,7 @@
 
 from datetime import datetime, timedelta
 
+import json
 import logging
 import mimetypes
 import os
@@ -16,6 +17,7 @@ import openai
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from azure.core.credentials import AzureKeyCredential
 from azure.identity import DefaultAzureCredential
+from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
 from azure.search.documents import SearchClient
 from azure.storage.blob import (
     AccountSasPermissions,
@@ -31,14 +33,15 @@ from request_log import RequestLog
 AZURE_BLOB_STORAGE_ACCOUNT = os.environ.get("AZURE_BLOB_STORAGE_ACCOUNT") or "mystorageaccount"
 AZURE_BLOB_STORAGE_KEY = os.environ.get("AZURE_BLOB_STORAGE_KEY")
 AZURE_BLOB_STORAGE_CONTAINER = os.environ.get("AZURE_BLOB_STORAGE_CONTAINER") or "content"
-AZURE_BLOB_CONNECTION_STRING = f"DefaultEndpointsProtocol=https;AccountName={AZURE_BLOB_STORAGE_ACCOUNT};AccountKey={AZURE_BLOB_STORAGE_KEY};EndpointSuffix=core.windows.net"
 AZURE_SEARCH_SERVICE = os.environ.get("AZURE_SEARCH_SERVICE") or "gptkb"
 AZURE_SEARCH_SERVICE_KEY = os.environ.get("AZURE_SEARCH_SERVICE_KEY")
 AZURE_SEARCH_INDEX = os.environ.get("AZURE_SEARCH_INDEX") or "gptkbindex"
 AZURE_OPENAI_SERVICE = os.environ.get("AZURE_OPENAI_SERVICE") or "myopenai"
 AZURE_OPENAI_CHATGPT_DEPLOYMENT = os.environ.get("AZURE_OPENAI_CHATGPT_DEPLOYMENT") or "chat"
-AZURE_OPENAI_CHATGPT_MODEL = os.environ.get("AZURE_OPENAI_CHATGPT_MODEL") or "gpt-35-turbo"
+# AZURE_OPENAI_CHATGPT_MODEL = os.environ.get("AZURE_OPENAI_CHATGPT_MODEL") or "gpt-35-turbo"
+AZURE_OPENAI_RESOURCE_GROUP = os.environ.get("AZURE_OPENAI_RESOURCE_GROUP") or ""
 AZURE_OPENAI_SERVICE_KEY = os.environ.get("AZURE_OPENAI_SERVICE_KEY")
+AZURE_SUBSCRIPTION_ID = os.environ.get("AZURE_SUBSCRIPTION_ID")
 
 KB_FIELDS_CONTENT = os.environ.get("KB_FIELDS_CONTENT") or "merged_content"
 KB_FIELDS_CATEGORY = os.environ.get("KB_FIELDS_CATEGORY") or "category"
@@ -121,17 +124,28 @@ BLOB_CLIENT = BlobServiceClient(
 )
 blob_container = BLOB_CLIENT.get_container_client(AZURE_BLOB_STORAGE_CONTAINER)
 
+# Set up OpenAI management client
+openai_mgmt_client = CognitiveServicesManagementClient(
+    credential=azure_credential,
+    subscription_id=AZURE_SUBSCRIPTION_ID)
+
+deployment = openai_mgmt_client.deployments.get(
+    resource_group_name=AZURE_OPENAI_RESOURCE_GROUP,
+    account_name=AZURE_OPENAI_SERVICE,
+    deployment_name=AZURE_OPENAI_CHATGPT_DEPLOYMENT)
+
 chat_approaches = {
     "rrr": ChatReadRetrieveReadApproach(
         SEARCH_CLIENT,
         AZURE_OPENAI_SERVICE,
         AZURE_OPENAI_SERVICE_KEY,
         AZURE_OPENAI_CHATGPT_DEPLOYMENT,
-        AZURE_OPENAI_CHATGPT_MODEL,
         KB_FIELDS_SOURCEPAGE,
         KB_FIELDS_CONTENT,
         BLOB_CLIENT,
         QUERY_TERM_LANGUAGE,
+        deployment.properties.model.name,
+        deployment.properties.model.version
     )
 }
 
@@ -211,32 +225,6 @@ def logout():
 def static_file(path):
     return app.send_static_file(path)
 
-# Return blob path with SAS token for citation access
-@app.route("/content/<path:path>")
-def content_file(path):
-    blob = blob_container.get_blob_client(path).download_blob()
-    mime_type = blob.properties["content_settings"]["content_type"]
-    file_extension = blob.properties["name"].split(".")[-1:]
-    if mime_type == "application/octet-stream":
-        mime_type = mimetypes.guess_type(path)[0] or "application/octet-stream"
-    if mime_type == "text/plain" and file_extension[0] in ["htm", "html"]:
-        mime_type = "text/html"
-    print(
-        "Using mime type: "
-        + mime_type
-        + "for file with extension: "
-        + file_extension[0]
-    )
-    return (
-        blob.readall(),
-        200,
-        {
-            "Content-Type": mime_type,
-            "Content-Disposition": f"inline; filename={urllib.parse.quote(path, safe='')}",
-        },
-    )
-
-
 @app.route("/chat", methods=["POST"])
 def chat():
     approach = request.json["approach"]
@@ -273,7 +261,6 @@ def chat():
         logger.exception("Exception in /chat")
         return jsonify({"error": str(e)}), 500
 
-
 @app.route("/getblobclienturl")
 def get_blob_client_url():
     sas_token = generate_account_sas(
@@ -308,19 +295,33 @@ def get_all_upload_status():
         return jsonify({"error": str(e)}), 500
     return jsonify(results)
 
-
 @app.route("/getInfoData")
 def get_info_data():
     response = jsonify(
         {
             "AZURE_OPENAI_CHATGPT_DEPLOYMENT": f"{AZURE_OPENAI_CHATGPT_DEPLOYMENT}",
-            "AZURE_OPENAI_CHATGPT_MODEL": f"{AZURE_OPENAI_CHATGPT_MODEL}",
+            "AZURE_OPENAI_MODEL_NAME": f"{deployment.properties.model.name}",
+            "AZURE_OPENAI_MODEL_VERSION": f"{deployment.properties.model.version}",
+            "AZURE_OPENAI_SERVICE": f"{AZURE_OPENAI_SERVICE}",
+            "AZURE_SEARCH_SERVICE": f"{AZURE_SEARCH_SERVICE}",
+            "AZURE_SEARCH_INDEX": f"{AZURE_SEARCH_INDEX}",
+            "TARGET_LANGUAGE": f"{QUERY_TERM_LANGUAGE}"
         })
     return response
 
+@app.route("/getcitation", methods=["POST"])
+def get_citation():
+    citation = urllib.parse.unquote(request.json["citation"])
+    try:
+        blob = blob_container.get_blob_client(citation).download_blob()
+        decoded_text = blob.readall().decode()
+        results = jsonify(json.loads(decoded_text))
+    except Exception as e:
+        logging.exception("Exception in /getalluploadstatus")
+        return jsonify({"error": str(e)}), 500
+    return jsonify(results.json)
+
+app.before_request(check_authenticated)
 
 if __name__ == "__main__":
     app.run()
-
-
-app.before_request(check_authenticated)
