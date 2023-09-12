@@ -65,24 +65,19 @@ def generate_document_title(question: str,
     openai.api_version = "2023-06-01-preview"
     openai.api_key = azure_openai_key
 
-    prompt = f"""Generate a document title for the following question or request: "{question}"
-Just return the title, don't enclose it with quote marks etc.
-Title:"""
-
     messages = [
         {"role": "system", "content": "You are a helpful AI that generates document titles."},
-        {"role": "user", "content": prompt},
+        {"role": "user", "content": f"Generate a short document title for the following question or request: \"{question}\""},
     ]
-
     response = openai.ChatCompletion.create(
         deployment_id=azure_openai_name,
         model=azure_openai_model_name,
         messages=messages,
-        temperature=0.7,
-        max_tokens=15
+        temperature=0.5,
+        max_tokens=20
     )
 
-    title = response['choices'][0]['message']['content']
+    title = response['choices'][0]['message']['content'].replace("\"", "")
     return title
 
 
