@@ -23,10 +23,12 @@ export const RAIPanel = ({ onAdjustClick, onRegenerateClick, onExportClick }: Pr
                 <ArrowSync16Filled primaryFill="rgba(133, 133, 133, 1)" />
                 <span className={styles.adjustInputText}>Regenerate</span>
             </div>
-            <div className={styles.adjustInput} onClick={onExportClick}>
-                <ArrowExport16Filled primaryFill="rgba(133, 133, 133, 1)" />
-                <span className={styles.adjustInputText}>Export</span>
-            </div>
+            {onExportClick && (
+                <div className={styles.adjustInput} onClick={onExportClick}>
+                    <ArrowExport16Filled primaryFill="rgba(133, 133, 133, 1)" />
+                    <span className={styles.adjustInputText}>Export</span>
+                </div>
+            )}
         </div>
     );
 };
