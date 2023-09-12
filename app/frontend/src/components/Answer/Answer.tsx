@@ -80,7 +80,7 @@ export const Answer = ({
             const request: ExportRequest = {
                 request_id: answer.request_id,
                 question: question,
-                answer: sanitizedAnswerHtml, 
+                answer: sanitizedAnswerHtml,
                 citations: concatenatedCitationLinks,
             };
             await exportAnswer(request);
