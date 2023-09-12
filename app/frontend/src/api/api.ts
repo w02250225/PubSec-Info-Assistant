@@ -138,6 +138,25 @@ export async function getBlobClientUrl(): Promise<string> {
     return parsedResponse.url;
 }
 
+export async function getBlobUrl(filename: string): Promise<string> {
+    const response = await fetch("/getBlobUrl", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            file_name: filename
+        })
+    });
+
+    const parsedResponse: BlobClientUrlResponse = await response.json();
+    if (response.status > 299 || !response.ok) {
+        throw Error(parsedResponse.error || "Unknown error");
+    }
+
+    return parsedResponse.url;
+}
+
 export async function getAllUploadStatus(options: GetUploadStatusRequest): Promise<AllFilesUploadStatus> {
     const response = await fetch("/getalluploadstatus", {
         method: "POST",

@@ -56,11 +56,12 @@ export const Answer = ({
             const originalFile = x.split("/")[0];
             const pageNumbers = parsedAnswer.pageNumbers[x];
             const sourceFiles = parsedAnswer.sourceFiles[x];
+            const href = `${window.location.origin}/#/ViewDocument?documentName=${encodeURIComponent(originalFile)}&pageNumber=${pageNumbers}`
             const linkName = `${originalFile} ${!isNaN(pageNumbers) ? `(Page ${pageNumbers})` : ''}`;
     
             citationLinks.push({
                 key: i,
-                href: sourceFiles,
+                href: href,
                 title: originalFile,
                 onClick: () => onCitationClicked(path, sourceFiles as any, pageNumbers as any),
                 label: `${++i}. ${linkName}`,
@@ -82,7 +83,7 @@ export const Answer = ({
                 answer: sanitizedAnswerHtml, 
                 citations: concatenatedCitationLinks,
             };
-            const result = await exportAnswer(request);
+            await exportAnswer(request);
         } catch (e) {
             console.log(e);
         }

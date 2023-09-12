@@ -21,9 +21,11 @@ from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
 from azure.search.documents import SearchClient
 from azure.storage.blob import (
     AccountSasPermissions,
+    BlobSasPermissions,
     BlobServiceClient,
     ResourceTypes,
     generate_account_sas,
+    generate_blob_sas,
 )
 
 from flask import Flask, jsonify, redirect, request, send_file, session, url_for
@@ -31,41 +33,31 @@ from opencensus.ext.azure.log_exporter import AzureLogHandler
 from shared_code.status_log import State, StatusLog
 from request_log import RequestLog
 
-AZURE_BLOB_STORAGE_ACCOUNT = os.environ.get(
-    "AZURE_BLOB_STORAGE_ACCOUNT") or "mystorageaccount"
+AZURE_BLOB_STORAGE_ACCOUNT = os.environ.get("AZURE_BLOB_STORAGE_ACCOUNT") or "mystorageaccount"
 AZURE_BLOB_STORAGE_KEY = os.environ.get("AZURE_BLOB_STORAGE_KEY")
-AZURE_BLOB_EXPORT_CONTAINER = os.environ.get(
-    "AZURE_BLOB_EXPORT_CONTAINER") or "export"
-AZURE_BLOB_STORAGE_CONTAINER = os.environ.get(
-    "AZURE_BLOB_STORAGE_CONTAINER") or "content"
+AZURE_BLOB_EXPORT_CONTAINER = os.environ.get("AZURE_BLOB_EXPORT_CONTAINER") or "export"
+AZURE_BLOB_STORAGE_CONTAINER = os.environ.get("AZURE_BLOB_STORAGE_CONTAINER") or "content"
+AZURE_BLOB_UPLOAD_CONTAINER = os.environ.get("AZURE_BLOB_UPLOAD_CONTAINER") or "upload"
 AZURE_SEARCH_SERVICE = os.environ.get("AZURE_SEARCH_SERVICE") or "gptkb"
 AZURE_SEARCH_SERVICE_KEY = os.environ.get("AZURE_SEARCH_SERVICE_KEY")
 AZURE_SEARCH_INDEX = os.environ.get("AZURE_SEARCH_INDEX") or "gptkbindex"
-AZURE_OPENAI_ACCOUNT_NAME = os.environ.get(
-    "AZURE_OPENAI_ACCOUNT_NAME") or "myopenai"
-AZURE_OPENAI_SERVICE = os.environ.get(
-    "AZURE_OPENAI_SERVICE") or AZURE_OPENAI_ACCOUNT_NAME
-AZURE_OPENAI_CHATGPT_DEPLOYMENT = os.environ.get(
-    "AZURE_OPENAI_CHATGPT_DEPLOYMENT") or "chat"
-AZURE_OPENAI_RESOURCE_GROUP = os.environ.get(
-    "AZURE_OPENAI_RESOURCE_GROUP") or ""
+AZURE_OPENAI_ACCOUNT_NAME = os.environ.get("AZURE_OPENAI_ACCOUNT_NAME") or "myopenai"
+AZURE_OPENAI_SERVICE = os.environ.get("AZURE_OPENAI_SERVICE") or AZURE_OPENAI_ACCOUNT_NAME
+AZURE_OPENAI_CHATGPT_DEPLOYMENT = os.environ.get("AZURE_OPENAI_CHATGPT_DEPLOYMENT") or "chat"
+AZURE_OPENAI_RESOURCE_GROUP = os.environ.get("AZURE_OPENAI_RESOURCE_GROUP") or ""
 AZURE_OPENAI_SERVICE_KEY = os.environ.get("AZURE_OPENAI_SERVICE_KEY")
 AZURE_SUBSCRIPTION_ID = os.environ.get("AZURE_SUBSCRIPTION_ID")
 
 KB_FIELDS_CONTENT = os.environ.get("KB_FIELDS_CONTENT") or "merged_content"
 KB_FIELDS_CATEGORY = os.environ.get("KB_FIELDS_CATEGORY") or "category"
-KB_FIELDS_SOURCEPAGE = os.environ.get(
-    "KB_FIELDS_SOURCEPAGE") or "file_storage_path"
+KB_FIELDS_SOURCEPAGE = os.environ.get("KB_FIELDS_SOURCEPAGE") or "file_storage_path"
 
 COSMOSDB_URL = os.environ.get("COSMOSDB_URL")
 COSMODB_KEY = os.environ.get("COSMOSDB_KEY")
 COSMOSDB_DATABASE_NAME = os.environ.get("COSMOSDB_DATABASE_NAME") or "statusdb"
-COSMOSDB_CONTAINER_NAME = os.environ.get(
-    "COSMOSDB_CONTAINER_NAME") or "statuscontainer"
-COSMOSDB_REQUESTLOG_DATABASE_NAME = os.environ.get(
-    "COSMOSDB_REQUESTLOG_DATABASE_NAME")
-COSMOSDB_REQUESTLOG_CONTAINER_NAME = os.environ.get(
-    "COSMOSDB_REQUESTLOG_CONTAINER_NAME")
+COSMOSDB_CONTAINER_NAME = os.environ.get("COSMOSDB_CONTAINER_NAME") or "statuscontainer"
+COSMOSDB_REQUESTLOG_DATABASE_NAME = os.environ.get("COSMOSDB_REQUESTLOG_DATABASE_NAME")
+COSMOSDB_REQUESTLOG_CONTAINER_NAME = os.environ.get("COSMOSDB_REQUESTLOG_CONTAINER_NAME")
 QUERY_TERM_LANGUAGE = os.environ.get("QUERY_TERM_LANGUAGE") or "English"
 
 # Oauth
@@ -138,8 +130,7 @@ BLOB_CLIENT = BlobServiceClient(
     credential=AZURE_BLOB_STORAGE_KEY,
 )
 blob_container = BLOB_CLIENT.get_container_client(AZURE_BLOB_STORAGE_CONTAINER)
-export_container = BLOB_CLIENT.get_container_client(
-    AZURE_BLOB_EXPORT_CONTAINER)
+export_container = BLOB_CLIENT.get_container_client(AZURE_BLOB_EXPORT_CONTAINER)
 
 # Set up OpenAI management client
 openai_mgmt_client = CognitiveServicesManagementClient(
@@ -304,6 +295,29 @@ def get_blob_client_url():
     return jsonify({"url": f"{BLOB_CLIENT.url}?{sas_token}"})
 
 
+@app.route("/getBlobUrl", methods=["POST"])
+def get_blob_sas():
+    file_name = urllib.parse.unquote(request.json["file_name"])
+    sas_token = generate_blob_sas(
+        account_name=AZURE_BLOB_STORAGE_ACCOUNT,
+        container_name=AZURE_BLOB_UPLOAD_CONTAINER,
+        blob_name=file_name,
+        account_key=AZURE_BLOB_STORAGE_KEY,
+        permission=BlobSasPermissions(
+            read=True,
+            write=False,
+            list=False,
+            delete=False,
+            add=False,
+            create=False,
+            update=False,
+            process=False,
+        ),
+        expiry=datetime.utcnow() + timedelta(minutes=15),
+    )
+    return jsonify({"url": f"{BLOB_CLIENT.url}{AZURE_BLOB_UPLOAD_CONTAINER}/{file_name}?{sas_token}"})
+
+
 @app.route("/getalluploadstatus", methods=["POST"])
 def get_all_upload_status():
     timeframe = request.json["timeframe"]
@@ -373,4 +387,5 @@ def export():
 app.before_request(check_authenticated)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # app.run(debug=DEBUG)
+    app.run()
