@@ -13,6 +13,7 @@ import { AnswerIcon } from "./AnswerIcon";
 import { RAIPanel } from "../RAIPanel";
 
 interface Props {
+    question: string;
     answer: AskResponse;
     isSelected?: boolean;
     onCitationClicked: (filePath: string, sourcePath: string, pageNumber: string) => void;
@@ -25,6 +26,7 @@ interface Props {
 }
 
 export const Answer = ({
+    question,
     answer,
     isSelected,
     onCitationClicked,
@@ -58,7 +60,7 @@ export const Answer = ({
     
             citationLinks.push({
                 key: i,
-                href: path,
+                href: sourceFiles,
                 title: originalFile,
                 onClick: () => onCitationClicked(path, sourceFiles as any, pageNumbers as any),
                 label: `${++i}. ${linkName}`,
@@ -68,9 +70,7 @@ export const Answer = ({
 
     const concatenatedCitationLinks = citationLinks
     .map((link, i) => {
-        const { title, label } = link;
-        const path = getCitationFilePath(title);
-        return `<a href="${path}" title="${title}">${label}</a>\n`;
+        return `<a href="${link.href}" title="${link.title}">${link.label}</a>\n`;
     })
     .join(''); // Join the HTML strings into a single string
 
@@ -78,7 +78,7 @@ export const Answer = ({
         try {
             const request: ExportRequest = {
                 request_id: answer.request_id,
-                title: "TBD",
+                question: question,
                 answer: sanitizedAnswerHtml, 
                 citations: concatenatedCitationLinks,
             };

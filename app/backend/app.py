@@ -31,30 +31,41 @@ from opencensus.ext.azure.log_exporter import AzureLogHandler
 from shared_code.status_log import State, StatusLog
 from request_log import RequestLog
 
-AZURE_BLOB_STORAGE_ACCOUNT = os.environ.get("AZURE_BLOB_STORAGE_ACCOUNT") or "mystorageaccount"
+AZURE_BLOB_STORAGE_ACCOUNT = os.environ.get(
+    "AZURE_BLOB_STORAGE_ACCOUNT") or "mystorageaccount"
 AZURE_BLOB_STORAGE_KEY = os.environ.get("AZURE_BLOB_STORAGE_KEY")
-AZURE_BLOB_EXPORT_CONTAINER = os.environ.get("AZURE_BLOB_EXPORT_CONTAINER") or "export"
-AZURE_BLOB_STORAGE_CONTAINER = os.environ.get("AZURE_BLOB_STORAGE_CONTAINER") or "content"
+AZURE_BLOB_EXPORT_CONTAINER = os.environ.get(
+    "AZURE_BLOB_EXPORT_CONTAINER") or "export"
+AZURE_BLOB_STORAGE_CONTAINER = os.environ.get(
+    "AZURE_BLOB_STORAGE_CONTAINER") or "content"
 AZURE_SEARCH_SERVICE = os.environ.get("AZURE_SEARCH_SERVICE") or "gptkb"
 AZURE_SEARCH_SERVICE_KEY = os.environ.get("AZURE_SEARCH_SERVICE_KEY")
 AZURE_SEARCH_INDEX = os.environ.get("AZURE_SEARCH_INDEX") or "gptkbindex"
-AZURE_OPENAI_ACCOUNT_NAME = os.environ.get("AZURE_OPENAI_ACCOUNT_NAME") or "myopenai"
-AZURE_OPENAI_SERVICE = os.environ.get("AZURE_OPENAI_SERVICE") or AZURE_OPENAI_ACCOUNT_NAME
-AZURE_OPENAI_CHATGPT_DEPLOYMENT = os.environ.get("AZURE_OPENAI_CHATGPT_DEPLOYMENT") or "chat"
-AZURE_OPENAI_RESOURCE_GROUP = os.environ.get("AZURE_OPENAI_RESOURCE_GROUP") or ""
+AZURE_OPENAI_ACCOUNT_NAME = os.environ.get(
+    "AZURE_OPENAI_ACCOUNT_NAME") or "myopenai"
+AZURE_OPENAI_SERVICE = os.environ.get(
+    "AZURE_OPENAI_SERVICE") or AZURE_OPENAI_ACCOUNT_NAME
+AZURE_OPENAI_CHATGPT_DEPLOYMENT = os.environ.get(
+    "AZURE_OPENAI_CHATGPT_DEPLOYMENT") or "chat"
+AZURE_OPENAI_RESOURCE_GROUP = os.environ.get(
+    "AZURE_OPENAI_RESOURCE_GROUP") or ""
 AZURE_OPENAI_SERVICE_KEY = os.environ.get("AZURE_OPENAI_SERVICE_KEY")
 AZURE_SUBSCRIPTION_ID = os.environ.get("AZURE_SUBSCRIPTION_ID")
 
 KB_FIELDS_CONTENT = os.environ.get("KB_FIELDS_CONTENT") or "merged_content"
 KB_FIELDS_CATEGORY = os.environ.get("KB_FIELDS_CATEGORY") or "category"
-KB_FIELDS_SOURCEPAGE = os.environ.get("KB_FIELDS_SOURCEPAGE") or "file_storage_path"
+KB_FIELDS_SOURCEPAGE = os.environ.get(
+    "KB_FIELDS_SOURCEPAGE") or "file_storage_path"
 
 COSMOSDB_URL = os.environ.get("COSMOSDB_URL")
 COSMODB_KEY = os.environ.get("COSMOSDB_KEY")
 COSMOSDB_DATABASE_NAME = os.environ.get("COSMOSDB_DATABASE_NAME") or "statusdb"
-COSMOSDB_CONTAINER_NAME = os.environ.get("COSMOSDB_CONTAINER_NAME") or "statuscontainer"
-COSMOSDB_REQUESTLOG_DATABASE_NAME = os.environ.get("COSMOSDB_REQUESTLOG_DATABASE_NAME")
-COSMOSDB_REQUESTLOG_CONTAINER_NAME = os.environ.get("COSMOSDB_REQUESTLOG_CONTAINER_NAME")
+COSMOSDB_CONTAINER_NAME = os.environ.get(
+    "COSMOSDB_CONTAINER_NAME") or "statuscontainer"
+COSMOSDB_REQUESTLOG_DATABASE_NAME = os.environ.get(
+    "COSMOSDB_REQUESTLOG_DATABASE_NAME")
+COSMOSDB_REQUESTLOG_CONTAINER_NAME = os.environ.get(
+    "COSMOSDB_REQUESTLOG_CONTAINER_NAME")
 QUERY_TERM_LANGUAGE = os.environ.get("QUERY_TERM_LANGUAGE") or "English"
 
 # Oauth
@@ -62,14 +73,16 @@ CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 TENANT_ID = os.getenv("TENANT_ID")
 REDIRECT_URI = os.getenv("REDIRECT_URI") or "http://localhost:5000/authorized"
-AUTHORITY = os.getenv("AUTHORITY") or f"https://login.microsoftonline.com/{TENANT_ID}"
+AUTHORITY = os.getenv(
+    "AUTHORITY") or f"https://login.microsoftonline.com/{TENANT_ID}"
 SCOPES = ["User.Read"]
 
 # Misc app settings
 APP_SECRET = os.getenv("APP_SECRET")
 DEBUG = os.getenv("CODESPACES") == "true"
 SCHEME = "http" if DEBUG else "https"
-LOGOUT_URL = os.getenv("LOGOUT_URL") or "https://treasuryqld.sharepoint.com/sites/corporate/"
+LOGOUT_URL = os.getenv(
+    "LOGOUT_URL") or "https://treasuryqld.sharepoint.com/sites/corporate/"
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = APP_SECRET
@@ -125,7 +138,8 @@ BLOB_CLIENT = BlobServiceClient(
     credential=AZURE_BLOB_STORAGE_KEY,
 )
 blob_container = BLOB_CLIENT.get_container_client(AZURE_BLOB_STORAGE_CONTAINER)
-export_container = BLOB_CLIENT.get_container_client(AZURE_BLOB_EXPORT_CONTAINER)
+export_container = BLOB_CLIENT.get_container_client(
+    AZURE_BLOB_EXPORT_CONTAINER)
 
 # Set up OpenAI management client
 openai_mgmt_client = CognitiveServicesManagementClient(
@@ -152,11 +166,12 @@ chat_approaches = {
     )
 }
 
+
 def token_is_valid():
     if "token_expires_at" in session:
         expiration_time = session["token_expires_at"]
         current_time = time.time()
-        return current_time < expiration_time # Check if token has expired
+        return current_time < expiration_time  # Check if token has expired
     return False  # Token expiration time not found in session
 
 
@@ -210,6 +225,7 @@ def authorized():
 
     return redirect(url_for("login"))
 
+
 @app.route("/user")
 def get_user_info():
     user_data = session["user_data"]
@@ -227,6 +243,7 @@ def logout():
 @app.route("/<path:path>")
 def static_file(path):
     return app.send_static_file(path)
+
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -255,13 +272,15 @@ def chat():
         finish_time = datetime.now()
 
         # Log the request/response to CosmosDB
-        requestLog.log_request_response(request_id, request.json, r, start_time, finish_time)
+        requestLog.log_request_response(
+            request_id, request.json, r, start_time, finish_time)
 
         return response
 
     except Exception as ex:
         logging.exception("Exception in /chat")
         return jsonify({"error": str(ex)}), 500
+
 
 @app.route("/getblobclienturl")
 def get_blob_client_url():
@@ -297,6 +316,7 @@ def get_all_upload_status():
         return jsonify({"error": str(ex)}), 500
     return jsonify(results)
 
+
 @app.route("/getInfoData")
 def get_info_data():
     user_data = session["user_data"]
@@ -314,6 +334,7 @@ def get_info_data():
         })
     return response
 
+
 @app.route("/getcitation", methods=["POST"])
 def get_citation():
     citation = urllib.parse.unquote(request.json["citation"])
@@ -328,13 +349,16 @@ def get_citation():
 
     return jsonify(results.json)
 
+
 @app.route('/exportAnswer', methods=["POST"])
 def export():
     try:
-        export_name, export_file = exporthelper.export_to_blob(request.json,
-                                                               export_container)
-
-        file_name = export_name.split('/')[1]
+        file_name, export_file = exporthelper.export_to_blob(request.json,
+                                                               export_container,
+                                                               AZURE_OPENAI_SERVICE,
+                                                               AZURE_OPENAI_SERVICE_KEY,
+                                                               AZURE_OPENAI_CHATGPT_DEPLOYMENT,
+                                                               deployment.properties.model.name)
 
     except Exception as ex:
         logging.exception("Exception in /exportAnswer")
@@ -344,6 +368,7 @@ def export():
                      as_attachment=True,
                      download_name=file_name
                      )
+
 
 app.before_request(check_authenticated)
 

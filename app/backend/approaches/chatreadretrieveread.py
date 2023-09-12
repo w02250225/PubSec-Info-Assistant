@@ -31,7 +31,7 @@ class ChatReadRetrieveReadApproach(Approach):
     SYSTEM = "system"
     USER = "user"
     ASSISTANT = "assistant"
-     
+
     system_message_chat_conversation = """You are {systemPersona} who helps {userPersona} answer questions about a Government agency's data.
     {response_length_prompt}
     User persona is {userPersona}.

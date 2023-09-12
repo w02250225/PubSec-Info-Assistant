@@ -208,6 +208,7 @@ const Chat = () => {
                                 <div className={styles.chatMessageGpt}>
                                     <Answer
                                         key={index}
+                                        question={answer[0]}
                                         answer={answer[1]}
                                         isSelected={selectedAnswer === index && activeAnalysisPanelTab !== undefined}
                                         onCitationClicked={(c, s, p) => onShowCitation(c, s, p, index)}

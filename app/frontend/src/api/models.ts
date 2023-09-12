@@ -54,7 +54,7 @@ export type ChatRequest = {
 
 export type ExportRequest ={
     request_id: string;
-    title: string;
+    question: string;
     answer: string;
     citations: string;
 }

@@ -3,7 +3,7 @@
 
 import {
     AskRequest, AskResponse, ChatRequest, BlobClientUrlResponse, AllFilesUploadStatus, GetUploadStatusRequest,
-    GetInfoResponse, ActiveCitation, ExportRequest, ExportResponse
+    GetInfoResponse, ActiveCitation, ExportRequest
 } from "./models";
 
 export async function askApi(options: AskRequest): Promise<AskResponse> {

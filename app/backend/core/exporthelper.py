@@ -1,8 +1,10 @@
 import logging
 import io
+import os
 import re
 import time
 import docx
+import openai
 from bs4 import BeautifulSoup
 from docx import Document
 from docx.shared import Pt
@@ -10,30 +12,86 @@ from docx.enum.dml import MSO_THEME_COLOR_INDEX
 from azure.storage.blob import ContainerClient
 from flask import session
 
-def export_to_blob(request: str, container_client: ContainerClient):
-    try:
-        user_id = session.get('user_data', {}).get('userPrincipalName') or "Unknown User"
 
-        export = create_docx(request["title"],
+def export_to_blob(request: str,
+                   container_client: ContainerClient,
+                   azure_openai_service: str,
+                   azure_openai_key: str,
+                   azure_openai_name: str,
+                   azure_openai_model_name: str
+                   ):
+    try:
+        user_id = session.get('user_data', {}).get(
+            'userPrincipalName') or "Unknown User"
+
+        title = generate_document_title(request["question"],
+                                        azure_openai_service,
+                                        azure_openai_key,
+                                        azure_openai_name,
+                                        azure_openai_model_name
+                                        )
+
+        export = create_docx(title,
                              request["answer"],
                              request["citations"])
 
-        blob_name = upload_to_blob(export,
-                                   request["request_id"],
-                                   user_id,
-                                   container_client)
+        upload_to_blob(export,
+                       request["request_id"],
+                       user_id,
+                       container_client)
+
+        # Use title to generate file name
+        # Make sure it's safe for Windows
+        file_name = f"{sanitize_filename(title)}.docx"
+
+        # Go back to the start of the stream
         export.seek(0)
 
-        return blob_name, export
+        return file_name, export
 
     except Exception as ex:
         logging.exception("Exception in export_to_blob")
         return str(ex)
 
+
+def generate_document_title(question: str,
+                            azure_openai_service: str,
+                            azure_openai_key: str,
+                            azure_openai_name: str,
+                            azure_openai_model_name: str
+                            ):
+
+    openai.api_type = "azure"
+    openai.api_base = f"https://{azure_openai_service}.openai.azure.com"
+    openai.api_version = "2023-06-01-preview"
+    openai.api_key = azure_openai_key
+
+    prompt = f"""Generate a document title for the following question or request: "{question}"
+Just return the title, don't enclose it with quote marks etc.
+Title:"""
+
+    messages = [
+        {"role": "system", "content": "You are a helpful AI that generates document titles."},
+        {"role": "user", "content": prompt},
+    ]
+
+    response = openai.ChatCompletion.create(
+        deployment_id=azure_openai_name,
+        model=azure_openai_model_name,
+        messages=messages,
+        temperature=0.7,
+        max_tokens=15
+    )
+
+    title = response['choices'][0]['message']['content']
+    return title
+
+
 def add_hyperlink(paragraph, text, url):
     # This gets access to the document.xml.rels file and gets a new relation id value
     part = paragraph.part
-    r_id = part.relate_to(url, docx.opc.constants.RELATIONSHIP_TYPE.HYPERLINK, is_external=True)
+    r_id = part.relate_to(
+        url, docx.opc.constants.RELATIONSHIP_TYPE.HYPERLINK, is_external=True)
 
     # Create the w:hyperlink tag and add needed values
     hyperlink = docx.oxml.shared.OxmlElement('w:hyperlink')
@@ -50,7 +108,7 @@ def add_hyperlink(paragraph, text, url):
 
     # Create a new Run object and add the hyperlink into it
     run = paragraph.add_run()
-    run._r.append (hyperlink)
+    run._r.append(hyperlink)
 
     # A workaround for the lack of a hyperlink style (doesn't go purple after using the link)
     # Delete this if using a template that has the hyperlink style in it
@@ -59,6 +117,7 @@ def add_hyperlink(paragraph, text, url):
     run.font.underline = True
 
     return hyperlink
+
 
 def create_new_doc(title):
     doc = Document()
@@ -71,6 +130,7 @@ def create_new_doc(title):
     para = doc.paragraphs[0]
     para.add_run(title).font.size = Pt(22)
     return doc
+
 
 def add_html_to_docx(html, doc, heading=None):
 
@@ -90,7 +150,8 @@ def add_html_to_docx(html, doc, heading=None):
             tag_change = tag_change.group(1)
             if tag_change.startswith('/'):
                 if tag_change.startswith('/a'):
-                    tag_change = next(tag for tag in tags if tag.startswith('a '))
+                    tag_change = next(
+                        tag for tag in tags if tag.startswith('a '))
                 tag_change = tag_change.strip('/')
                 tags.remove(tag_change)
             else:
@@ -102,7 +163,8 @@ def add_html_to_docx(html, doc, heading=None):
             run = run.replace(tag_strip, '')
             if hyperlink:
                 hyperlink = hyperlink[0]
-                hyperlink = re.match('.*?(?:href=")(.*?)(?:").*?', hyperlink).group(1)
+                hyperlink = re.match(
+                    '.*?(?:href=")(.*?)(?:").*?', hyperlink).group(1)
                 add_hyperlink(para, run, hyperlink)
             else:
                 runner = para.add_run(run)
@@ -123,6 +185,7 @@ def add_html_to_docx(html, doc, heading=None):
         else:
             para.add_run(run)
 
+
 def create_docx(title: str, answer: str, citations: str):
     try:
         soup_answer = BeautifulSoup(answer, "lxml")
@@ -135,7 +198,8 @@ def create_docx(title: str, answer: str, citations: str):
 
         # Add answer to the document
         # Add spaces between the citations
-        html_answer = str(soup_answer.body).replace('</sup><sup>', '</sup> <sup>')
+        html_answer = str(soup_answer.body).replace(
+            '</sup><sup>', '</sup> <sup>')
         add_html_to_docx(html_answer, doc)
 
         # Add citations to the document
@@ -152,15 +216,35 @@ def create_docx(title: str, answer: str, citations: str):
         logging.exception("Exception in create_docx")
         return str(ex)
 
-def upload_to_blob(input_stream: io.BytesIO(), request_id: str,
-                   user_id: str, container_client: ContainerClient):
+
+def upload_to_blob(input_stream: io.BytesIO(),
+                   request_id: str,
+                   user_id: str,
+                   container_client: ContainerClient):
     try:
         timestamp = time.strftime("%Y%m%d%H%M%S")
         blob_name = f"{user_id}/{timestamp}_{request_id}.docx"
-        container_client.get_blob_client(blob_name).upload_blob(input_stream, blob_type="BlockBlob")
+        container_client.get_blob_client(blob_name).upload_blob(
+            input_stream, blob_type="BlockBlob")
 
         return blob_name
 
     except Exception as ex:
         logging.exception("Exception in upload_to_blob")
         return str(ex)
+
+def sanitize_filename(title):
+    # Define a regular expression pattern to match characters not allowed in file names
+    invalid_chars = r'[<>:"/\\|?*]'
+
+    # Replace invalid characters with underscores
+    sanitized_title = re.sub(invalid_chars, '', title)
+
+    # Remove any leading or trailing spaces
+    sanitized_title = sanitized_title.strip()
+
+    # Ensure the filename does not exceed the Windows maximum length (255 characters)
+    if len(sanitized_title) > 255:
+        sanitized_title = sanitized_title[:255]
+
+    return sanitized_title
