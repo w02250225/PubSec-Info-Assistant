@@ -67,13 +67,13 @@ def generate_document_title(question: str,
 
     messages = [
         {"role": "system", "content": "You are a helpful AI that generates document titles."},
-        {"role": "user", "content": f"Generate a short document title for the following question or request: \"{question}\""},
+        {"role": "user", "content": f"Generate a short (less than 10 words) document title for the following question or request: \"{question}\""},
     ]
     response = openai.ChatCompletion.create(
         deployment_id=azure_openai_name,
         model=azure_openai_model_name,
         messages=messages,
-        temperature=0.5,
+        temperature=0.4,
         max_tokens=20
     )
 
