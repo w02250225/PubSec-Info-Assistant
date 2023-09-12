@@ -1,7 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { AskRequest, AskResponse, ChatRequest, BlobClientUrlResponse, AllFilesUploadStatus, GetUploadStatusRequest, GetInfoResponse, ActiveCitation } from "./models";
+import {
+    AskRequest, AskResponse, ChatRequest, BlobClientUrlResponse, AllFilesUploadStatus, GetUploadStatusRequest,
+    GetInfoResponse, ActiveCitation, ExportRequest
+} from "./models";
 
 export async function askApi(options: AskRequest): Promise<AskResponse> {
     const response = await fetch("/ask", {
@@ -32,7 +35,7 @@ export async function askApi(options: AskRequest): Promise<AskResponse> {
     if (response.status > 299 || !response.ok) {
         throw Error(parsedResponse.error || "Unknown error");
     }
-    
+
     return parsedResponse;
 }
 
@@ -68,8 +71,51 @@ export async function chatApi(options: ChatRequest): Promise<AskResponse> {
     if (response.status > 299 || !response.ok) {
         throw Error(parsedResponse.error || "Unknown error");
     }
-   
+
     return parsedResponse;
+}
+
+export async function downloadFileFromResponse(response: Response): Promise<void> {
+    try {
+        if (response.status > 299 || !response.ok) {
+            const errorData = await response.json();
+            throw Error(errorData.error || "Unknown error");
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+
+        const contentDisposition = response.headers.get("Content-Disposition");
+        const fileNameMatch = contentDisposition && contentDisposition.match(/filename="(.+)"/);
+
+        if (fileNameMatch && fileNameMatch.length >= 2) {
+            a.download = fileNameMatch[1];
+        }
+
+        a.click();
+        window.URL.revokeObjectURL(url);
+        
+    } catch (error) {
+        console.error("Error downloading file", error);
+    }
+}
+
+export async function exportAnswer(request: ExportRequest): Promise<void> {
+    try {
+        const response = await fetch("/exportAnswer", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(request)
+        });
+
+        await downloadFileFromResponse(response);
+    } catch (error) {
+        console.error("Error exporting answer", error);
+    }
 }
 
 export function getCitationFilePath(citation: string): string {
@@ -101,14 +147,14 @@ export async function getAllUploadStatus(options: GetUploadStatusRequest): Promi
         body: JSON.stringify({
             timeframe: options.timeframe,
             state: options.state as string
-            })
-        });
-    
+        })
+    });
+
     const parsedResponse: any = await response.json();
     if (response.status > 299 || !response.ok) {
         throw Error(parsedResponse.error || "Unknown error");
     }
-    const results: AllFilesUploadStatus = {statuses: parsedResponse};
+    const results: AllFilesUploadStatus = { statuses: parsedResponse };
     return results;
 }
 
@@ -124,7 +170,7 @@ export async function getInfoData(): Promise<GetInfoResponse> {
         console.log(response);
         throw Error(parsedResponse.error || "Unknown error");
     }
-    console.log(parsedResponse);
+    // console.log(parsedResponse);
     return parsedResponse;
 }
 

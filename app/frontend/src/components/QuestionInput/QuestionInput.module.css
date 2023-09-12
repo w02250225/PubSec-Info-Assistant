@@ -40,6 +40,7 @@
 
 .questionClearChatButton {
     display: flex;
+    background: #0058a6;
     width: 50px;
     height: 50px; 
     cursor: pointer;
@@ -48,13 +49,16 @@
     border-radius: 50px;
     -o-text-overflow: ellipsis;
     text-overflow: ellipsis;
-    background: rgb(125,125,125);
+    background: #dae8f5;
     padding-left: -12px;
     justify-content: center;
     align-items: center;
+    opacity: 0.4;
 }
 
 .questionClearChatButton:hover {
     width: 120px;
-    color: lightgrey;
+    opacity: 1.0;
+    background: #0058a6;
+    color: #fff;
 }

@@ -3,7 +3,7 @@
 
 import { Outlet, NavLink, Link } from "react-router-dom";
 
-import openai from "../../assets/openai.svg";
+import qtlogo from "../../assets/qt-logo.png";
 
 import styles from "./Layout.module.css";
 
@@ -13,8 +13,7 @@ const Layout = () => {
             <header className={styles.header} role={"banner"}>
                 <div className={styles.headerContainer}>
                     <Link to="/" className={styles.headerTitleContainer}>
-                        <img src={openai} alt="Azure OpenAI" className={styles.headerLogo} />
-                        <h3 className={styles.headerTitle}> Information Assistant powered by Azure OpenAI</h3>
+                        <img src={qtlogo} className={styles.headerLogo} />
                     </Link>
                     <nav>
                         <ul className={styles.headerNavList}>
@@ -27,6 +26,11 @@ const Layout = () => {
                                 <NavLink to="/content" className={({ isActive }) => (isActive ? styles.headerNavPageLinkActive : styles.headerNavPageLink)}>
                                     Manage Content
                                 </NavLink>
+                            </li>
+                            <li className={styles.headerNavLeftMargin}>
+                                <a href="/logout" className={styles.headerNavPageLink}>
+                                    Logout
+                                </a>
                             </li>
                         </ul>
                     </nav>

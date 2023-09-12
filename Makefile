@@ -14,10 +14,13 @@ deploy: build infrastructure extract-env deploy-search-indexes deploy-webapp dep
 build: ## Build application code
 	@./scripts/build.sh
 
+build-webapp: ## Build WebApp code only
+	@./scripts/build-webapp.sh
+
 infrastructure: check-subscription ## Deploy infrastructure
 	@./scripts/inf-create.sh
 
-extract-env: extract-env-debug-webapp extract-env-debug-functions ## Extract infrastructure.env file from BICEP output
+extract-env: #extract-env-debug-webapp extract-env-debug-functions ## Extract infrastructure.env file from BICEP output
 	@./scripts/json-to-env.sh < infra_output.json > ./scripts/environments/infrastructure.env
 
 deploy-webapp: extract-env ## Deploys the web app code to Azure App Service
@@ -25,6 +28,9 @@ deploy-webapp: extract-env ## Deploys the web app code to Azure App Service
 
 deploy-functions: extract-env ## Deploys the function code to Azure Function Host
 	@./scripts/deploy-functions.sh
+
+run-search-indexer: extract-env ## Run search indexer
+	@./scripts/run-search-indexer.sh
 
 deploy-search-indexes: extract-env ## Deploy search indexes
 	@./scripts/deploy-search-indexes.sh

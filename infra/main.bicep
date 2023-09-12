@@ -21,6 +21,7 @@ param aadMgmtServicePrincipalId string = ''
 param buildNumber string = 'local'
 param isInAutomation bool = false
 param useExistingAOAIService bool
+param azureOpenAIAccountName string
 param azureOpenAIServiceName string
 param azureOpenAIResourceGroup string
 param azureOpenAIServiceKey string
@@ -114,7 +115,7 @@ module appServicePlan 'core/host/appserviceplan.bicep' = {
     location: location
     tags: tags
     sku: {
-      name: 'B2'
+      name: 'B3'
       capacity: 3
     }
     kind: 'linux'
@@ -140,6 +141,7 @@ module backend 'core/host/appservice.bicep' = {
       AZURE_BLOB_STORAGE_ACCOUNT: storage.outputs.name
       AZURE_BLOB_STORAGE_CONTAINER: containerName
       AZURE_BLOB_STORAGE_KEY: storage.outputs.key
+      AZURE_OPENAI_ACCOUNT_NAME: useExistingAOAIService ? azureOpenAIAccountName : cognitiveServices.outputs.name
       AZURE_OPENAI_SERVICE: useExistingAOAIService ? azureOpenAIServiceName : cognitiveServices.outputs.name
       AZURE_OPENAI_RESOURCE_GROUP: useExistingAOAIService ? azureOpenAIResourceGroup : rg.name
       AZURE_SEARCH_INDEX: searchIndexName
@@ -152,6 +154,8 @@ module backend 'core/host/appservice.bicep' = {
       COSMOSDB_KEY: cosmosdb.outputs.CosmosDBKey
       COSMOSDB_DATABASE_NAME: cosmosdb.outputs.CosmosDBDatabaseName
       COSMOSDB_CONTAINER_NAME: cosmosdb.outputs.CosmosDBContainerName
+      COSMOSDB_REQUESTLOG_DATABASE_NAME: cosmosrequestsdb.outputs.CosmosDBDatabaseName
+      COSMOSDB_REQUESTLOG_CONTAINER_NAME: cosmosrequestsdb.outputs.CosmosDBContainerName
       QUERY_TERM_LANGUAGE: queryTermLanguage
       AZURE_CLIENT_ID: aadMgmtClientId
       AZURE_CLIENT_SECRET: aadMgmtClientSecret
@@ -294,6 +298,64 @@ module storage 'core/storage/storage-account.bicep' = {
   }
 }
 
+
+// module storageDev 'core/storage/storage-account.bicep' = {
+//   name: 'storageDev'
+//   scope: rg
+//   params: {
+//     name: !empty(storageAccountName) ? '${storageAccountName}dev' : '${prefix}${abbrs.storageStorageAccounts}${randomString}dev'
+//     location: location
+//     tags: tags
+//     publicNetworkAccess: 'Enabled'
+//     sku: {
+//       name: 'Standard_LRS'
+//     }
+//     deleteRetentionPolicy: {
+//       enabled: true
+//       days: 7
+//     }
+//     containers: [
+//       {
+//         name: containerName
+//         publicAccess: 'None'
+//       }
+//       {
+//         name: 'website'
+//         publicAccess: 'None'
+//       }
+//       {
+//         name: uploadContainerName
+//         publicAccess: 'None'
+//       }
+//       {
+//         name: 'function'
+//         publicAccess: 'None'
+//       }
+//       {
+//         name: functionLogsContainerName
+//         publicAccess: 'None'
+//       }
+//     ]
+//     queueNames: [
+//       {
+//         name: pdfSubmitQueue
+//       }
+//       {
+//         name: pdfPollingQueue
+//       }
+//       {
+//         name: nonPdfSubmitQueue
+//       }  
+//       {
+//         name: mediaSubmitQueue
+//       }          
+//       {
+//         name: textEnrichmentQueue
+//       }
+//     ]
+//   }
+// }
+
 module storageMedia 'core/storage/storage-account.bicep' = {
   name: 'storage-media'
   scope: rg
@@ -321,9 +383,23 @@ module cosmosdb 'core/db/cosmosdb.bicep' = {
     tags: tags
     databaseName: 'statusdb'
     containerName: 'statuscontainer'
+    partitionKeyPath: ['/file_name']
   }
 }
 
+module cosmosrequestsdb 'core/db/cosmosdb.bicep' = {
+  name: 'cosmosrequestsdb'
+  scope: rg
+  params: {
+    name: !empty(cosmosdbName) ? cosmosdbName : '${prefix}-${abbrs.cosmosDBAccounts}${randomString}'
+    location: location
+    tags: tags
+    databaseName: 'requestdb'
+    containerName: 'requestcontainer'
+    partitionKeyPath: ['/user_id', '/session_id']
+    autoscaleMaxThroughput: 2000
+  }
+}
 // Function App 
 module functions 'core/function/function.bicep' = {
   name: 'functions'
@@ -405,7 +481,7 @@ module avam 'core/video_indexer/video_indexer.bicep' = {
 
 
 // USER ROLES
-module openAiRoleUser 'core/security/role.bicep' = {
+module openAiRoleUser 'core/security/role.bicep'  = if (principalId != '') {
   scope: rg
   name: 'openai-role-user'
   params: {
@@ -415,7 +491,7 @@ module openAiRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module storageRoleUser 'core/security/role.bicep' = {
+module storageRoleUser 'core/security/role.bicep' = if (principalId != '') {
   scope: rg
   name: 'storage-role-user'
   params: {
@@ -425,7 +501,7 @@ module storageRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module storageContribRoleUser 'core/security/role.bicep' = {
+module storageContribRoleUser 'core/security/role.bicep' = if (principalId != '') {
   scope: rg
   name: 'storage-contribrole-user'
   params: {
@@ -435,7 +511,7 @@ module storageContribRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module searchRoleUser 'core/security/role.bicep' = {
+module searchRoleUser 'core/security/role.bicep' = if (principalId != '') {
   scope: rg
   name: 'search-role-user'
   params: {
@@ -445,7 +521,7 @@ module searchRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module searchContribRoleUser 'core/security/role.bicep' = {
+module searchContribRoleUser 'core/security/role.bicep' = if (principalId != '') {
   scope: rg
   name: 'search-contrib-role-user'
   params: {
@@ -522,7 +598,8 @@ resource customerAttribution 'Microsoft.Resources/deployments@2021-04-01' = if (
 }
 
 output AZURE_LOCATION string = location
-output AZURE_OPENAI_SERVICE string = azureOpenAIServiceName //cognitiveServices.outputs.name
+output AZURE_OPENAI_ACCOUNT_NAME string = azureOpenAIAccountName
+output AZURE_OPENAI_SERVICE string = azureOpenAIServiceName
 output AZURE_SEARCH_INDEX string = searchIndexName
 output AZURE_SEARCH_SERVICE string = searchServices.outputs.name
 output AZURE_SEARCH_KEY string = searchServices.outputs.searchServiceKey

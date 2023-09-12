@@ -47,7 +47,7 @@
     color: rgba(255,255,255,0.9);
     -o-text-overflow: clip;
     text-overflow: clip;
-    background: rgb(0 120 212);
+    background: #0058a6;
     -webkit-box-shadow: 2px 2px 2px 0 rgba(0,0,0,0.2) ;
     box-shadow: 2px 2px 2px 0 rgba(0,0,0,0.2) ;
     text-shadow: -1px -1px 0 rgba(15,73,168,0.66) ;
@@ -62,7 +62,7 @@
     padding: 10px 20px;
     border: 1px solid #018dc4;
     color: rgba(255,255,255,0.9);
-    background: rgb(0 120 212);
+    background: #0058a6;
     text-shadow: -1px -1px 0 rgba(15,73,168,0.66) ;
   }
 
@@ -104,7 +104,7 @@
     color: rgba(255,255,255,0.9);
     -o-text-overflow: clip;
     text-overflow: clip;
-    background: rgb(0 120 212);
+    background: #0058a6;
     -webkit-box-shadow: 2px 2px 2px 0 rgba(0,0,0,0.2) ;
     box-shadow: 2px 2px 2px 0 rgba(0,0,0,0.2) ;
     text-shadow: -1px -1px 0 rgba(15,73,168,0.66) ;
@@ -119,7 +119,7 @@
     padding: 10px 20px;
     border: 1px solid #018dc4;
     color: rgba(255,255,255,0.9);
-    background: rgb(0 120 212);
+    background: #0058a6;
     text-shadow: -1px -1px 0 rgba(15,73,168,0.66) ;
   }
 
@@ -157,7 +157,7 @@
     color: rgba(255,255,255,0.9);
     -o-text-overflow: clip;
     text-overflow: clip;
-    background: rgb(0 120 212);
+    background: #0058a6;
     -webkit-box-shadow: 2px 2px 2px 0 rgba(0,0,0,0.2) ;
     box-shadow: 2px 2px 2px 0 rgba(0,0,0,0.2) ;
     text-shadow: -1px -1px 0 rgba(15,73,168,0.66) ;
@@ -172,6 +172,6 @@
     padding: 10px 20px;
     border: 1px solid #018dc4;
     color: rgba(255,255,255,0.9);
-    background: rgb(0 120 212);
+    background: #0058a6;
     text-shadow: -1px -1px 0 rgba(15,73,168,0.66) ;
   }

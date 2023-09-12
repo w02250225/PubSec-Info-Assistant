@@ -142,7 +142,7 @@ class StatusLog:
             if self._log_document == "":
                 json_document = self.container.read_item(item=document_id, partition_key=base_name)
             else:
-                json_document = self._log_document       
+                json_document = self._log_document
 
             # Check if there has been a state change, and therefore to update state
             if json_document['state'] != state.value:
@@ -178,7 +178,7 @@ class StatusLog:
             }
 
         #self.container.upsert_item(body=json_document)
-        self._log_document = json_document         
+        self._log_document = json_document
         
         # add status to standard logger
         logging.info(status)
