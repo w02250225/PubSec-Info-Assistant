@@ -7,8 +7,8 @@ import DOMPurify from "dompurify";
 
 import styles from "./Answer.module.css";
 
-import { AskResponse, getCitationFilePath } from "../../api";
-import { parseAnswerToHtml, parseAnswerToHtmlExport } from "./AnswerParser";
+import { AskResponse, getCitationFilePath, ExportRequest, exportAnswer } from "../../api";
+import { parseAnswerToHtml } from "./AnswerParser";
 import { AnswerIcon } from "./AnswerIcon";
 import { RAIPanel } from "../RAIPanel";
 
@@ -22,7 +22,6 @@ interface Props {
     showFollowupQuestions?: boolean;
     onAdjustClick?: () => void;
     onRegenerateClick?: () => void;
-    onExportClick?: () => void;
 }
 
 export const Answer = ({
@@ -34,13 +33,60 @@ export const Answer = ({
     onFollowupQuestionClicked,
     showFollowupQuestions,
     onAdjustClick,
-    onRegenerateClick,
-    onExportClick
+    onRegenerateClick
 }: Props) => {
     const parsedAnswer = useMemo(() => parseAnswerToHtml(answer.answer, answer.citation_lookup, onCitationClicked), [answer]);
-    const parsedAnswerExport = parseAnswerToHtmlExport(answer.answer, answer.citation_lookup);
 
     const sanitizedAnswerHtml = DOMPurify.sanitize(parsedAnswer.answerHtml);
+
+    interface CitationLink {
+        key: number;
+        href: string;
+        title: string;
+        onClick: () => void;
+        label: string;
+    }
+    
+    let citationLinks: CitationLink[] = [];
+    if (parsedAnswer.citations.length > 0) {
+        parsedAnswer.citations.forEach((x, i) => {
+            const path = getCitationFilePath(x);
+            const originalFile = x.split("/")[0];
+            const pageNumbers = parsedAnswer.pageNumbers[x];
+            const sourceFiles = parsedAnswer.sourceFiles[x];
+            const linkName = `${originalFile} ${!isNaN(pageNumbers) ? `(Page ${pageNumbers})` : ''}`;
+    
+            citationLinks.push({
+                key: i,
+                href: path,
+                title: originalFile,
+                onClick: () => onCitationClicked(path, sourceFiles as any, pageNumbers as any),
+                label: `${++i}. ${linkName}`,
+            });
+        });
+    };
+
+    const concatenatedCitationLinks = citationLinks
+    .map((link, i) => {
+        const { title, label } = link;
+        const path = getCitationFilePath(title);
+        return `<a href="${path}" title="${title}">${label}</a>\n`;
+    })
+    .join(''); // Join the HTML strings into a single string
+
+    const onExportClick = async () => {
+        try {
+            const request: ExportRequest = {
+                request_id: answer.request_id,
+                title: "TBD",
+                answer: sanitizedAnswerHtml, 
+                citations: concatenatedCitationLinks,
+            };
+            const result = await exportAnswer(request);
+        } catch (e) {
+            console.log(e);
+        }
+    };
 
     return (
         <Stack className={`${styles.answerContainer} ${isSelected && styles.selected}`} verticalAlign="space-between">
@@ -72,19 +118,15 @@ export const Answer = ({
                 <div className={styles.answerText} dangerouslySetInnerHTML={{ __html: sanitizedAnswerHtml }}></div>
             </Stack.Item>
 
-            {!!parsedAnswer.citations.length && (
+            {!!citationLinks.length && (
                 <Stack.Item>
                     <Stack horizontal wrap tokens={{ childrenGap: 5 }}>
                         <span className={styles.citationLearnMore}>Citations:</span>
-                        {parsedAnswer.citations.map((x, i) => {
-                            const path = getCitationFilePath(x);
-                            const originalFile = x.split("/")[0]
-                            const pageNumbers = parsedAnswer.pageNumbers[x]
-                            const sourceFiles = parsedAnswer.sourceFiles[x]
-                            const linkName = `${originalFile} ${!isNaN(pageNumbers) ? `(Page ${pageNumbers})` : ''}`;
+                        {citationLinks.map((link, i) => {
+                            const { title, onClick, label } = link;
                             return (
-                                <a key={i} className={styles.citation} title={originalFile} onClick={() => onCitationClicked(path, sourceFiles as any, pageNumbers as any)}>
-                                    {`${++i}. ${linkName}`}
+                                <a key={i} className={styles.citation} title={title} onClick={onClick}>
+                                    {label}
                                 </a>
                             );
                         })}
@@ -110,7 +152,10 @@ export const Answer = ({
                 <div className={styles.answerTextRequestId}>Request ID: {answer.request_id}</div>
             </Stack.Item>
             <Stack.Item align="center">
-                <RAIPanel onAdjustClick={onAdjustClick} onRegenerateClick={onRegenerateClick}  onExportClick={onExportClick}/>
+                <RAIPanel   onAdjustClick={onAdjustClick} 
+                            onRegenerateClick={onRegenerateClick}  
+                            onExportClick={onExportClick}
+                        />
             </Stack.Item>
         </Stack>
     );

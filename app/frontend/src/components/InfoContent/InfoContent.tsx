@@ -5,7 +5,7 @@ import React, { useEffect, useState } from "react";
 import { Text } from "@fluentui/react";
 import { Label } from '@fluentui/react/lib/Label';
 import { Separator } from '@fluentui/react/lib/Separator';
-import { getInfoData, GetInfoResponse, getUserData, GetUserResponse  } from "../../api";
+import { getInfoData, GetInfoResponse  } from "../../api";
 import styles from "./InfoContent.module.css"
 
 interface Props {
@@ -14,8 +14,7 @@ interface Props {
 
 export const InfoContent = ({ className }: Props) => {
     const [infoData, setInfoData] = useState<GetInfoResponse | null>(null);
-    const [userData, setUserData] = useState<GetUserResponse | null>(null);
-
+    
     async function fetchInfoData() {
         try {
             const fetchedInfoData = await getInfoData();
@@ -28,19 +27,6 @@ export const InfoContent = ({ className }: Props) => {
 
     useEffect(() => {
         fetchInfoData();
-    }, []);
-
-    async function fetchUserData() {
-        try {
-            const fetcheduserData = await getUserData();
-            setUserData(fetcheduserData);
-        } catch (error) {
-            console.log(error);
-        }
-    }
-
-    useEffect(() => {
-        fetchUserData();
     }, []);
 
     return (
@@ -59,9 +45,9 @@ export const InfoContent = ({ className }: Props) => {
             <Label>System Language</Label><Text>{infoData?.TARGET_LANGUAGE}</Text>
 
             <Separator className={styles.separator}>Session Information</Separator>
-            <Label>User ID</Label><Text> {userData?.id}</Text>
-            <Label>Session ID</Label><Text> {userData?.session_id}</Text>
-            <Label>Username</Label><Text> {userData?.userPrincipalName}</Text>
+            <Label>User ID</Label><Text> {infoData?.USER_DATA?.id}</Text>
+            <Label>Session ID</Label><Text> {infoData?.USER_DATA?.session_id}</Text>
+            <Label>Username</Label><Text> {infoData?.USER_DATA?.userPrincipalName}</Text>
         </div>
     );
 };

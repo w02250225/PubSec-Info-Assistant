@@ -1,15 +1,19 @@
 import logging
 import io
+import re
 import time
+import docx
+from bs4 import BeautifulSoup
 from docx import Document
-from htmldocx import HtmlToDocx
-from azure.storage.blob import (BlobServiceClient)
+from docx.shared import Pt
+from docx.enum.dml import MSO_THEME_COLOR_INDEX
+from azure.storage.blob import ContainerClient
 from flask import session
 
-def export_to_blob(request: str, blob_service_client: BlobServiceClient, container_name: str):
+def export_to_blob(request: str, container_client: ContainerClient):
     try:
         user_id = session.get('user_data', {}).get('userPrincipalName') or "Unknown User"
-        
+
         export = create_docx(request["title"],
                              request["answer"],
                              request["citations"])
@@ -17,30 +21,129 @@ def export_to_blob(request: str, blob_service_client: BlobServiceClient, contain
         blob_name = upload_to_blob(export,
                                    request["request_id"],
                                    user_id,
-                                   blob_service_client,
-                                   container_name)
-        
-        return blob_name
+                                   container_client)
+        export.seek(0)
+
+        return blob_name, export
 
     except Exception as ex:
         logging.exception("Exception in export_to_blob")
         return str(ex)
 
+def add_hyperlink(paragraph, text, url):
+    # This gets access to the document.xml.rels file and gets a new relation id value
+    part = paragraph.part
+    r_id = part.relate_to(url, docx.opc.constants.RELATIONSHIP_TYPE.HYPERLINK, is_external=True)
+
+    # Create the w:hyperlink tag and add needed values
+    hyperlink = docx.oxml.shared.OxmlElement('w:hyperlink')
+    hyperlink.set(docx.oxml.shared.qn('r:id'), r_id, )
+
+    # Create a w:r element and a new w:rPr element
+    new_run = docx.oxml.shared.OxmlElement('w:r')
+    rpr = docx.oxml.shared.OxmlElement('w:rPr')
+
+    # Join all the xml elements together add add the required text to the w:r element
+    new_run.append(rpr)
+    new_run.text = text
+    hyperlink.append(new_run)
+
+    # Create a new Run object and add the hyperlink into it
+    run = paragraph.add_run()
+    run._r.append (hyperlink)
+
+    # A workaround for the lack of a hyperlink style (doesn't go purple after using the link)
+    # Delete this if using a template that has the hyperlink style in it
+    # pylint: disable=E1101  # Disable "no-member" error for 'HYPERLINK' in MSO_THEME_COLOR_INDEX
+    run.font.color.theme_color = MSO_THEME_COLOR_INDEX.HYPERLINK
+    run.font.underline = True
+
+    return hyperlink
+
+def create_new_doc(title):
+    doc = Document()
+
+    # Add header
+    paragraph = doc.sections[0].header.paragraphs[0]
+    paragraph.text = "Generated with Coeus - SENSITIVE - DRAFT ONLY"
+
+    # Add title
+    para = doc.paragraphs[0]
+    para.add_run(title).font.size = Pt(22)
+    return doc
+
+def add_html_to_docx(html, doc, heading=None):
+
+    html = html.split('<')
+    html = [html[0]] + ['<'+l for l in html[1:]]
+    tags = []
+
+    para = doc.add_paragraph()
+    if heading:
+        para.add_run(heading).font.size = Pt(14)
+        para = doc.add_paragraph()
+
+    for run in html:
+        tag_change = re.match('(?:<)(.*?)(?:>)', run)
+        if tag_change is not None:
+            tag_strip = tag_change.group(0)
+            tag_change = tag_change.group(1)
+            if tag_change.startswith('/'):
+                if tag_change.startswith('/a'):
+                    tag_change = next(tag for tag in tags if tag.startswith('a '))
+                tag_change = tag_change.strip('/')
+                tags.remove(tag_change)
+            else:
+                tags.append(tag_change)
+        else:
+            tag_strip = ''
+        hyperlink = [tag for tag in tags if tag.startswith('a ')]
+        if run.startswith('<'):
+            run = run.replace(tag_strip, '')
+            if hyperlink:
+                hyperlink = hyperlink[0]
+                hyperlink = re.match('.*?(?:href=")(.*?)(?:").*?', hyperlink).group(1)
+                add_hyperlink(para, run, hyperlink)
+            else:
+                runner = para.add_run(run)
+                if 'b' in tags:
+                    runner.bold = True
+                if 'u' in tags:
+                    runner.underline = True
+                if 'i' in tags:
+                    runner.italic = True
+                if 'h1' in tags:
+                    runner.font.size = Pt(18)
+                if 'h2' in tags:
+                    runner.font.size = Pt(14)
+                if 'h3' in tags:
+                    runner.font.size = Pt(12)
+                if 'sup' in tags:
+                    runner.font.superscript = True
+        else:
+            para.add_run(run)
+
 def create_docx(title: str, answer: str, citations: str):
     try:
-        document = Document()
-        html_parser = HtmlToDocx()
+        soup_answer = BeautifulSoup(answer, "lxml")
+
+        # Remove citation anchor in answer text
+        for a in soup_answer.findAll('a'):
+            a.replaceWithChildren()
+
+        doc = create_new_doc(title)
+
+        # Add answer to the document
+        # Add spaces between the citations
+        html_answer = str(soup_answer.body).replace('</sup><sup>', '</sup> <sup>')
+        add_html_to_docx(html_answer, doc)
+
+        # Add citations to the document
+        html_citations = citations
+        add_html_to_docx(html_citations, doc, "Citations")
+
         stream = io.BytesIO()
-
-        document._body.clear_content() #Remove blank lines from new document
-
-        document.add_heading(title, 0) #Add heading
-        answer_html = answer.replace('\n', '<br />') # Replace newline with <br />
-        html_parser.add_html_to_document(answer_html, document) # Add the answer content
-        citations_html = citations.replace('\n', '<br />') # Replace newline with <br />
-        html_parser.add_html_to_document(citations_html, document) # Add the citations
-
-        document.save(stream)
+        doc.save(stream)
         stream.seek(0)
 
         return stream
@@ -50,14 +153,11 @@ def create_docx(title: str, answer: str, citations: str):
         return str(ex)
 
 def upload_to_blob(input_stream: io.BytesIO(), request_id: str,
-                   user_id: str, blob_service_client: BlobServiceClient,
-                   container_name: str):
+                   user_id: str, container_client: ContainerClient):
     try:
         timestamp = time.strftime("%Y%m%d%H%M%S")
         blob_name = f"{user_id}/{timestamp}_{request_id}.docx"
-        blob_client = blob_service_client.get_blob_client(container=container_name,
-                                                          blob=blob_name)
-        blob_client.upload_blob(input_stream, blob_type="BlockBlob")
+        container_client.get_blob_client(blob_name).upload_blob(input_stream, blob_type="BlockBlob")
 
         return blob_name
 

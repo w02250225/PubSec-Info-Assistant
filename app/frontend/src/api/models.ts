@@ -100,20 +100,7 @@ export const enum FileState {
     Error = "ERROR"
 }
 
-
-export type GetInfoResponse = {
-    AZURE_OPENAI_SERVICE: string;
-    AZURE_OPENAI_CHATGPT_DEPLOYMENT: string;
-    AZURE_OPENAI_CHATGPT_MODEL: string;
-    AZURE_OPENAI_MODEL_NAME: string;
-    AZURE_OPENAI_MODEL_VERSION: string;
-    AZURE_SEARCH_SERVICE: string;
-    AZURE_SEARCH_INDEX: string;
-    TARGET_LANGUAGE: string;
-    error?: string;
-};
-
-export type GetUserResponse = {
+export type UserData = {
     id: string;
     session_id: string;
     displayName: string;
@@ -125,6 +112,19 @@ export type GetUserResponse = {
     preferredLanguage: string;
     surname: string;
     userPrincipalName: string;
+    error?: string;
+};
+
+export type GetInfoResponse = {
+    AZURE_OPENAI_SERVICE: string;
+    AZURE_OPENAI_CHATGPT_DEPLOYMENT: string;
+    AZURE_OPENAI_CHATGPT_MODEL: string;
+    AZURE_OPENAI_MODEL_NAME: string;
+    AZURE_OPENAI_MODEL_VERSION: string;
+    AZURE_SEARCH_SERVICE: string;
+    AZURE_SEARCH_INDEX: string;
+    TARGET_LANGUAGE: string;
+    USER_DATA: UserData;
     error?: string;
 };
 

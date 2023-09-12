@@ -259,9 +259,9 @@ def chat():
 
         return response
 
-    except Exception as e:
+    except Exception as ex:
         logging.exception("Exception in /chat")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(ex)}), 500
 
 @app.route("/getblobclienturl")
 def get_blob_client_url():
@@ -292,13 +292,15 @@ def get_all_upload_status():
     try:
         results = statusLog.read_files_status_by_timeframe(
             timeframe, State[state])
-    except Exception as e:
+    except Exception as ex:
         logging.exception("Exception in /getalluploadstatus")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(ex)}), 500
     return jsonify(results)
 
 @app.route("/getInfoData")
 def get_info_data():
+    user_data = session["user_data"]
+    user_data["session_id"] = session["state"]
     response = jsonify(
         {
             "AZURE_OPENAI_CHATGPT_DEPLOYMENT": f"{AZURE_OPENAI_CHATGPT_DEPLOYMENT}",
@@ -307,7 +309,8 @@ def get_info_data():
             "AZURE_OPENAI_SERVICE": f"{AZURE_OPENAI_SERVICE}",
             "AZURE_SEARCH_SERVICE": f"{AZURE_SEARCH_SERVICE}",
             "AZURE_SEARCH_INDEX": f"{AZURE_SEARCH_INDEX}",
-            "TARGET_LANGUAGE": f"{QUERY_TERM_LANGUAGE}"
+            "TARGET_LANGUAGE": f"{QUERY_TERM_LANGUAGE}",
+            "USER_DATA": user_data
         })
     return response
 
@@ -318,33 +321,31 @@ def get_citation():
         blob = blob_container.get_blob_client(citation).download_blob()
         decoded_text = blob.readall().decode()
         results = jsonify(json.loads(decoded_text))
-    except Exception as e:
+
+    except Exception as ex:
         logging.exception("Exception in /getcitation")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(ex)}), 500
+
     return jsonify(results.json)
 
 @app.route('/exportAnswer', methods=["POST"])
 def export():
     try:
-        export_name = exporthelper.export_to_blob(request.json,
-                                                  BLOB_CLIENT,
-                                                  AZURE_BLOB_EXPORT_CONTAINER)
+        export_name, export_file = exporthelper.export_to_blob(request.json,
+                                                               export_container)
 
-        # TODO
-        # blob = export_container.get_blob_client(export_name).download_blob()
-        # decoded_text = blob.readall().decode()
-        # results = jsonify(json.loads(decoded_text))
-        
+        file_name = export_name.split('/')[1]
+
     except Exception as ex:
         logging.exception("Exception in /exportAnswer")
         return jsonify({"error": str(ex)}), 500
 
-    return jsonify({
-        "file_name": export_name,
-        "download_link": export_name # TODO
-    })
+    return send_file(export_file,
+                     as_attachment=True,
+                     download_name=file_name
+                     )
 
-# app.before_request(check_authenticated)
+app.before_request(check_authenticated)
 
 if __name__ == "__main__":
     app.run(debug=True)
