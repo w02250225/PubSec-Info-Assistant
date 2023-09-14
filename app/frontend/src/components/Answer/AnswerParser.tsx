@@ -89,6 +89,10 @@ export function parseAnswerToHtml(answer: string, citation_lookup: CitationLooku
             const path = getCitationFilePath(citation.citation);
             const sourcePath = citation.source_path;
             const pageNumber = citation.page_number;
+            console.log("Citation: " +citation.citation);
+            console.log("Path: " + path);
+            console.log("sourcePath: " + path);
+            console.log("pageNumber: " + path);
                 
                 // const path = getCitationFilePath((citation_lookup as any)[part].citation);
                 // const sourcePath = (citation_lookup as any)[part].source_path;

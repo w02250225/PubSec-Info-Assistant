@@ -65,16 +65,14 @@ CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 TENANT_ID = os.getenv("TENANT_ID")
 REDIRECT_URI = os.getenv("REDIRECT_URI") or "http://localhost:5000/authorized"
-AUTHORITY = os.getenv(
-    "AUTHORITY") or f"https://login.microsoftonline.com/{TENANT_ID}"
+AUTHORITY = os.getenv("AUTHORITY") or f"https://login.microsoftonline.com/{TENANT_ID}"
 SCOPES = ["User.Read"]
 
 # Misc app settings
 APP_SECRET = os.getenv("APP_SECRET")
 DEBUG = os.getenv("CODESPACES") == "true"
 SCHEME = "http" if DEBUG else "https"
-LOGOUT_URL = os.getenv(
-    "LOGOUT_URL") or "https://treasuryqld.sharepoint.com/sites/corporate/"
+LOGOUT_URL = os.getenv("LOGOUT_URL") or "https://treasuryqld.sharepoint.com/sites/corporate/"
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = APP_SECRET
