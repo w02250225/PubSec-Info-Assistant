@@ -186,7 +186,7 @@ def trim_content(sentence, n):
 def requeue(response, message_json):
     '''This function handles requeing and erroring of cognitive servcies'''
     blob_path = message_json["blob_name"]
-    queued_count = message_json["text_enrichment_queued_count"]
+    queued_count = message_json["enrichment_queued_count"]
     if response.status_code == 429:
         # throttled, so requeue with random backoff seconds to mitigate throttling,
         # unless it has hit the max tries
