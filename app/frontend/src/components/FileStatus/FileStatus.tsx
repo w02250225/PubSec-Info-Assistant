@@ -101,7 +101,7 @@ export const FileStatus = ({ className }: Props) => {
                     iconName: FILE_ICONS[fileExtension.toLowerCase() || 'txt'],
                     fileType: fileExtension,
                     state: fileList[i].state,
-                    state_description: fileList[i].state_description,
+                    state_description: fileList[i].state_description || STATE_DESCRIPTION[fileList[i].state || "Error"],
                     upload_timestamp: fileList[i].start_timestamp,
                     modified_timestamp: fileList[i].state_timestamp,
                     value: fileList[i].id,
@@ -116,12 +116,24 @@ export const FileStatus = ({ className }: Props) => {
 
     const FILE_ICONS: { [id: string]: string } = {
         "csv": 'csv',
+        "doc": 'docx',
         "docx": 'docx',
         "pdf": 'pdf',
         "pptx": 'pptx',
         "txt": 'txt',
-        "html": 'xsn',
+        "htm": 'html',
+        "html": 'html',
+        "xls": 'xlsx',
         "xlsx": 'xlsx'
+    };
+
+    
+    const STATE_DESCRIPTION: { [id: string]: string } = {
+        "Processing": "File is being processed, please check back later", 
+        "Skipped": "File processing was skipped",
+        "Queued": "File is queued for processing, please check back later",
+        "Complete": "File processing is complete",
+        "Error": "There was an unexected error processing the file"
     };
 
     const animatedStyles = useSpring({
@@ -129,11 +141,10 @@ export const FileStatus = ({ className }: Props) => {
         to: { opacity: 1 }
     });
 
-    
-    // Load file list on page load
+    // Refresh file list on filter change
     useEffect(() => {
         onGetStatusClick();
-    }, []);
+    }, [selectedTimeFrameItem, selectedFileStateItem]);
 
     return (
         <div className={styles.container}>

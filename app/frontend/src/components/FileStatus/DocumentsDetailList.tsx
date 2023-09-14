@@ -2,7 +2,8 @@
 // Licensed under the MIT license.
 
 import { useState } from "react";
-import { DetailsList, DetailsListLayoutMode, SelectionMode, IColumn, Selection, Label, BaseSelectedItemsList } from "@fluentui/react";
+import { Link } from '@fluentui/react/lib/Link';
+import { ShimmeredDetailsList, DetailsListLayoutMode, SelectionMode, IColumn } from "@fluentui/react";
 import { TooltipHost } from '@fluentui/react';
 
 import styles from "./DocumentsDetailList.module.css";
@@ -53,9 +54,8 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
         return item.key;
     }
 
-    function onItemInvoked(item: any): void {
-        let url = `${window.location.origin}/#/ViewDocument?documentName=${encodeURIComponent(item.name)}`;
-        window.open(url, "_blank", "noreferrer");
+    function viewFile(item: any): string {
+        return `${window.location.origin}/#/ViewDocument?documentName=${encodeURIComponent(item.name)}`;
     }
 
     const [columns, setColumns] = useState<IColumn[]> ([
@@ -85,10 +85,16 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
             maxWidth: 350,
             isRowHeader: true,
             isResizable: true,
+            ariaLabel: 'File name',
             sortAscendingAriaLabel: 'Sorted A to Z',
             sortDescendingAriaLabel: 'Sorted Z to A',
             onColumnClick: onColumnClick,
             data: 'string',
+            onRender: (item: IDocument) => (
+                <TooltipHost content="Click to view file">
+                    <Link href={viewFile(item)} target="_blank">{item.name}</Link>
+                </TooltipHost>
+            ),
             isPadded: true,
         },
         {
@@ -142,13 +148,14 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
             onRender: (item: IDocument) => {
                 return <span>{item.modified_timestamp}</span>;
             },
-        },
+        }
     ]);
 
     return (
         <div>
-            <DetailsList
+            <ShimmeredDetailsList
                 items={items}
+                enableShimmer={!items}
                 compact={true}
                 columns={columns}
                 selectionMode={SelectionMode.none}
@@ -156,7 +163,6 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
                 setKey="none"
                 layoutMode={DetailsListLayoutMode.justified}
                 isHeaderVisible={true}
-                onItemInvoked={onItemInvoked}
             />
             <span className={styles.footer}>{"(" + items.length as string + ") records."}</span>
         </div>
