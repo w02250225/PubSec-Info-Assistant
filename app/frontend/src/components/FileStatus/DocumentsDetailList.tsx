@@ -54,7 +54,8 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
     }
 
     function onItemInvoked(item: any): void {
-        alert(`Item invoked: ${item.name}`);
+        let url = `${window.location.origin}/#/ViewDocument?documentName=${encodeURIComponent(item.name)}`;
+        window.open(url, "_blank", "noreferrer");
     }
 
     const [columns, setColumns] = useState<IColumn[]> ([

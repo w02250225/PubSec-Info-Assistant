@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dropdown, DropdownMenuItemType, IDropdownOption, IDropdownStyles } from '@fluentui/react/lib/Dropdown';
 import { Stack } from "@fluentui/react";
 import { DocumentsDetailList, IDocument } from "./DocumentsDetailList";
@@ -98,7 +98,7 @@ export const FileStatus = ({ className }: Props) => {
                 items.push({
                     key: fileList[i].id,
                     name: fileList[i].file_name,
-                    iconName: FILE_ICONS[fileExtension.toLowerCase()],
+                    iconName: FILE_ICONS[fileExtension.toLowerCase() || 'txt'],
                     fileType: fileExtension,
                     state: fileList[i].state,
                     state_description: fileList[i].state_description,
@@ -120,13 +120,20 @@ export const FileStatus = ({ className }: Props) => {
         "pdf": 'pdf',
         "pptx": 'pptx',
         "txt": 'txt',
-        "html": 'xsn'
+        "html": 'xsn',
+        "xlsx": 'xlsx'
     };
 
     const animatedStyles = useSpring({
         from: { opacity: 0 },
         to: { opacity: 1 }
     });
+
+    
+    // Load file list on page load
+    useEffect(() => {
+        onGetStatusClick();
+    }, []);
 
     return (
         <div className={styles.container}>
