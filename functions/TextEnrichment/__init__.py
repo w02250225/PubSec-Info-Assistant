@@ -51,7 +51,7 @@ def main(msg: func.QueueMessage) -> None:
     '''This function is triggered by a message in the text-enrichment-queue.
     It will first determine the language, and if this differs from
     the target language, it will translate the chunks to the target language.'''
-    
+
     message_body = msg.get_body().decode("utf-8")
     message_json = json.loads(message_body)
     blob_path = message_json["blob_name"]
@@ -69,7 +69,7 @@ def main(msg: func.QueueMessage) -> None:
         )
         file_name, file_extension, file_directory  = utilities.get_filename_and_extension(blob_path)
         chunk_folder_path = file_directory + file_name + file_extension
-        
+
         # Detect language of the document
         chunk_content = ''        
         blob_service_client = BlobServiceClient.from_connection_string(azure_blob_connection_string)
@@ -112,7 +112,7 @@ def main(msg: func.QueueMessage) -> None:
             # error or requeue
             requeue(response, message_json)
             return
-            
+
         # If the language of the document is not equal to target language then translate the generated chunks
         if detected_language != targetTranslationLanguage:
             status_log.upsert_document(
@@ -141,22 +141,22 @@ def main(msg: func.QueueMessage) -> None:
                     # error or requeue
                     requeue(response, message_json)
                     return
-                                
+
                 # add translated content to the chunk json
                 chunk_dict["translated_content"] = translated_content
-                                
+
                 # Get path and file name minus the root container
                 json_str = json.dumps(chunk_dict, indent=2, ensure_ascii=False)
                 block_blob_client = blob_service_client.get_blob_client(container=azure_blob_content_storage_container, blob=chunk.name)
                 block_blob_client.upload_blob(json_str, overwrite=True)
-  
+
         status_log.upsert_document(
             blob_path,
             f"{FUNCTION_NAME} - Text enrichment is complete",
             StatusClassification.DEBUG,
-            State.QUEUED,
+            State.COMPLETE,
         )
-   
+
     except Exception as error:
         status_log.upsert_document(
             blob_path,
@@ -164,7 +164,7 @@ def main(msg: func.QueueMessage) -> None:
             StatusClassification.ERROR,
             State.ERROR,
         )
-        
+
     status_log.save_document()
 
 def trim_content(sentence, n):
@@ -209,7 +209,7 @@ def requeue(response, message_json):
                 f"{FUNCTION_NAME} - message resent to enrichment-queue. Visible in {backoff} seconds.",
                 StatusClassification.DEBUG,
                 State.QUEUED,
-            )       
+            )
     else:
         # general error occurred
         status_log.upsert_document(

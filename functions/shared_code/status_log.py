@@ -179,10 +179,11 @@ class StatusLog:
 
         #self.container.upsert_item(body=json_document)
         self._log_document = json_document
-        
+
         # add status to standard logger
         logging.info(status)
 
 
     def save_document(self):
+        logging.info("Updating status in CosmosDB")
         self.container.upsert_item(body=self._log_document)

@@ -284,13 +284,15 @@ class Utilities:
             "structure": []
         }
 
-        title = ''
         section = ''
+        subtitle = ''
         title = soup.title.string if soup.title else file_name
 
         for tag in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'table']):
-            if tag.name in ['h2', 'h3', 'h4', 'h5', 'h6']:
+            if tag.name in ['h3', 'h4', 'h5', 'h6']:
                 section = tag.get_text(strip=True)
+            elif tag.name == 'h2':
+                subtitle = tag.get_text(strip=True)
             elif tag.name == 'h1':
                 title = tag.get_text(strip=True)
             elif tag.name == 'p' and tag.get_text(strip=True):
@@ -298,6 +300,7 @@ class Utilities:
                     "type": "text", 
                     "text": tag.get_text(strip=True),
                     "title": title,
+                    "subtitle": subtitle,
                     "section": section,
                     "page_number": 1                
                     })
@@ -306,13 +309,13 @@ class Utilities:
                     "type": "table", 
                     "text": str(tag),
                     "title": title,
+                    "subtitle": subtitle,
                     "section": section,
                     "page_number": 1                
                     })
 
         # Output document map to log container
         json_str = json.dumps(document_map, indent=2)
-        
         output_filename =  file_name + "_Document_Map" + file_extension + ".json"
         self.write_blob(azure_blob_log_storage_container, json_str, output_filename, file_directory)
 
