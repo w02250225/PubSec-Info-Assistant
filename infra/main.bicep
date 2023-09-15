@@ -208,16 +208,16 @@ module formrecognizer 'core/ai/formrecognizer.bicep' = {
   }
 }
 
-module enrichment 'core/ai/enrichment.bicep' = {
-  scope: rg
-  name: 'enrichment'
-  params: {
-    name: !empty(enrichmentName) ? enrichmentName : '${prefix}-enrichment-${abbrs.cognitiveServicesAccounts}${randomString}'
-    location: location
-    tags: tags
-    sku: encichmentSkuName
-  }
-}
+// module enrichment 'core/ai/enrichment.bicep' = {
+//   scope: rg
+//   name: 'enrichment'
+//   params: {
+//     name: !empty(enrichmentName) ? enrichmentName : '${prefix}-enrichment-${abbrs.cognitiveServicesAccounts}${randomString}'
+//     location: location
+//     tags: tags
+//     sku: encichmentSkuName
+//   }
+// }
 
 module searchServices 'core/search/search-services.bicep' = {
   scope: rg
@@ -441,9 +441,9 @@ module functions 'core/function/function.bicep' = {
     submitRequeueHideSeconds: submitRequeueHideSeconds
     pollingBackoff: pollingBackoff
     maxReadAttempts: maxReadAttempts
-    enrichmentKey: enrichment.outputs.cognitiveServiceAccountKey
-    enrichmentEndpoint: enrichment.outputs.cognitiveServiceEndpoint
-    enrichmentName: enrichment.outputs.cognitiveServicerAccountName
+    enrichmentKey: searchServices.outputs.cogServiceKey
+    enrichmentEndpoint: searchServices.outputs.cogServiceEndpoint
+    enrichmentName: searchServices.outputs.cogServiceName
     targetTranslationLanguage: targetTranslationLanguage
     maxEnrichmentRequeueCount: maxEnrichmentRequeueCount
     enrichmentBackoff: enrichmentBackoff
@@ -642,9 +642,9 @@ output MAX_POLLING_REQUEUE_COUNT string = maxPollingRequeueCount
 output SUBMIT_REQUEUE_HIDE_SECONDS string = submitRequeueHideSeconds
 output POLLING_BACKOFF string = pollingBackoff
 output MAX_READ_ATTEMPTS string = maxReadAttempts 
-output ENRICHMENT_KEY string = enrichment.outputs.cognitiveServiceAccountKey
-output ENRICHMENT_ENDPOINT string = enrichment.outputs.cognitiveServiceEndpoint
-output ENRICHMENT_NAME string = enrichment.outputs.cognitiveServicerAccountName
+output ENRICHMENT_KEY string = searchServices.outputs.cogServiceKey
+output ENRICHMENT_ENDPOINT string = searchServices.outputs.cogServiceEndpoint
+output ENRICHMENT_NAME string = searchServices.outputs.cogServiceName
 output TARGET_TRANSLATION_LANGUAGE string = targetTranslationLanguage
 output MAX_ENRICHMENT_REQUEUE_COUNT string = maxEnrichmentRequeueCount
 output ENRICHMENT_BACKOFF string = enrichmentBackoff
