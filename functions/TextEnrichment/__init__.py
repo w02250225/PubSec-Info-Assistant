@@ -106,7 +106,7 @@ def main(msg: func.QueueMessage) -> None:
                 blob_path,
                 f"{FUNCTION_NAME} - detected language of text is {detected_language}.",
                 StatusClassification.DEBUG,
-                State.QUEUED,
+                State.PROCESSING,
             )             
         else:
             # error or requeue
