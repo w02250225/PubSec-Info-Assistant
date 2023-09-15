@@ -4,15 +4,14 @@
 import logging
 import os
 import json
-from enum import Enum
 from io import BytesIO
 import azure.functions as func
 from azure.storage.queue import QueueClient, TextBase64EncodePolicy
 from shared_code.status_log import StatusLog, State, StatusClassification
 from shared_code.utilities import Utilities
-from xlsx2html import xlsx2html
 import mammoth
 import requests
+import pandas as pd
 
 azure_blob_storage_account = os.environ["BLOB_STORAGE_ACCOUNT"]
 azure_blob_drop_storage_container = os.environ["BLOB_STORAGE_ACCOUNT_UPLOAD_CONTAINER_NAME"]
@@ -33,7 +32,7 @@ CHUNK_TARGET_SIZE = int(os.environ["CHUNK_TARGET_SIZE"])
 
 utilities = Utilities(azure_blob_storage_account, azure_blob_drop_storage_container,
                       azure_blob_content_storage_container, azure_blob_storage_key)
-function_name = "FileLayoutParsingOther"
+FUNCTION_NAME = "FileLayoutParsingOther"
 
 def main(msg: func.QueueMessage) -> None:
     try:
@@ -48,49 +47,51 @@ def main(msg: func.QueueMessage) -> None:
         blob_name = message_json['blob_name']
         blob_uri = message_json['blob_uri']
         status_log.upsert_document(
-            blob_name, f'{function_name} - Starting to parse the non-PDF file', StatusClassification.INFO, State.PROCESSING)
+            blob_name, f'{FUNCTION_NAME} - Starting to parse the non-PDF file', StatusClassification.INFO, State.PROCESSING)
         status_log.upsert_document(
-            blob_name, f'{function_name} - Message received from non-pdf submit queue', StatusClassification.DEBUG)
+            blob_name, f'{FUNCTION_NAME} - Message received from non-pdf submit queue', StatusClassification.DEBUG)
 
         # construct blob url
         blob_path_plus_sas = utilities.get_blob_and_sas(blob_name)
         status_log.upsert_document(
-            blob_name, f'{function_name} - SAS token generated to access the file', StatusClassification.DEBUG)
+            blob_name, f'{FUNCTION_NAME} - SAS token generated to access the file', StatusClassification.DEBUG)
 
         file_name, file_extension, file_directory = utilities.get_filename_and_extension(blob_name)
 
-        response = requests.get(blob_path_plus_sas)
+        response = requests.get(blob_path_plus_sas, timeout=30)
         response.raise_for_status()
         if file_extension in ['.docx']:
             docx_file = BytesIO(response.content)
             # Convert the downloaded Word document to HTML
             result = mammoth.convert_to_html(docx_file)
             status_log.upsert_document(
-                blob_name, f'{function_name} - HTML generated from DocX by mammoth', StatusClassification.DEBUG)
+                blob_name, f'{FUNCTION_NAME} - HTML generated from DocX by mammoth', StatusClassification.DEBUG)
             html = result.value  # The generated HTML
         elif file_extension in ['.xlsx']:
             xlsx_file = BytesIO(response.content)
             # Convert the downloaded Excel document to HTML
-            xlsx_stream = xlsx2html(xlsx_file)
-            xlsx_stream.seek(0)
-            result_html = xlsx_stream.read()
+            sheets = pd.read_excel(xlsx_file, sheet_name=None)
+            html = f'<h1>{file_name}</h1>\n'
+            for sheet_name, sheet_df in sheets.items():
+                title = f'<h2>{sheet_name}</h2>\n'
+                df_html = sheet_df.to_html(na_rep='')
+                html += title + df_html
             status_log.upsert_document(
-                blob_name, f'{function_name} - HTML generated from XLSX by xlsx2html', StatusClassification.DEBUG)
-            html = result_html
+                blob_name, f'{FUNCTION_NAME} - HTML generated from XLSX', StatusClassification.DEBUG)
         else:
             html = response.text
 
         # build the document map from HTML for all non-pdf file types
         status_log.upsert_document(
-            blob_name, f'{function_name} - Starting document map build', StatusClassification.DEBUG)
+            blob_name, f'{FUNCTION_NAME} - Starting document map build', StatusClassification.DEBUG)
         document_map = utilities.build_document_map_html(
             blob_name, blob_uri, html, azure_blob_log_storage_container)
         status_log.upsert_document(
-            blob_name, f'{function_name} - Document map build complete, starting chunking', StatusClassification.DEBUG)
+            blob_name, f'{FUNCTION_NAME} - Document map build complete, starting chunking', StatusClassification.DEBUG)
         chunk_count = utilities.build_chunks(
             document_map, blob_name, blob_uri, CHUNK_TARGET_SIZE)
         status_log.upsert_document(
-            blob_name, f'{function_name} - Chunking complete. {chunk_count} chunks created', StatusClassification.DEBUG)
+            blob_name, f'{FUNCTION_NAME} - Chunking complete. {chunk_count} chunks created', StatusClassification.DEBUG)
 
         # submit message to the enrichment queue to continue processing
         queue_client = QueueClient.from_connection_string(
@@ -99,10 +100,10 @@ def main(msg: func.QueueMessage) -> None:
         message_string = json.dumps(message_json)
         queue_client.send_message(message_string)
         status_log.upsert_document(
-            blob_name, f"{function_name} - message sent to enrichment queue", StatusClassification.DEBUG, State.QUEUED)
+            blob_name, f"{FUNCTION_NAME} - message sent to enrichment queue", StatusClassification.DEBUG, State.QUEUED)
 
-    except Exception as e:
+    except Exception as ex:
         status_log.upsert_document(
-            blob_name, f"{function_name} - An error occurred - {str(e)}", StatusClassification.ERROR, State.ERROR)
+            blob_name, f"{FUNCTION_NAME} - An error occurred - {str(ex)}", StatusClassification.ERROR, State.ERROR)
 
     status_log.save_document()

@@ -270,7 +270,7 @@ class Utilities:
         file_name, file_extension, file_directory  = self.get_filename_and_extension(myblob_name)
 
         soup = BeautifulSoup(html_data, 'lxml')
-        
+
         # Remove CSS from XLSX
         if file_extension in ['.xlsx']:
             for tag in soup():
@@ -284,9 +284,10 @@ class Utilities:
             "structure": []
         }
 
-        section = ''
-        subtitle = ''
         title = soup.title.string if soup.title else file_name
+        subtitle = ''
+        section = ''
+        page_number = 1
 
         for tag in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'table']):
             if tag.name in ['h3', 'h4', 'h5', 'h6']:
@@ -302,7 +303,7 @@ class Utilities:
                     "title": title,
                     "subtitle": subtitle,
                     "section": section,
-                    "page_number": 1                
+                    "page_number": page_number
                     })
             elif tag.name == 'table' and tag.get_text(strip=True):
                 document_map["structure"].append({
@@ -311,8 +312,9 @@ class Utilities:
                     "title": title,
                     "subtitle": subtitle,
                     "section": section,
-                    "page_number": 1                
+                    "page_number": page_number
                     })
+                page_number += 1
 
         # Output document map to log container
         json_str = json.dumps(document_map, indent=2)
