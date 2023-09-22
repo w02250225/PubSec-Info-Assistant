@@ -55,19 +55,19 @@ def main(msg: func.QueueMessage) -> None:
     message_json = json.loads(message_body)
     blob_path = message_json["blob_name"]
     try:
-        statusLog = StatusLog(
+        status_log = StatusLog(
             cosmosdb_url, cosmosdb_key, cosmosdb_database_name, cosmosdb_container_name
         )
 
         # Receive message from the queue
         queued_count = message_json["submit_queued_count"]
-        statusLog.upsert_document(
+        status_log.upsert_document(
             blob_path,
             f"{FUNCTION_NAME} - Received message from pdf-submit-queue ",
             StatusClassification.DEBUG,
             State.PROCESSING,
         )
-        statusLog.upsert_document(
+        status_log.upsert_document(
             blob_path,
             f"{FUNCTION_NAME} - Submitting to Form Recognizer",
             StatusClassification.INFO,
@@ -75,7 +75,7 @@ def main(msg: func.QueueMessage) -> None:
         
         # construct blob url
         blob_path_plus_sas = utilities.get_blob_and_sas(blob_path)
-        statusLog.upsert_document(
+        status_log.upsert_document(
             blob_path,
             f"{FUNCTION_NAME} - SAS token generated",
             StatusClassification.DEBUG,
@@ -100,7 +100,7 @@ def main(msg: func.QueueMessage) -> None:
         # Check if the request was successful (status code 200)
         if response.status_code == 202:
             # Successfully submitted so submit to the polling queue
-            statusLog.upsert_document(
+            status_log.upsert_document(
                 blob_path,
                 f"{FUNCTION_NAME} - PDF submitted to FR successfully",
                 StatusClassification.DEBUG,
@@ -117,7 +117,7 @@ def main(msg: func.QueueMessage) -> None:
             queue_client.send_message(
                 message_json_str, visibility_timeout=poll_queue_submit_backoff
             )
-            statusLog.upsert_document(
+            status_log.upsert_document(
                 blob_path,
                 f"{FUNCTION_NAME} - message sent to pdf-polling-queue. Visible in {poll_queue_submit_backoff} seconds. FR Result ID is {result_id}",
                 StatusClassification.DEBUG,
@@ -134,7 +134,7 @@ def main(msg: func.QueueMessage) -> None:
                 )
                 queued_count += 1
                 message_json["queued_count"] = queued_count
-                statusLog.upsert_document(
+                status_log.upsert_document(
                     blob_path,
                     f"{FUNCTION_NAME} - Throttled on PDF submission to FR, requeuing. Back off of {backoff} seconds",
                     StatusClassification.DEBUG,
@@ -146,14 +146,14 @@ def main(msg: func.QueueMessage) -> None:
                 )
                 message_json_str = json.dumps(message_json)
                 queue_client.send_message(message_json_str, visibility_timeout=backoff)
-                statusLog.upsert_document(
+                status_log.upsert_document(
                     blob_path,
                     f"{FUNCTION_NAME} - message sent to pdf-submit-queue. Visible in {backoff} seconds.",
                     StatusClassification.DEBUG,
                     State.QUEUED,
                 )
             else:
-                statusLog.upsert_document(
+                status_log.upsert_document(
                     blob_path,
                     f"{FUNCTION_NAME} - maximum submissions to FR reached",
                     StatusClassification.ERROR,
@@ -162,7 +162,7 @@ def main(msg: func.QueueMessage) -> None:
 
         else:
             # general error occurred
-            statusLog.upsert_document(
+            status_log.upsert_document(
                 blob_path,
                 f"{FUNCTION_NAME} - Error on PDF submission to FR - {response.status_code} - {response.reason}",
                 StatusClassification.ERROR,
@@ -170,11 +170,11 @@ def main(msg: func.QueueMessage) -> None:
             )
 
     except Exception as error:
-        statusLog.upsert_document(
+        status_log.upsert_document(
             blob_path,
             f"{FUNCTION_NAME} - An error occurred - {str(error)}",
             StatusClassification.ERROR,
             State.ERROR,
         )
         
-    statusLog.save_document()
+    status_log.save_document()

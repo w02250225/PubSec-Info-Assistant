@@ -7,6 +7,7 @@ param sku object = {
   name: 'standard'
 }
 
+param customSubDomainName string = cogServicesName
 param authOptions object = {}
 param semanticSearch string = 'disabled'
 param kind string = 'CognitiveServices'
@@ -43,13 +44,19 @@ resource search 'Microsoft.Search/searchServices@2021-04-01-preview' = {
   sku: sku
 }
 
-resource cogService 'Microsoft.CognitiveServices/accounts@2022-10-01' = {
+resource cogService 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
   name: cogServicesName
   location: location
   tags: tags
   kind: kind
   properties: {
+    customSubDomainName: customSubDomainName
     publicNetworkAccess: publicNetworkAccess
+    networkAcls: {
+      defaultAction: 'Allow'
+      virtualNetworkRules: []
+      ipRules: []
+    }
   }
   sku: cogServicesSku
 }
@@ -61,3 +68,5 @@ output name string = search.name
 output searchServiceKey string = search.listAdminKeys().primaryKey
 #disable-next-line outputs-should-not-contain-secrets 
 output cogServiceKey string = cogService.listKeys().key1
+output cogServiceName string = cogService.name
+output cogServiceEndpoint string = 'https://${cogService.name}.cognitiveservices.azure.com/'

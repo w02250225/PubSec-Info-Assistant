@@ -89,6 +89,10 @@ export function parseAnswerToHtml(answer: string, citation_lookup: CitationLooku
             const path = getCitationFilePath(citation.citation);
             const sourcePath = citation.source_path;
             const pageNumber = citation.page_number;
+            console.log("Citation: " +citation.citation);
+            console.log("Path: " + path);
+            console.log("sourcePath: " + path);
+            console.log("pageNumber: " + path);
                 
                 // const path = getCitationFilePath((citation_lookup as any)[part].citation);
                 // const sourcePath = (citation_lookup as any)[part].source_path;
@@ -98,8 +102,7 @@ export function parseAnswerToHtml(answer: string, citation_lookup: CitationLooku
                     // splitting the full file path from citation_lookup into an array and then slicing it to get the folders, file name, and extension 
                     // the first 4 elements of the full file path are the "https:", "", "blob storaage url", and "container name" which are not needed in the display
                     
-                    <a className="supContainer" title={citation.citation.split("/").slice(4).join("/")} onClick={() => onCitationClicked(path, sourcePath, pageNumber)}>
-                    {/* <a className="supContainer" title={(citation_lookup as any)[part].citation.split("/").slice(4).join("/")} onClick={() => onCitationClicked(path, sourcePath, pageNumber)}> */}
+                    <a className="supContainer" title={citation.citation.split("/").slice(-2, -1)[0]} onClick={() => onCitationClicked(path, sourcePath, pageNumber)}>
                         <sup>{citationIndex}</sup>
                     </a>
                 );

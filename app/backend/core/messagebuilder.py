@@ -1,6 +1,5 @@
 from .modelhelper import num_tokens_from_messages
 
-
 class MessageBuilder:
     """
       A class for building and managing messages in a chat conversation.

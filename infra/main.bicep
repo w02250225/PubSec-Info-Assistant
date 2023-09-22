@@ -21,6 +21,7 @@ param aadMgmtServicePrincipalId string = ''
 param buildNumber string = 'local'
 param isInAutomation bool = false
 param useExistingAOAIService bool
+param azureOpenAIAccountName string
 param azureOpenAIServiceName string
 param azureOpenAIResourceGroup string
 param azureOpenAIServiceKey string
@@ -51,12 +52,18 @@ param uploadContainerName string = 'upload'
 param functionLogsContainerName string = 'logs'
 param searchIndexName string = 'all-files-index'
 param chatGptDeploymentName string = 'chat'
+<<<<<<< HEAD
 param chatGptModelName string = 'gpt-35-turbo'
 param embeddingsModelName string = 'text-embedding-ada-002'
 param chatGptDeploymentCapacity int = 30
 param embeddingsDeploymentCapacity int = 240
 param chatGptModelVersion string = ''
 param chatWarningBannerText string = ''
+=======
+param chatGptModelName string = 'gpt-35-turbo-16k'
+param chatGptModelVersion string = '0613'
+param chatGptDeploymentCapacity int = 720
+>>>>>>> main
 // metadata in our chunking strategy adds about 180-200 tokens to the size of the chunks, 
 // our default target size is 750 tokens so the chunk files that get indexed will be around 950 tokens each
 param chunkTargetSize string = '750' 
@@ -123,7 +130,7 @@ module appServicePlan 'core/host/appserviceplan.bicep' = {
     location: location
     tags: tags
     sku: {
-      name: 'B2'
+      name: 'B3'
       capacity: 3
     }
     kind: 'linux'
@@ -207,6 +214,7 @@ module backend 'core/host/appservice.bicep' = {
       AZURE_BLOB_STORAGE_ENDPOINT: storage.outputs.primaryEndpoints.blob
       AZURE_BLOB_STORAGE_CONTAINER: containerName
       AZURE_BLOB_STORAGE_KEY: storage.outputs.key
+      AZURE_OPENAI_ACCOUNT_NAME: useExistingAOAIService ? azureOpenAIAccountName : cognitiveServices.outputs.name
       AZURE_OPENAI_SERVICE: useExistingAOAIService ? azureOpenAIServiceName : cognitiveServices.outputs.name
       AZURE_OPENAI_RESOURCE_GROUP: useExistingAOAIService ? azureOpenAIResourceGroup : rg.name
       AZURE_SEARCH_INDEX: searchIndexName
@@ -222,6 +230,8 @@ module backend 'core/host/appservice.bicep' = {
       COSMOSDB_KEY: cosmosdb.outputs.CosmosDBKey
       COSMOSDB_DATABASE_NAME: cosmosdb.outputs.CosmosDBDatabaseName
       COSMOSDB_CONTAINER_NAME: cosmosdb.outputs.CosmosDBContainerName
+      COSMOSDB_REQUESTLOG_DATABASE_NAME: cosmosrequestsdb.outputs.CosmosDBDatabaseName
+      COSMOSDB_REQUESTLOG_CONTAINER_NAME: cosmosrequestsdb.outputs.CosmosDBContainerName
       QUERY_TERM_LANGUAGE: queryTermLanguage
       AZURE_CLIENT_ID: aadMgmtClientId
       AZURE_CLIENT_SECRET: aadMgmtClientSecret
@@ -250,7 +260,7 @@ module cognitiveServices 'core/ai/cognitiveservices.bicep' = if (!useExistingAOA
         model: {
           format: 'OpenAI'
           name: chatGptModelName
-          version: '0301'
+          version: chatGptModelVersion
         }
         sku: {
           name: 'Standard'
@@ -287,6 +297,7 @@ module formrecognizer 'core/ai/formrecognizer.bicep' = {
   }
 }
 
+<<<<<<< HEAD
 module enrichment 'core/ai/enrichment.bicep' = {
   scope: rg
   name: 'enrichment'
@@ -298,6 +309,18 @@ module enrichment 'core/ai/enrichment.bicep' = {
     isGovCloudDeployment: isGovCloudDeployment
   }
 }
+=======
+// module enrichment 'core/ai/enrichment.bicep' = {
+//   scope: rg
+//   name: 'enrichment'
+//   params: {
+//     name: !empty(enrichmentName) ? enrichmentName : '${prefix}-enrichment-${abbrs.cognitiveServicesAccounts}${randomString}'
+//     location: location
+//     tags: tags
+//     sku: encichmentSkuName
+//   }
+// }
+>>>>>>> main
 
 module searchServices 'core/search/search-services.bicep' = {
   scope: rg
@@ -383,6 +406,64 @@ module storage 'core/storage/storage-account.bicep' = {
   }
 }
 
+
+// module storageDev 'core/storage/storage-account.bicep' = {
+//   name: 'storageDev'
+//   scope: rg
+//   params: {
+//     name: !empty(storageAccountName) ? '${storageAccountName}dev' : '${prefix}${abbrs.storageStorageAccounts}${randomString}dev'
+//     location: location
+//     tags: tags
+//     publicNetworkAccess: 'Enabled'
+//     sku: {
+//       name: 'Standard_LRS'
+//     }
+//     deleteRetentionPolicy: {
+//       enabled: true
+//       days: 7
+//     }
+//     containers: [
+//       {
+//         name: containerName
+//         publicAccess: 'None'
+//       }
+//       {
+//         name: 'website'
+//         publicAccess: 'None'
+//       }
+//       {
+//         name: uploadContainerName
+//         publicAccess: 'None'
+//       }
+//       {
+//         name: 'function'
+//         publicAccess: 'None'
+//       }
+//       {
+//         name: functionLogsContainerName
+//         publicAccess: 'None'
+//       }
+//     ]
+//     queueNames: [
+//       {
+//         name: pdfSubmitQueue
+//       }
+//       {
+//         name: pdfPollingQueue
+//       }
+//       {
+//         name: nonPdfSubmitQueue
+//       }  
+//       {
+//         name: mediaSubmitQueue
+//       }          
+//       {
+//         name: textEnrichmentQueue
+//       }
+//     ]
+//   }
+// }
+
 module storageMedia 'core/storage/storage-account.bicep' = {
   name: 'storage-media'
   scope: rg
@@ -410,9 +491,23 @@ module cosmosdb 'core/db/cosmosdb.bicep' = {
     tags: tags
     databaseName: 'statusdb'
     containerName: 'statuscontainer'
+    partitionKeyPath: ['/file_name']
   }
 }
 
+module cosmosrequestsdb 'core/db/cosmosdb.bicep' = {
+  name: 'cosmosrequestsdb'
+  scope: rg
+  params: {
+    name: !empty(cosmosdbName) ? cosmosdbName : '${prefix}-${abbrs.cosmosDBAccounts}${randomString}'
+    location: location
+    tags: tags
+    databaseName: 'requestdb'
+    containerName: 'requestcontainer'
+    partitionKeyPath: ['/user_id', '/session_id']
+    autoscaleMaxThroughput: 2000
+  }
+}
 // Function App 
 module functions 'core/function/function.bicep' = {
   name: 'functions'
@@ -454,9 +549,9 @@ module functions 'core/function/function.bicep' = {
     submitRequeueHideSeconds: submitRequeueHideSeconds
     pollingBackoff: pollingBackoff
     maxReadAttempts: maxReadAttempts
-    enrichmentKey: enrichment.outputs.cognitiveServiceAccountKey
-    enrichmentEndpoint: enrichment.outputs.cognitiveServiceEndpoint
-    enrichmentName: enrichment.outputs.cognitiveServicerAccountName
+    enrichmentKey: searchServices.outputs.cogServiceKey
+    enrichmentEndpoint: searchServices.outputs.cogServiceEndpoint
+    enrichmentName: searchServices.outputs.cogServiceName
     targetTranslationLanguage: targetTranslationLanguage
     maxEnrichmentRequeueCount: maxEnrichmentRequeueCount
     enrichmentBackoff: enrichmentBackoff
@@ -495,7 +590,7 @@ module avam 'core/video_indexer/video_indexer.bicep' = {
 
 
 // USER ROLES
-module openAiRoleUser 'core/security/role.bicep' = {
+module openAiRoleUser 'core/security/role.bicep'  = if (principalId != '') {
   scope: rg
   name: 'openai-role-user'
   params: {
@@ -505,7 +600,7 @@ module openAiRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module storageRoleUser 'core/security/role.bicep' = {
+module storageRoleUser 'core/security/role.bicep' = if (principalId != '') {
   scope: rg
   name: 'storage-role-user'
   params: {
@@ -515,7 +610,7 @@ module storageRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module storageContribRoleUser 'core/security/role.bicep' = {
+module storageContribRoleUser 'core/security/role.bicep' = if (principalId != '') {
   scope: rg
   name: 'storage-contribrole-user'
   params: {
@@ -525,7 +620,7 @@ module storageContribRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module searchRoleUser 'core/security/role.bicep' = {
+module searchRoleUser 'core/security/role.bicep' = if (principalId != '') {
   scope: rg
   name: 'search-role-user'
   params: {
@@ -535,7 +630,7 @@ module searchRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module searchContribRoleUser 'core/security/role.bicep' = {
+module searchContribRoleUser 'core/security/role.bicep' = if (principalId != '') {
   scope: rg
   name: 'search-contrib-role-user'
   params: {
@@ -632,7 +727,8 @@ resource customerAttribution 'Microsoft.Resources/deployments@2021-04-01' = if (
 }
 
 output AZURE_LOCATION string = location
-output AZURE_OPENAI_SERVICE string = azureOpenAIServiceName //cognitiveServices.outputs.name
+output AZURE_OPENAI_ACCOUNT_NAME string = azureOpenAIAccountName
+output AZURE_OPENAI_SERVICE string = azureOpenAIServiceName
 output AZURE_SEARCH_INDEX string = searchIndexName
 output AZURE_SEARCH_SERVICE string = searchServices.outputs.name
 output AZURE_SEARCH_SERVICE_ENDPOINT string = searchServices.outputs.endpoint
@@ -678,9 +774,9 @@ output MAX_POLLING_REQUEUE_COUNT string = maxPollingRequeueCount
 output SUBMIT_REQUEUE_HIDE_SECONDS string = submitRequeueHideSeconds
 output POLLING_BACKOFF string = pollingBackoff
 output MAX_READ_ATTEMPTS string = maxReadAttempts 
-output ENRICHMENT_KEY string = enrichment.outputs.cognitiveServiceAccountKey
-output ENRICHMENT_ENDPOINT string = enrichment.outputs.cognitiveServiceEndpoint
-output ENRICHMENT_NAME string = enrichment.outputs.cognitiveServicerAccountName
+output ENRICHMENT_KEY string = searchServices.outputs.cogServiceKey
+output ENRICHMENT_ENDPOINT string = searchServices.outputs.cogServiceEndpoint
+output ENRICHMENT_NAME string = searchServices.outputs.cogServiceName
 output TARGET_TRANSLATION_LANGUAGE string = targetTranslationLanguage
 output MAX_ENRICHMENT_REQUEUE_COUNT string = maxEnrichmentRequeueCount
 output ENRICHMENT_BACKOFF string = enrichmentBackoff
