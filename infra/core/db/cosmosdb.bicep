@@ -42,6 +42,9 @@ param autoscaleMaxThroughput int = 1000
 @description('The Partition Key for the CosmosDB Container')
 param partitionKeyPath array
 
+@description('The Partition Key Version for the CosmosDB Container')
+param partitionKeyVersion int
+
 var consistencyPolicy = {
   Eventual: {
     defaultConsistencyLevel: 'Eventual'
@@ -102,7 +105,7 @@ resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/container
       partitionKey: {
         paths: partitionKeyPath
         kind: length(partitionKeyPath) == 1 ? 'Hash' : 'MultiHash'
-        version: length(partitionKeyPath) == 1 ? 1 : 2
+        version: partitionKeyVersion
       }
       indexingPolicy: {
         indexingMode: 'consistent'

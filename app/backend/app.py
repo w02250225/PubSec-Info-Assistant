@@ -53,7 +53,7 @@ AZURE_OPENAI_CHATGPT_VERSION = ( os.environ.get("AZURE_OPENAI_CHATGPT_VERSION") 
 AZURE_OPENAI_SERVICE_KEY = os.environ.get("AZURE_OPENAI_SERVICE_KEY")
 AZURE_SUBSCRIPTION_ID = os.environ.get("AZURE_SUBSCRIPTION_ID")
 IS_GOV_CLOUD_DEPLOYMENT = os.environ.get("IS_GOV_CLOUD_DEPLOYMENT") or False
-CHAT_WARNING_BANNER_TEXT = os.environ.get("CHAT_WARNING_BANNER_TEXT")
+CHAT_WARNING_BANNER_TEXT = os.environ.get("CHAT_WARNING_BANNER_TEXT") or ""
 
 KB_FIELDS_CONTENT = os.environ.get("KB_FIELDS_CONTENT") or "merged_content"
 KB_FIELDS_CATEGORY = os.environ.get("KB_FIELDS_CATEGORY") or "category"
@@ -154,7 +154,7 @@ else:
         account_name=AZURE_OPENAI_SERVICE,
         deployment_name=AZURE_OPENAI_CHATGPT_DEPLOYMENT)
 
-    MODEL_NAME = deployment.properties.model.name,
+    MODEL_NAME = deployment.properties.model.name
     MODEL_VERSION = deployment.properties.model.version
 
 chat_approaches = {

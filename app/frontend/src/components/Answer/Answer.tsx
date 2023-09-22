@@ -58,6 +58,11 @@ export const Answer = ({
             const sourceFiles = parsedAnswer.sourceFiles[x];
             const href = `${window.location.origin}/#/ViewDocument?documentName=${encodeURIComponent(originalFile)}&pageNumber=${pageNumbers}`
             const linkName = `${originalFile} ${!isNaN(pageNumbers) ? `(Page ${pageNumbers})` : ''}`;
+            
+            // console.log('Answer')
+            // console.log("Path: " + path);
+            // console.log("sourcePath: " + sourceFiles);
+            // console.log("pageNumber: " + pageNumbers);
     
             citationLinks.push({
                 key: i,

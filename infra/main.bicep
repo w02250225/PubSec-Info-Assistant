@@ -27,13 +27,15 @@ param azureOpenAIResourceGroup string
 param azureOpenAIServiceKey string
 param openAiServiceName string = ''
 param openAiSkuName string = 'S0'
-param cognitiveServiesForSearchName string = ''
+param cognitiveServicesForSearchName string = ''
 param cosmosdbName string = ''
 param formRecognizerName string = ''
+#disable-next-line no-unused-params
 param enrichmentName string = ''
 param formRecognizerSkuName string = 'S0'
+#disable-next-line no-unused-params
 param encichmentSkuName string = 'S0'
-param cognitiveServiesForSearchSku string = 'S0'
+param cognitiveServicesForSearchSku string = 'S0'
 param appServicePlanName string = ''
 param appServicePlanContainerName string = ''
 param containerRegistryName string = ''
@@ -52,18 +54,12 @@ param uploadContainerName string = 'upload'
 param functionLogsContainerName string = 'logs'
 param searchIndexName string = 'all-files-index'
 param chatGptDeploymentName string = 'chat'
-<<<<<<< HEAD
 param chatGptModelName string = 'gpt-35-turbo'
 param embeddingsModelName string = 'text-embedding-ada-002'
 param chatGptDeploymentCapacity int = 30
 param embeddingsDeploymentCapacity int = 240
 param chatGptModelVersion string = ''
 param chatWarningBannerText string = ''
-=======
-param chatGptModelName string = 'gpt-35-turbo-16k'
-param chatGptModelVersion string = '0613'
-param chatGptDeploymentCapacity int = 720
->>>>>>> main
 // metadata in our chunking strategy adds about 180-200 tokens to the size of the chunks, 
 // our default target size is 750 tokens so the chunk files that get indexed will be around 950 tokens each
 param chunkTargetSize string = '750' 
@@ -98,7 +94,11 @@ param subscriptionId string = ''
 param principalId string = ''
 
 var abbrs = loadJsonContent('abbreviations.json')
-var tags = { ProjectName: 'Information Assistant', BuildNumber: buildNumber }
+var tags = { 
+  Environment: 'Development'
+  'Project Name': 'Coeus'
+  Release: buildNumber
+}
 var prefix = 'infoasst'
 
 
@@ -297,19 +297,6 @@ module formrecognizer 'core/ai/formrecognizer.bicep' = {
   }
 }
 
-<<<<<<< HEAD
-module enrichment 'core/ai/enrichment.bicep' = {
-  scope: rg
-  name: 'enrichment'
-  params: {
-    name: !empty(enrichmentName) ? enrichmentName : '${prefix}-enrichment-${abbrs.cognitiveServicesAccounts}${randomString}'
-    location: location
-    tags: tags
-    sku: encichmentSkuName
-    isGovCloudDeployment: isGovCloudDeployment
-  }
-}
-=======
 // module enrichment 'core/ai/enrichment.bicep' = {
 //   scope: rg
 //   name: 'enrichment'
@@ -318,9 +305,9 @@ module enrichment 'core/ai/enrichment.bicep' = {
 //     location: location
 //     tags: tags
 //     sku: encichmentSkuName
+//     isGovCloudDeployment: isGovCloudDeployment
 //   }
 // }
->>>>>>> main
 
 module searchServices 'core/search/search-services.bicep' = {
   scope: rg
@@ -338,9 +325,9 @@ module searchServices 'core/search/search-services.bicep' = {
       name: searchServicesSkuName
     }
     semanticSearch: 'free'
-    cogServicesName: !empty(cognitiveServiesForSearchName) ? cognitiveServiesForSearchName : '${prefix}-${abbrs.cognitiveServicesAccounts}${randomString}'
+    cogServicesName: !empty(cognitiveServicesForSearchName) ? cognitiveServicesForSearchName : '${prefix}-${abbrs.cognitiveServicesAccounts}${randomString}'
     cogServicesSku: {
-      name: cognitiveServiesForSearchSku
+      name: cognitiveServicesForSearchSku
     }
     isGovCloudDeployment: isGovCloudDeployment
   }
@@ -492,10 +479,11 @@ module cosmosdb 'core/db/cosmosdb.bicep' = {
     databaseName: 'statusdb'
     containerName: 'statuscontainer'
     partitionKeyPath: ['/file_name']
+    partitionKeyVersion: 1
   }
 }
 
-module cosmosrequestsdb 'core/db/cosmosdb.bicep' = {
+module cosmosrequestsdb 'core/db/cosmosdb.bicep' =  {
   name: 'cosmosrequestsdb'
   scope: rg
   params: {
@@ -504,10 +492,13 @@ module cosmosrequestsdb 'core/db/cosmosdb.bicep' = {
     tags: tags
     databaseName: 'requestdb'
     containerName: 'requestcontainer'
-    partitionKeyPath: ['/user_id', '/session_id']
+    partitionKeyPath: ['/user_id']
+    partitionKeyVersion: 2
     autoscaleMaxThroughput: 2000
   }
+  dependsOn: [cosmosdb] // Cosmos doesn't like parallel deployments
 }
+
 // Function App 
 module functions 'core/function/function.bicep' = {
   name: 'functions'
@@ -691,7 +682,7 @@ module storageRoleFunc 'core/security/role.bicep' = {
   }
 }
 
-module containerRegistryPush 'core/security/role.bicep' = {
+module containerRegistryPush 'core/security/role.bicep' = if( aadMgmtServicePrincipalId !='' ) {
   scope: rg
   name: 'AcrPush'
   params: {
@@ -701,16 +692,16 @@ module containerRegistryPush 'core/security/role.bicep' = {
   }
 }
 
-// MANAGEMENT SERVICE PRINCIPAL
-module openAiRoleMgmt 'core/security/role.bicep' =  if (!isInAutomation) {
-  scope: resourceGroup(useExistingAOAIService && !isGovCloudDeployment? azureOpenAIResourceGroup : rg.name)
-  name: 'openai-role-mgmt'
-  params: {
-    principalId: aadMgmtServicePrincipalId
-    roleDefinitionId: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
-    principalType: 'ServicePrincipal'
-  }
-}
+// // MANAGEMENT SERVICE PRINCIPAL
+// module openAiRoleMgmt 'core/security/role.bicep' =  if (!isInAutomation) {
+//   scope: resourceGroup(useExistingAOAIService && !isGovCloudDeployment? azureOpenAIResourceGroup : rg.name)
+//   name: 'openai-role-mgmt'
+//   params: {
+//     principalId: aadMgmtServicePrincipalId
+//     roleDefinitionId: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
+//     principalType: 'ServicePrincipal'
+//   }
+// }
 
 // DEPLOYMENT OF AZURE CUSTOMER ATTRIBUTION TAG
 resource customerAttribution 'Microsoft.Resources/deployments@2021-04-01' = if (cuaEnabled) {

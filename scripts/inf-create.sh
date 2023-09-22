@@ -121,23 +121,20 @@ else
       aadMgmtSPId=$(az ad sp list --display-name infoasst_mgmt_access_$RANDOM_STRING --output tsv --query "[].id")
   fi
 
-  if [ $REQUIRE_WEBSITE_SECURITY_MEMBERSHIP ]; then
-    # if the REQUIRE_WEBSITE_SECURITY_MEMBERSHIP is set to true, then we need to update the app registration to require assignment
-    az ad sp update --id $aadWebSPId --set "appRoleAssignmentRequired=true"
-  else
-    # otherwise the default is to allow all users in the tenant to access the app
-    az ad sp update --id $aadWebSPId --set "appRoleAssignmentRequired=false"
-  fi
+  # if [ $REQUIRE_WEBSITE_SECURITY_MEMBERSHIP ]; then
+  #   # if the REQUIRE_WEBSITE_SECURITY_MEMBERSHIP is set to true, then we need to update the app registration to require assignment
+  #   az ad sp update --id $aadWebSPId --set "appRoleAssignmentRequired=true"
+  # else
+  #   # otherwise the default is to allow all users in the tenant to access the app
+  #   az ad sp update --id $aadWebSPId --set "appRoleAssignmentRequired=false"
+  # fi
 fi
-# export SINGED_IN_USER_PRINCIPAL="" #$signedInUserId
-# export AZURE_AD_APP_CLIENT_ID="2a962703-32d6-45dc-8a43-29ab6a459169" #$aadAppId
-
-export SINGED_IN_USER_PRINCIPAL=$signedInUserId
+export SINGED_IN_USER_PRINCIPAL="" #$signedInUserId
 export AZURE_AD_WEB_APP_CLIENT_ID=$aadWebAppId
 export AZURE_AD_MGMT_APP_CLIENT_ID=$aadMgmtAppId
 export AZURE_AD_MGMT_SP_ID=$aadMgmtSPId
 export AZURE_AD_MGMT_APP_SECRET=$aadMgmtAppSecret
-
+#export AZURE_AD_APP_CLIENT_ID="2a962703-32d6-45dc-8a43-29ab6a459169" #$aadAppId
 
 if [ -n "${IN_AUTOMATION}" ]; then 
   export IS_IN_AUTOMATION=true 

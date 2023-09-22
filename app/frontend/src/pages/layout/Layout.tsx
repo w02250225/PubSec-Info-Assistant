@@ -3,13 +3,9 @@
 
 import { Outlet, NavLink, Link } from "react-router-dom";
 
-<<<<<<< HEAD
-import openai from "../../assets/openai.svg";
 import { WarningBanner } from "../../components/WarningBanner/WarningBanner";
-=======
 import qtlogo from "../../assets/qt-logo.png";
 
->>>>>>> main
 import styles from "./Layout.module.css";
 
 const Layout = () => {

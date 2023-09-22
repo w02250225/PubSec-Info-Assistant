@@ -14,10 +14,9 @@ interface Props {
 }
 
 export const WarningBanner = ({ className }: Props) => {
-    const [infoData, setWarningBanner] = useState<GetWarningBanner | null>(null);
+    const [warningBanner, setWarningBanner] = useState<GetWarningBanner | null>(null);
 
     async function fetchWarningBanner() {
-        console.log("Warning Banner 1");
         try {
             const fetchedWarningBannerInfo = await getWarningBanner();
             if (!fetchedWarningBannerInfo.WARNING_BANNER_TEXT){
@@ -37,7 +36,7 @@ export const WarningBanner = ({ className }: Props) => {
 
     return (
         <div className={`${styles.warningBanner} ${className ?? ""}`}>
-            {infoData?.WARNING_BANNER_TEXT}
+            {warningBanner?.WARNING_BANNER_TEXT}
         </div>
     );
 };

@@ -186,7 +186,6 @@ export async function getInfoData(): Promise<GetInfoResponse> {
         console.log(response);
         throw Error(parsedResponse.error || "Unknown error");
     }
-    // console.log(parsedResponse);
     return parsedResponse;
 }
 
@@ -202,7 +201,6 @@ export async function getWarningBanner(): Promise<GetWarningBanner> {
         console.log(response);
         throw Error(parsedResponse.error || "Unknown error");
     }
-    console.log(parsedResponse);
     return parsedResponse;
 }
 

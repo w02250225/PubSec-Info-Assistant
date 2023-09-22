@@ -28,5 +28,7 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2022-12-01' =
 
 output id string = containerRegistry.id
 output name string = containerRegistry.name
+#disable-next-line outputs-should-not-contain-secrets
 output username string = containerRegistry.listCredentials().username
+#disable-next-line outputs-should-not-contain-secrets
 output password string = containerRegistry.listCredentials().passwords[0].value

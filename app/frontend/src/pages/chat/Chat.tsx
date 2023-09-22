@@ -41,7 +41,7 @@ const Chat = () => {
     // Setting responseTemp to 0.7 by default, this will effect the default display of the ResponseTempButtonGroup below.
     // It must match a valid value of one of the buttons in the ResponseTempButtonGroup.tsx file.
     // If you update the default value here, you must also update the default value in the onResponseTempChange method.
-    const [responseTemp, setResponseTemp] = useState<number>(0.6);
+    const [responseTemp, setResponseTemp] = useState<number>(0.4);
 
     const lastQuestionRef = useRef<string>("");
     const chatMessageStreamEnd = useRef<HTMLDivElement | null>(null);
@@ -137,50 +137,7 @@ const Chat = () => {
             }
         }
         // the or value here needs to match the default value assigned to responseLength above.
-<<<<<<< HEAD
-        setResponseLength(_ev.target.value as number || 1024)
-    };
-
-    const onResponseTempChange = (_ev: any) => {
-        for (let node of _ev.target.parentNode.childNodes) {
-            if (node.value == _ev.target.value) {
-                switch (node.value) {
-                    case "1.0":
-                        node.className = `${rtbgstyles.buttonleftactive}`;
-                        break;
-                    case "0.6":
-                        node.className = `${rtbgstyles.buttonmiddleactive}`;
-                        break;
-                    case "0":
-                        node.className = `${rtbgstyles.buttonrightactive}`;
-                        break;
-                    default:
-                        //do nothing
-                        break;
-                }                
-            }
-            else {
-                switch (node.value) {
-                    case "1.0":
-                        node.className = `${rtbgstyles.buttonleft}`;
-                        break;
-                    case "0.6":
-                        node.className = `${rtbgstyles.buttonmiddle}`;
-                        break;
-                    case "0":
-                        node.className = `${rtbgstyles.buttonright}`;
-                        break;
-                    default:
-                        //do nothing
-                        break;
-                }
-            }
-        }
-        // the or value here needs to match the default value assigned to responseLength above.
-        setResponseTemp(_ev.target.value as number || 0.6)
-=======
         setResponseLength(_ev.target.value as number || 2048)
->>>>>>> main
     };
 
     useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "smooth" }), [isLoading]);
