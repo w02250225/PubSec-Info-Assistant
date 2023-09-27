@@ -110,8 +110,6 @@ If you cannot generate a search query, return just the number 0.
         openai.api_type = 'azure'
         openai.api_key = oai_service_key
 
-        self.model_name = model_name
-
     def run(self, history: Sequence[dict[str, str]], overrides: dict[str, Any]) -> Any:
         use_semantic_captions = True if overrides.get("semantic_captions") else False
         top = overrides.get("top") or 3
@@ -283,7 +281,7 @@ If you cannot generate a search query, return just the number 0.
             #print("System Message Tokens: ", self.num_tokens_from_string(system_message, "cl100k_base"))
             #print("Few Shot Tokens: ", self.num_tokens_from_string(self.response_prompt_few_shots[0]['content'], "cl100k_base"))
             #print("Message Tokens: ", self.num_tokens_from_string(message_string, "cl100k_base"))
-            
+
 
             chat_completion = openai.ChatCompletion.create(
             deployment_id=self.chatgpt_deployment,
@@ -320,7 +318,7 @@ If you cannot generate a search query, return just the number 0.
             model=self.model_name,
             messages=messages,
             temperature=float(overrides.get("response_temp")) or 0.6,
-            max_tokens=1024,
+            max_tokens=response_length,
             n=1
 
         )
