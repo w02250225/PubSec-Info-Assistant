@@ -283,14 +283,6 @@ const Chat = () => {
                 onRenderFooterContent={() => <DefaultButton onClick={() => setIsConfigPanelOpen(false)}>Close</DefaultButton>}
                 isFooterAtBottom={true}
             >
-                        <TextField
-                        className={styles.chatSettingsSeparator}
-                        defaultValue={promptTemplate}
-                        label="Override prompt template"
-                        multiline
-                        autoAdjustHeight
-                        onChange={onPromptTemplateChange}
-                        />
                         <SpinButton
                             className={styles.chatSettingsSeparator}
                             label="Retrieve this many documents from search:"
@@ -309,6 +301,14 @@ const Chat = () => {
                         <TextField className={styles.chatSettingsSeparator} defaultValue={systemPersona} label="System Persona" onChange={onSystemPersonaChange} />
                         <ResponseLengthButtonGroup className={styles.chatSettingsSeparator} onClick={onResponseLengthChange} defaultValue={responseLength}/>
                         <ResponseTempSlider className={styles.chatSettingsSeparator} onChange={setResponseTemp} value={responseTemp}/>
+                        <TextField
+                        className={styles.chatSettingsSeparator}
+                        defaultValue={promptTemplate}
+                        label="Override prompt template"
+                        multiline
+                        autoAdjustHeight
+                        onChange={onPromptTemplateChange}
+                        />
             </Panel>
 
             <Panel
