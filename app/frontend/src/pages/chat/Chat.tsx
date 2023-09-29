@@ -21,6 +21,7 @@ import { ResponseLengthButtonGroup } from "../../components/ResponseLengthButton
 import { ResponseTempSlider } from "../../components/ResponseTempSlider";
 import { Tooltips } from "../../components/Tooltips"
 import { InfoContent } from "../../components/InfoContent/InfoContent";
+import { PromptOverride } from "../../components/PromptOverride";
 
 const Chat = () => {
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
@@ -301,14 +302,7 @@ const Chat = () => {
                         <TextField className={styles.chatSettingsSeparator} defaultValue={systemPersona} label="System Persona" onChange={onSystemPersonaChange} />
                         <ResponseLengthButtonGroup className={styles.chatSettingsSeparator} onClick={onResponseLengthChange} defaultValue={responseLength}/>
                         <ResponseTempSlider className={styles.chatSettingsSeparator} onChange={setResponseTemp} value={responseTemp}/>
-                        <TextField
-                        className={styles.chatSettingsSeparator}
-                        defaultValue={promptTemplate}
-                        label="Override prompt template"
-                        multiline
-                        autoAdjustHeight
-                        onChange={onPromptTemplateChange}
-                        />
+                        <PromptOverride className={styles.chatSettingsSeparator} defaultValue={promptTemplate} onChange={onPromptTemplateChange}/>
             </Panel>
 
             <Panel
