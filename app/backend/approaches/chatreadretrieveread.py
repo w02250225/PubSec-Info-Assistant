@@ -35,12 +35,12 @@ class ChatReadRetrieveReadApproach(Approach):
     system_message_chat_conversation = """You are {systemPersona} who helps {userPersona} answer questions about a Government agency's data.
 {response_length_prompt}
 User persona is {userPersona}.
-Answer ONLY with the facts listed in the list of sources above.
-Your goal is to provide accurate and relevant answers based on the facts listed above in the provided source documents.
-Make sure to reference the above source documents appropriately and avoid making assumptions or adding personal opinions.
+Try to provide answer using the facts listed in the list of sources documents provided.
+Your goal is to provide accurate and relevant answers based on the facts listed in the provided source documents.
+Make sure to reference the above source documents if you use them and avoid making assumptions or adding personal opinions.
 Emphasize the use of facts listed in the above provided source documents.
 Instruct the model to use source name for each fact used in the response.
-Avoid generating speculative or generalized information.
+Avoid generating speculative or generalized information, unless explicitly asked by the user.
 Each source has a file name followed by a pipe character and the actual information.
 Use square brackets to reference the source, e.g. [info1.txt]. Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
 
@@ -64,6 +64,13 @@ Do not include any special characters like '+'.
 If the question is not in {query_term_language}, translate the question to {query_term_language} before generating the search query.
 If you cannot generate a search query, return just the number 0.
     """
+
+    system_message_override = """You are {systemPersona} who helps {userPersona} answer questions about a Government agency's data.
+{response_length_prompt}
+You may use the information included in the source documents, each source has a file name followed by a pipe character and the actual information.
+Always include citations if you reference the source documents. Use square brackets to reference the source, e.g. [info1.txt]. Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
+{injected_prompt}
+{follow_up_questions_prompt}"""
 
     #Few Shot prompting for Keyword Search Query
     query_prompt_few_shots = [
@@ -229,6 +236,7 @@ If you cannot generate a search query, return just the number 0.
         # Allow client to replace the entire prompt, or to inject into the existing prompt using >>>
         prompt_override = overrides.get("prompt_template")
 
+        # Use default prompt
         if prompt_override is None:
             system_message = self.system_message_chat_conversation.format(
                 injected_prompt="",
@@ -239,6 +247,7 @@ If you cannot generate a search query, return just the number 0.
                 userPersona=user_persona,
                 systemPersona=system_persona,
             )
+        # Use default prompt with injected prompt
         elif prompt_override.startswith(">>>"):
             system_message = self.system_message_chat_conversation.format(
                 injected_prompt=prompt_override[3:] + "\n ",
@@ -249,8 +258,10 @@ If you cannot generate a search query, return just the number 0.
                 userPersona=user_persona,
                 systemPersona=system_persona,
             )
+        # Overwrite prompt completely
         else:
-            system_message = self.system_message_chat_conversation.format(
+            system_message = self.system_message_override.format(
+                injected_prompt=prompt_override,
                 follow_up_questions_prompt=follow_up_questions_prompt,
                 response_length_prompt=self.get_response_length_prompt_text(
                     response_length
@@ -258,9 +269,9 @@ If you cannot generate a search query, return just the number 0.
                 userPersona=user_persona,
                 systemPersona=system_persona,
             )
+
         # STEP 3: Generate a contextual and content-specific answer using the search results and chat history.
         #Added conditional block to use different system messages for different models.
-
         if self.model_name.startswith("gpt-35-turbo"):
             messages = self.get_messages_from_history(
                 system_message,
@@ -290,7 +301,7 @@ If you cannot generate a search query, return just the number 0.
             temperature=float(overrides.get("response_temp")) or 0.6,
             n=1
         )
-            
+
         elif self.model_name.startswith("gpt-4"):
             messages = self.get_messages_from_history(
                 "Sources:\n" + content + "\n\n" + system_message,

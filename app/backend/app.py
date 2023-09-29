@@ -391,11 +391,11 @@ def get_citation():
 def export():
     try:
         file_name, export_file = exporthelper.export_to_blob(request.json,
-                                                               export_container,
-                                                               AZURE_OPENAI_SERVICE,
-                                                               AZURE_OPENAI_SERVICE_KEY,
-                                                               AZURE_OPENAI_CHATGPT_DEPLOYMENT,
-                                                               deployment.properties.model.name)
+                                                             export_container,
+                                                             AZURE_OPENAI_SERVICE,
+                                                             AZURE_OPENAI_SERVICE_KEY,
+                                                             AZURE_OPENAI_CHATGPT_DEPLOYMENT,
+                                                             MODEL_NAME)
 
     except Exception as ex:
         logging.exception("Exception in /exportAnswer")

@@ -142,6 +142,10 @@ const Chat = () => {
 
     useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "smooth" }), [isLoading]);
 
+    const onPromptTemplateChange = (_ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
+        setPromptTemplate(newValue || "");
+    };
+
     const onRetrieveCountChange = (_ev?: React.SyntheticEvent<HTMLElement, Event>, newValue?: string) => {
         setRetrieveCount(parseInt(newValue || "5"));
     };
@@ -279,6 +283,14 @@ const Chat = () => {
                 onRenderFooterContent={() => <DefaultButton onClick={() => setIsConfigPanelOpen(false)}>Close</DefaultButton>}
                 isFooterAtBottom={true}
             >
+                        <TextField
+                        className={styles.chatSettingsSeparator}
+                        defaultValue={promptTemplate}
+                        label="Override prompt template"
+                        multiline
+                        autoAdjustHeight
+                        onChange={onPromptTemplateChange}
+                        />
                         <SpinButton
                             className={styles.chatSettingsSeparator}
                             label="Retrieve this many documents from search:"

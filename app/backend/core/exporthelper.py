@@ -58,7 +58,7 @@ def generate_document_title(question: str,
                             azure_openai_key: str,
                             azure_openai_name: str,
                             azure_openai_model_name: str
-                            ):
+                            ) -> str:
 
     openai.api_type = "azure"
     openai.api_base = f"https://{azure_openai_service}.openai.azure.com"
@@ -121,12 +121,14 @@ def create_new_doc(title):
     paragraph.text = "Generated with Coeus - SENSITIVE - DRAFT ONLY"
 
     # Add title
+    if len(doc.paragraphs) == 0:
+        doc.add_paragraph()
     para = doc.paragraphs[0]
     para.add_run(title).font.size = Pt(22)
     return doc
 
 
-def add_html_to_docx(html, doc, heading=None):
+def add_html_to_docx(html: str, doc, heading=None):
 
     html = html.split('<')
     html = [html[0]] + ['<'+l for l in html[1:]]
@@ -180,7 +182,7 @@ def add_html_to_docx(html, doc, heading=None):
             para.add_run(run)
 
 
-def create_docx(title: str, answer: str, citations: str):
+def create_docx(title: str, answer: str, citations: str) -> io.BytesIO():
     try:
         soup_answer = BeautifulSoup(answer, "lxml")
 
@@ -214,7 +216,7 @@ def create_docx(title: str, answer: str, citations: str):
 def upload_to_blob(input_stream: io.BytesIO(),
                    request_id: str,
                    user_id: str,
-                   container_client: ContainerClient):
+                   container_client: ContainerClient) -> str:
     try:
         timestamp = time.strftime("%Y%m%d%H%M%S")
         blob_name = f"{user_id}/{timestamp}_{request_id}.docx"
@@ -227,7 +229,7 @@ def upload_to_blob(input_stream: io.BytesIO(),
         logging.exception("Exception in upload_to_blob")
         return str(ex)
 
-def sanitize_filename(title):
+def sanitize_filename(title: str) -> str:
     # Define a regular expression pattern to match characters not allowed in file names
     invalid_chars = r'[<>:"/\\|?*]'
 
