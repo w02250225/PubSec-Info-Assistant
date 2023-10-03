@@ -1,0 +1,14 @@
+.container {
+    cursor: pointer;
+}
+
+.disabled {
+    opacity: 0.4;
+}
+
+.tooltip{
+    overflow: visible;
+    position: absolute;
+    z-index: 1000001;
+    max-width: 15%
+}

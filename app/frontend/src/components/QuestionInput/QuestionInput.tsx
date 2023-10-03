@@ -77,7 +77,7 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, onAd
                             onMouseLeave={onMouseLeave}
                         >
                             <Broom28Filled primaryFill="rgba(255, 255, 255, 1)" />
-                            <span id={"test"} hidden={clearChatTextEnabled}>Clear Chat</span>
+                            <span hidden={clearChatTextEnabled}>Clear Chat</span>
                         </div>
                     </div>
                 )
@@ -98,7 +98,7 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, onAd
                         aria-label="Ask question button"
                         onClick={sendQuestion}
                     >
-                        <Send28Filled primaryFill="rgba(115, 118, 225, 1)" />
+                        <Send28Filled primaryFill="#0058a6" />
                     </div>
                 </div>
             </Stack>

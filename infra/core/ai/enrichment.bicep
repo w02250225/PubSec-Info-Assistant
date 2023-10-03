@@ -32,6 +32,11 @@ resource cognitiveServiceGov 'Microsoft.CognitiveServices/accounts@2022-12-01' =
     apiProperties: {
       statisticsEnabled: false
     }
+    networkAcls: {
+      defaultAction: 'Allow'
+      virtualNetworkRules: []
+      ipRules: []
+    }
   }
 }
 

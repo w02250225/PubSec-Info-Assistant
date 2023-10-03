@@ -21,18 +21,21 @@ param aadMgmtServicePrincipalId string = ''
 param buildNumber string = 'local'
 param isInAutomation bool = false
 param useExistingAOAIService bool
+param azureOpenAIAccountName string
 param azureOpenAIServiceName string
 param azureOpenAIResourceGroup string
 param azureOpenAIServiceKey string
 param openAiServiceName string = ''
 param openAiSkuName string = 'S0'
-param cognitiveServiesForSearchName string = ''
+param cognitiveServicesForSearchName string = ''
 param cosmosdbName string = ''
 param formRecognizerName string = ''
+#disable-next-line no-unused-params
 param enrichmentName string = ''
 param formRecognizerSkuName string = 'S0'
+#disable-next-line no-unused-params
 param encichmentSkuName string = 'S0'
-param cognitiveServiesForSearchSku string = 'S0'
+param cognitiveServicesForSearchSku string = 'S0'
 param appServicePlanName string = ''
 param appServicePlanContainerName string = ''
 param containerRegistryName string = ''
@@ -102,7 +105,11 @@ param subscriptionId string = ''
 param principalId string = ''
 
 var abbrs = loadJsonContent('abbreviations.json')
-var tags = { ProjectName: 'Information Assistant', BuildNumber: buildNumber }
+var tags = { 
+  Environment: 'Development'
+  'Project Name': 'Coeus'
+  Release: buildNumber
+}
 var prefix = 'infoasst'
 var containerRegistrySuffix = isGovCloudDeployment ? 'azurecr.us' : 'azurecr.io'
 
@@ -134,7 +141,7 @@ module appServicePlan 'core/host/appserviceplan.bicep' = {
     location: location
     tags: tags
     sku: {
-      name: 'B2'
+      name: 'B3'
       capacity: 3
     }
     kind: 'linux'
@@ -210,6 +217,7 @@ module backend 'core/host/appservice.bicep' = {
       AZURE_BLOB_STORAGE_ENDPOINT: storage.outputs.primaryEndpoints.blob
       AZURE_BLOB_STORAGE_CONTAINER: containerName
       AZURE_BLOB_STORAGE_KEY: storage.outputs.key
+      AZURE_OPENAI_ACCOUNT_NAME: useExistingAOAIService ? azureOpenAIAccountName : cognitiveServices.outputs.name
       AZURE_OPENAI_SERVICE: useExistingAOAIService ? azureOpenAIServiceName : cognitiveServices.outputs.name
       AZURE_OPENAI_RESOURCE_GROUP: useExistingAOAIService ? azureOpenAIResourceGroup : rg.name
       AZURE_SEARCH_INDEX: searchIndexName
@@ -225,6 +233,8 @@ module backend 'core/host/appservice.bicep' = {
       COSMOSDB_KEY: cosmosdb.outputs.CosmosDBKey
       COSMOSDB_DATABASE_NAME: cosmosdb.outputs.CosmosDBDatabaseName
       COSMOSDB_CONTAINER_NAME: cosmosdb.outputs.CosmosDBContainerName
+      COSMOSDB_REQUESTLOG_DATABASE_NAME: cosmosrequestsdb.outputs.CosmosDBDatabaseName
+      COSMOSDB_REQUESTLOG_CONTAINER_NAME: cosmosrequestsdb.outputs.CosmosDBContainerName
       QUERY_TERM_LANGUAGE: queryTermLanguage
       AZURE_CLIENT_ID: aadMgmtClientId
       AZURE_CLIENT_SECRET: aadMgmtClientSecret
@@ -253,7 +263,7 @@ module cognitiveServices 'core/ai/cognitiveservices.bicep' = if (!useExistingAOA
         model: {
           format: 'OpenAI'
           name: chatGptModelName
-          version: '0301'
+          version: chatGptModelVersion
         }
         sku: {
           name: 'Standard'
@@ -290,17 +300,17 @@ module formrecognizer 'core/ai/formrecognizer.bicep' = {
   }
 }
 
-module enrichment 'core/ai/enrichment.bicep' = {
-  scope: rg
-  name: 'enrichment'
-  params: {
-    name: !empty(enrichmentName) ? enrichmentName : '${prefix}-enrichment-${abbrs.cognitiveServicesAccounts}${randomString}'
-    location: location
-    tags: tags
-    sku: encichmentSkuName
-    isGovCloudDeployment: isGovCloudDeployment
-  }
-}
+// module enrichment 'core/ai/enrichment.bicep' = {
+//   scope: rg
+//   name: 'enrichment'
+//   params: {
+//     name: !empty(enrichmentName) ? enrichmentName : '${prefix}-enrichment-${abbrs.cognitiveServicesAccounts}${randomString}'
+//     location: location
+//     tags: tags
+//     sku: encichmentSkuName
+//     isGovCloudDeployment: isGovCloudDeployment
+//   }
+// }
 
 module searchServices 'core/search/search-services.bicep' = {
   scope: rg
@@ -318,9 +328,9 @@ module searchServices 'core/search/search-services.bicep' = {
       name: searchServicesSkuName
     }
     semanticSearch: 'free'
-    cogServicesName: !empty(cognitiveServiesForSearchName) ? cognitiveServiesForSearchName : '${prefix}-${abbrs.cognitiveServicesAccounts}${randomString}'
+    cogServicesName: !empty(cognitiveServicesForSearchName) ? cognitiveServicesForSearchName : '${prefix}-${abbrs.cognitiveServicesAccounts}${randomString}'
     cogServicesSku: {
-      name: cognitiveServiesForSearchSku
+      name: cognitiveServicesForSearchSku
     }
     isGovCloudDeployment: isGovCloudDeployment
   }
@@ -389,6 +399,64 @@ module storage 'core/storage/storage-account.bicep' = {
   }
 }
 
+
+// module storageDev 'core/storage/storage-account.bicep' = {
+//   name: 'storageDev'
+//   scope: rg
+//   params: {
+//     name: !empty(storageAccountName) ? '${storageAccountName}dev' : '${prefix}${abbrs.storageStorageAccounts}${randomString}dev'
+//     location: location
+//     tags: tags
+//     publicNetworkAccess: 'Enabled'
+//     sku: {
+//       name: 'Standard_LRS'
+//     }
+//     deleteRetentionPolicy: {
+//       enabled: true
+//       days: 7
+//     }
+//     containers: [
+//       {
+//         name: containerName
+//         publicAccess: 'None'
+//       }
+//       {
+//         name: 'website'
+//         publicAccess: 'None'
+//       }
+//       {
+//         name: uploadContainerName
+//         publicAccess: 'None'
+//       }
+//       {
+//         name: 'function'
+//         publicAccess: 'None'
+//       }
+//       {
+//         name: functionLogsContainerName
+//         publicAccess: 'None'
+//       }
+//     ]
+//     queueNames: [
+//       {
+//         name: pdfSubmitQueue
+//       }
+//       {
+//         name: pdfPollingQueue
+//       }
+//       {
+//         name: nonPdfSubmitQueue
+//       }  
+//       {
+//         name: mediaSubmitQueue
+//       }          
+//       {
+//         name: textEnrichmentQueue
+//       }
+//     ]
+//   }
+// }
+
 module storageMedia 'core/storage/storage-account.bicep' = {
   name: 'storage-media'
   scope: rg
@@ -416,7 +484,25 @@ module cosmosdb 'core/db/cosmosdb.bicep' = {
     tags: tags
     databaseName: 'statusdb'
     containerName: 'statuscontainer'
+    partitionKeyPath: ['/file_name']
+    partitionKeyVersion: 1
   }
+}
+
+module cosmosrequestsdb 'core/db/cosmosdb.bicep' =  {
+  name: 'cosmosrequestsdb'
+  scope: rg
+  params: {
+    name: !empty(cosmosdbName) ? cosmosdbName : '${prefix}-${abbrs.cosmosDBAccounts}${randomString}'
+    location: location
+    tags: tags
+    databaseName: 'requestdb'
+    containerName: 'requestcontainer'
+    partitionKeyPath: ['/user_id']
+    partitionKeyVersion: 2
+    autoscaleMaxThroughput: 2000
+  }
+  dependsOn: [cosmosdb] // Cosmos doesn't like parallel deployments
 }
 
 // Function App 
@@ -461,9 +547,9 @@ module functions 'core/function/function.bicep' = {
     submitRequeueHideSeconds: submitRequeueHideSeconds
     pollingBackoff: pollingBackoff
     maxReadAttempts: maxReadAttempts
-    enrichmentKey: enrichment.outputs.cognitiveServiceAccountKey
-    enrichmentEndpoint: enrichment.outputs.cognitiveServiceEndpoint
-    enrichmentName: enrichment.outputs.cognitiveServicerAccountName
+    enrichmentKey: searchServices.outputs.cogServiceKey
+    enrichmentEndpoint: searchServices.outputs.cogServiceEndpoint
+    enrichmentName: searchServices.outputs.cogServiceName
     enrichmentLocation: location
     targetTranslationLanguage: targetTranslationLanguage
     maxEnrichmentRequeueCount: maxEnrichmentRequeueCount
@@ -503,7 +589,7 @@ module avam 'core/video_indexer/video_indexer.bicep' = {
 }
 
 // USER ROLES
-module openAiRoleUser 'core/security/role.bicep' = {
+module openAiRoleUser 'core/security/role.bicep'  = if (principalId != '') {
   scope: rg
   name: 'openai-role-user'
   params: {
@@ -513,7 +599,7 @@ module openAiRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module storageRoleUser 'core/security/role.bicep' = {
+module storageRoleUser 'core/security/role.bicep' = if (principalId != '') {
   scope: rg
   name: 'storage-role-user'
   params: {
@@ -523,7 +609,7 @@ module storageRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module storageContribRoleUser 'core/security/role.bicep' = {
+module storageContribRoleUser 'core/security/role.bicep' = if (principalId != '') {
   scope: rg
   name: 'storage-contribrole-user'
   params: {
@@ -533,7 +619,7 @@ module storageContribRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module searchRoleUser 'core/security/role.bicep' = {
+module searchRoleUser 'core/security/role.bicep' = if (principalId != '') {
   scope: rg
   name: 'search-role-user'
   params: {
@@ -543,7 +629,7 @@ module searchRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module searchContribRoleUser 'core/security/role.bicep' = {
+module searchContribRoleUser 'core/security/role.bicep' = if (principalId != '') {
   scope: rg
   name: 'search-contrib-role-user'
   params: {
@@ -604,7 +690,7 @@ module storageRoleFunc 'core/security/role.bicep' = {
   }
 }
 
-module containerRegistryPush 'core/security/role.bicep' = {
+module containerRegistryPush 'core/security/role.bicep' = if( aadMgmtServicePrincipalId !='' ) {
   scope: rg
   name: 'AcrPush'
   params: {
@@ -614,6 +700,7 @@ module containerRegistryPush 'core/security/role.bicep' = {
   }
 }
 
+<<<<<<< HEAD
 // MANAGEMENT SERVICE PRINCIPAL
 module openAiRoleMgmt 'core/security/role.bicep' = if (!isInAutomation) {
   scope: resourceGroup(useExistingAOAIService && !isGovCloudDeployment ? azureOpenAIResourceGroup : rg.name)
@@ -624,6 +711,18 @@ module openAiRoleMgmt 'core/security/role.bicep' = if (!isInAutomation) {
     principalType: 'ServicePrincipal'
   }
 }
+=======
+// // MANAGEMENT SERVICE PRINCIPAL
+// module openAiRoleMgmt 'core/security/role.bicep' =  if (!isInAutomation) {
+//   scope: resourceGroup(useExistingAOAIService && !isGovCloudDeployment? azureOpenAIResourceGroup : rg.name)
+//   name: 'openai-role-mgmt'
+//   params: {
+//     principalId: aadMgmtServicePrincipalId
+//     roleDefinitionId: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
+//     principalType: 'ServicePrincipal'
+//   }
+// }
+>>>>>>> main
 
 // DEPLOYMENT OF AZURE CUSTOMER ATTRIBUTION TAG
 resource customerAttribution 'Microsoft.Resources/deployments@2021-04-01' = if (cuaEnabled) {
@@ -640,7 +739,8 @@ resource customerAttribution 'Microsoft.Resources/deployments@2021-04-01' = if (
 }
 
 output AZURE_LOCATION string = location
-output AZURE_OPENAI_SERVICE string = azureOpenAIServiceName //cognitiveServices.outputs.name
+output AZURE_OPENAI_ACCOUNT_NAME string = azureOpenAIAccountName
+output AZURE_OPENAI_SERVICE string = azureOpenAIServiceName
 output AZURE_SEARCH_INDEX string = searchIndexName
 output AZURE_SEARCH_SERVICE string = searchServices.outputs.name
 output AZURE_SEARCH_SERVICE_ENDPOINT string = searchServices.outputs.endpoint
@@ -671,9 +771,29 @@ output FR_API_VERSION string = formRecognizerApiVersion
 output TARGET_PAGES string = targetPages
 output BLOB_CONNECTION_STRING string = storage.outputs.connectionString
 output AzureWebJobsStorage string = storage.outputs.connectionString
+<<<<<<< HEAD
 output ENRICHMENT_KEY string = enrichment.outputs.cognitiveServiceAccountKey
 output ENRICHMENT_ENDPOINT string = enrichment.outputs.cognitiveServiceEndpoint
 output ENRICHMENT_NAME string = enrichment.outputs.cognitiveServicerAccountName
+=======
+output PDFSUBMITQUEUE string = pdfSubmitQueue
+output PDFPOLLINGQUEUE string = pdfPollingQueue
+output NONPDFSUBMITQUEUE string = nonPdfSubmitQueue
+output MEDIASUBMITQUEUE string = mediaSubmitQueue
+output TEXTENRICHMENTQUEUE string = textEnrichmentQueue
+output EMBEDDINGSQUEUE string = embeddingsQueue
+output MAX_SECONDS_HIDE_ON_UPLOAD string = maxSecondsHideOnUpload
+output MAX_SUBMIT_REQUEUE_COUNT string = maxSubmitRequeueCount
+output POLL_QUEUE_SUBMIT_BACKOFF string = pollQueueSubmitBackoff
+output PDF_SUBMIT_QUEUE_BACKOFF string = pdfSubmitQueueBackoff
+output MAX_POLLING_REQUEUE_COUNT string = maxPollingRequeueCount 
+output SUBMIT_REQUEUE_HIDE_SECONDS string = submitRequeueHideSeconds
+output POLLING_BACKOFF string = pollingBackoff
+output MAX_READ_ATTEMPTS string = maxReadAttempts 
+output ENRICHMENT_KEY string = searchServices.outputs.cogServiceKey
+output ENRICHMENT_ENDPOINT string = searchServices.outputs.cogServiceEndpoint
+output ENRICHMENT_NAME string = searchServices.outputs.cogServiceName
+>>>>>>> main
 output TARGET_TRANSLATION_LANGUAGE string = targetTranslationLanguage
 output ENABLE_DEV_CODE bool = enableDevCode
 output AZURE_CLIENT_ID string = aadMgmtClientId

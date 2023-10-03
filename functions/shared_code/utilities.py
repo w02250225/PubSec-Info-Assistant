@@ -241,7 +241,16 @@ class Utilities:
 
         logging.info("Constructing the JSON structure of the document\n")
 
+        file_name, file_extension, file_directory  = self.get_filename_and_extension(myblob_name)
+
         soup = BeautifulSoup(html_data, 'lxml')
+
+        # Remove CSS from XLSX
+        if file_extension in ['.xlsx']:
+            for tag in soup():
+                for attribute in ["id", "class", "style"]:
+                    del tag[attribute]
+
         document_map = {
             'file_name': myblob_name,
             'file_uri': myblob_uri,
@@ -249,13 +258,16 @@ class Utilities:
             "structure": []
         }
 
-        title = ''
+        title = soup.title.string if soup.title else file_name
+        subtitle = ''
         section = ''
-        title = soup.title.string if soup.title else "No title"
+        page_number = 1
 
         for tag in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'table']):
-            if tag.name in ['h2', 'h3', 'h4', 'h5', 'h6']:
+            if tag.name in ['h3', 'h4', 'h5', 'h6']:
                 section = tag.get_text(strip=True)
+            elif tag.name == 'h2':
+                subtitle = tag.get_text(strip=True)
             elif tag.name == 'h1':
                 title = tag.get_text(strip=True)
             elif tag.name == 'p' and tag.get_text(strip=True):
@@ -263,23 +275,23 @@ class Utilities:
                     "type": "text", 
                     "text": tag.get_text(strip=True),
                     "title": title,
-                    'subtitle': '',
+                    "subtitle": subtitle,
                     "section": section,
-                    "page_number": 1                
+                    "page_number": page_number
                     })
             elif tag.name == 'table' and tag.get_text(strip=True):
                 document_map["structure"].append({
                     "type": "table", 
                     "text": str(tag),
                     "title": title,
-                    'subtitle': '',
+                    "subtitle": subtitle,
                     "section": section,
-                    "page_number": 1                
+                    "page_number": page_number
                     })
+                page_number += 1
 
         # Output document map to log container
         json_str = json.dumps(document_map, indent=2)
-        file_name, file_extension, file_directory  = self.get_filename_and_extension(myblob_name)
         output_filename =  file_name + "_Document_Map" + file_extension + ".json"
         self.write_blob(azure_blob_log_storage_container, json_str, output_filename, file_directory)
 

@@ -9,8 +9,8 @@
 }
 
 .header {
-    background-color: #222222;
-    color: #f2f2f2;
+    background-color: #f2f2f2;
+    color: #222222;
 }
 
 .headerContainer {
@@ -25,12 +25,14 @@
     display: flex;
     align-items: center;
     margin-right: 40px;
-    color: #f2f2f2;
+    color: #222222;
     text-decoration: none;
 }
 
 .headerLogo {
-    height: 40px;
+    height: 60px;
+    margin-top: 10px;
+    margin-bottom: 10px;
 }
 
 .headerTitle {
@@ -42,13 +44,14 @@
     display: flex;
     list-style: none;
     padding-left: 0;
+    margin-top: 10px;
+    margin-bottom: 10px;
 }
 
 .headerNavPageLink {
-    color: #f2f2f2;
+    color: #222222;
     text-decoration: none;
     opacity: 0.75;
-
     transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
     transition-duration: 500ms;
     transition-property: opacity;
@@ -59,7 +62,7 @@
 }
 
 .headerNavPageLinkActive {
-    color: #f2f2f2;
+    color: #222222;
     text-decoration: none;
 }
 
@@ -85,7 +88,7 @@
     display: flex;
     align-items: center;
     justify-content: space-around;
-    background-color: rgb(242, 242, 242);
+    background-color: #0058a6;
     height: fit-content;
     -webkit-box-shadow: 2px 2px 2px 0 rgba(0,0,0,0.3) ;
     box-shadow: 2px 2px 2px 0 rgba(0,0,0,0.3) ;
@@ -95,7 +98,7 @@
 .raiwarning {
     font-size: 12px;
     font-weight: 400;
-    color: rgb(133, 133, 133);
+    color: #f2f2f2;
     line-height: 22px;
     padding-top: 6px;
     padding-bottom: 6px;

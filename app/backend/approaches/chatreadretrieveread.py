@@ -31,36 +31,46 @@ class ChatReadRetrieveReadApproach(Approach):
     SYSTEM = "system"
     USER = "user"
     ASSISTANT = "assistant"
-     
-    system_message_chat_conversation = """You are an Azure OpenAI Completion system. Your persona is {systemPersona} who helps answer questions about an agency's data. {response_length_prompt}
-    User persona is {userPersona} Answer ONLY with the facts listed in the list of sources above.
-    Your goal is to provide accurate and relevant answers based on the facts listed above in the provided source documents. Make sure to reference the above source documents appropriately and avoid making assumptions or adding personal opinions.
-    
-    Emphasize the use of facts listed in the above provided source documents.Instruct the model to use source name for each fact used in the response.  Avoid generating speculative or generalized information. Each source has a file name followed by a pipe character and 
-    the actual information.Use square brackets to reference the source, e.g. [info1.txt]. Do not combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
-    
-    Here is how you should answer every question:
-    
-    -Look for relevant information in the above source documents to answer the question.
-    -If the source document does not include the exact answer, please respond with relevant information from the data in the response along with citation.You must include a citation to each document referenced.      
-    -If you cannot find any relevant information in the above sources, respond with I am not sure.Do not provide personal opinions or assumptions.
-    
-    {follow_up_questions_prompt}
-    {injected_prompt}
-    
+
+    system_message_chat_conversation = """You are {systemPersona} who helps {userPersona} answer questions about a Government agency's data.
+{response_length_prompt}
+User persona is {userPersona}.
+Try to provide answer using the facts listed in the list of sources documents provided.
+Your goal is to provide accurate and relevant answers based on the facts listed in the provided source documents.
+Make sure to reference the above source documents if you use them and avoid making assumptions or adding personal opinions.
+Emphasize the use of facts listed in the above provided source documents.
+Instruct the model to use source name for each fact used in the response.
+Avoid generating speculative or generalized information, unless explicitly asked by the user.
+Each source has a file name followed by a pipe character and the actual information.
+Use square brackets to reference the source, e.g. [info1.txt]. Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
+
+Here is how you should answer every question:
+- Look for relevant information in the above source documents to answer the question.       
+- If there is specific information related to question available in the above sources, provide an answer along with the appropriate citation.Do not forget to include the citation!
+- Always include citation from sources listed above.
+- If there is no specific information related to the question available in the source document, respond with "I\'m not sure" without providing any citation. Do not provide personal opinions or assumptions.
+{follow_up_questions_prompt}
+{injected_prompt}
     """
     follow_up_questions_prompt_content = """
-    Generate three very brief follow-up questions that the user would likely ask next about their agencies data. Use triple angle brackets to reference the questions, e.g. <<<Are there exclusions for prescriptions?>>>. Try not to repeat questions that have already been asked.
-    Only generate questions and do not generate any text before or after the questions, such as 'Next Questions'
+Generate three very brief follow-up questions that the user would likely ask next about their agencies data. Use triple angle brackets to reference the questions, e.g. <<<Are there exclusions for prescriptions?>>>. Try not to repeat questions that have already been asked.
+Only generate questions and do not generate any text before or after the questions, such as 'Next Questions'
     """
     query_prompt_template = """Below is a history of the conversation so far, and a new question asked by the user that needs to be answered by searching in source documents.
-    Generate a search query based on the conversation and the new question. Treat each search term as an individual keyword. Do not combine terms in quotes or brackets.
-    Do not include cited source filenames and document names e.g info.txt or doc.pdf in the search query terms.
-    Do not include any text inside [] or <<<>>> in the search query terms.
-    Do not include any special characters like '+'.
-    If the question is not in {query_term_language}, translate the question to {query_term_language} before generating the search query.
-    If you cannot generate a search query, return just the number 0.
+Generate a search query based on the conversation and the new question. Treat each search term as an individual keyword. Do not combine terms in quotes or brackets.
+Do not include cited source filenames and document names e.g info.txt or doc.pdf in the search query terms.
+Do not include any text inside [] or <<<>>> in the search query terms.
+Do not include any special characters like '+'.
+If the question is not in {query_term_language}, translate the question to {query_term_language} before generating the search query.
+If you cannot generate a search query, return just the number 0.
     """
+
+    system_message_override = """You are {systemPersona} who helps {userPersona} answer questions about a Government agency's data.
+{response_length_prompt}
+You may use the information included in the source documents, each source has a file name followed by a pipe character and the actual information.
+Always include citations if you reference the source documents. Use square brackets to reference the source, e.g. [info1.txt]. Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
+{injected_prompt}
+{follow_up_questions_prompt}"""
 
     #Few Shot prompting for Keyword Search Query
     query_prompt_few_shots = [
@@ -94,21 +104,19 @@ class ChatReadRetrieveReadApproach(Approach):
     ):
         self.search_client = search_client
         self.chatgpt_deployment = chatgpt_deployment
+        self.model_name = model_name
+        self.model_version = model_version
         self.source_page_field = source_page_field
         self.content_field = content_field
         self.blob_client = blob_client
         self.query_term_language = query_term_language
         self.chatgpt_token_limit = get_token_limit(model_name)
+        self.is_gov_cloud_deployment = is_gov_cloud_deployment
 
         openai.api_base = 'https://' + oai_service_name + '.openai.azure.com/'
         openai.api_type = 'azure'
         openai.api_key = oai_service_key
 
-        self.model_name = model_name
-        self.model_version = model_version
-        self.is_gov_cloud_deployment = is_gov_cloud_deployment
-
-    # def run(self, history: list[dict], overrides: dict) -> any:
     def run(self, history: Sequence[dict[str, str]], overrides: dict[str, Any]) -> Any:
         use_semantic_captions = True if overrides.get("semantic_captions") else False
         top = overrides.get("top") or 3
@@ -200,7 +208,7 @@ class ChatReadRetrieveReadApproach(Approach):
                     + nonewlines(doc[self.content_field])
                 )
                 # uncomment to debug size of each search result content_field
-                print(f"File{idx}: ", self.num_tokens_from_string(f"File{idx} " + "| " + nonewlines(doc[self.content_field]), "cl100k_base"))
+                # print(f"File{idx}: ", self.num_tokens_from_string(f"File{idx} " + "| " + nonewlines(doc[self.content_field]), "cl100k_base"))
             # add the "FileX" moniker and full file name to the citation lookup
 
             citation_lookup[f"File{idx}"] = {
@@ -210,10 +218,6 @@ class ChatReadRetrieveReadApproach(Approach):
                     doc[self.content_field]
                 ),
             }
-            
-         
-                
-           
 
         # create a single string of all the results to be used in the prompt
         results_text = "".join(results)
@@ -232,6 +236,7 @@ class ChatReadRetrieveReadApproach(Approach):
         # Allow client to replace the entire prompt, or to inject into the existing prompt using >>>
         prompt_override = overrides.get("prompt_template")
 
+        # Use default prompt
         if prompt_override is None:
             system_message = self.system_message_chat_conversation.format(
                 injected_prompt="",
@@ -242,6 +247,7 @@ class ChatReadRetrieveReadApproach(Approach):
                 userPersona=user_persona,
                 systemPersona=system_persona,
             )
+        # Use default prompt with injected prompt
         elif prompt_override.startswith(">>>"):
             system_message = self.system_message_chat_conversation.format(
                 injected_prompt=prompt_override[3:] + "\n ",
@@ -252,8 +258,10 @@ class ChatReadRetrieveReadApproach(Approach):
                 userPersona=user_persona,
                 systemPersona=system_persona,
             )
+        # Overwrite prompt completely
         else:
-            system_message = self.system_message_chat_conversation.format(
+            system_message = self.system_message_override.format(
+                injected_prompt=prompt_override,
                 follow_up_questions_prompt=follow_up_questions_prompt,
                 response_length_prompt=self.get_response_length_prompt_text(
                     response_length
@@ -261,9 +269,9 @@ class ChatReadRetrieveReadApproach(Approach):
                 userPersona=user_persona,
                 systemPersona=system_persona,
             )
+
         # STEP 3: Generate a contextual and content-specific answer using the search results and chat history.
         #Added conditional block to use different system messages for different models.
-
         if self.model_name.startswith("gpt-35-turbo"):
             messages = self.get_messages_from_history(
                 system_message,
@@ -284,7 +292,7 @@ class ChatReadRetrieveReadApproach(Approach):
             #print("System Message Tokens: ", self.num_tokens_from_string(system_message, "cl100k_base"))
             #print("Few Shot Tokens: ", self.num_tokens_from_string(self.response_prompt_few_shots[0]['content'], "cl100k_base"))
             #print("Message Tokens: ", self.num_tokens_from_string(message_string, "cl100k_base"))
-            
+
 
             chat_completion = openai.ChatCompletion.create(
             deployment_id=self.chatgpt_deployment,
@@ -293,7 +301,7 @@ class ChatReadRetrieveReadApproach(Approach):
             temperature=float(overrides.get("response_temp")) or 0.6,
             n=1
         )
-            
+
         elif self.model_name.startswith("gpt-4"):
             messages = self.get_messages_from_history(
                 "Sources:\n" + content + "\n\n" + system_message,
@@ -321,7 +329,7 @@ class ChatReadRetrieveReadApproach(Approach):
             model=self.model_name,
             messages=messages,
             temperature=float(overrides.get("response_temp")) or 0.6,
-            max_tokens=1024,
+            max_tokens=response_length,
             n=1
 
         )
@@ -344,11 +352,20 @@ class ChatReadRetrieveReadApproach(Approach):
 
         msg_to_display = '\n\n'.join([str(message) for message in messages])
 
+        completion_tokens = chat_completion.usage.completion_tokens
+        prompt_tokens = chat_completion.usage.prompt_tokens
+        total_tokens = chat_completion.usage.total_tokens
+
         return {
             "data_points": data_points,
             "answer": f"{urllib.parse.unquote(chat_completion.choices[0].message.content)}",
             "thoughts": f"Searched for:<br>{generated_query}<br><br>Conversations:<br>" + msg_to_display.replace('\n', '<br>'),
-            "citation_lookup": citation_lookup
+            "citation_lookup": citation_lookup,
+            "token_usage": {
+                "completion_tokens" : completion_tokens,
+                "prompt_tokens" : prompt_tokens,
+                "total_tokens" : total_tokens
+            }
         }
 
     #Aparmar. Custom method to construct Chat History as opposed to single string of chat History.
@@ -358,7 +375,7 @@ class ChatReadRetrieveReadApproach(Approach):
         model_id: str,
         history: Sequence[dict[str, str]],
         user_conv: str,
-        few_shots = [],
+        few_shots = None,
         max_tokens: int = 4096) -> []:
         """
         Construct a list of messages from the chat history and the user's question.

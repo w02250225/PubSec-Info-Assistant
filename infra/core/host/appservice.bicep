@@ -44,7 +44,7 @@ param isGovCloudDeployment bool
 
 param portalURL string = (isGovCloudDeployment) ? 'https://portal.azure.us' : 'https://portal.azure.com'
 
-resource appService 'Microsoft.Web/sites@2022-03-01' = {
+resource appService 'Microsoft.Web/sites@2022-09-01' = {
   name: name
   location: location
   tags: tags
