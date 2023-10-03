@@ -21,7 +21,6 @@ param aadMgmtServicePrincipalId string = ''
 param buildNumber string = 'local'
 param isInAutomation bool = false
 param useExistingAOAIService bool
-param azureOpenAIAccountName string
 param azureOpenAIServiceName string
 param azureOpenAIResourceGroup string
 param azureOpenAIServiceKey string
@@ -52,7 +51,7 @@ param storageAccountName string = ''
 param containerName string = 'content'
 param uploadContainerName string = 'upload'
 param functionLogsContainerName string = 'logs'
-param searchIndexName string = 'vector-index'
+param searchIndexName string = 'all-files-index'
 param chatGptDeploymentName string = 'chat'
 param chatGptModelName string = 'gpt-35-turbo'
 param azureOpenAIEmbeddingsModelName string = 'text-embedding-ada-002'
@@ -217,7 +216,6 @@ module backend 'core/host/appservice.bicep' = {
       AZURE_BLOB_STORAGE_ENDPOINT: storage.outputs.primaryEndpoints.blob
       AZURE_BLOB_STORAGE_CONTAINER: containerName
       AZURE_BLOB_STORAGE_KEY: storage.outputs.key
-      AZURE_OPENAI_ACCOUNT_NAME: useExistingAOAIService ? azureOpenAIAccountName : cognitiveServices.outputs.name
       AZURE_OPENAI_SERVICE: useExistingAOAIService ? azureOpenAIServiceName : cognitiveServices.outputs.name
       AZURE_OPENAI_RESOURCE_GROUP: useExistingAOAIService ? azureOpenAIResourceGroup : rg.name
       AZURE_SEARCH_INDEX: searchIndexName
@@ -236,12 +234,15 @@ module backend 'core/host/appservice.bicep' = {
       COSMOSDB_REQUESTLOG_DATABASE_NAME: cosmosrequestsdb.outputs.CosmosDBDatabaseName
       COSMOSDB_REQUESTLOG_CONTAINER_NAME: cosmosrequestsdb.outputs.CosmosDBContainerName
       QUERY_TERM_LANGUAGE: queryTermLanguage
-      AZURE_CLIENT_ID: aadMgmtClientId
-      AZURE_CLIENT_SECRET: aadMgmtClientSecret
-      AZURE_TENANT_ID: tenantId
       AZURE_SUBSCRIPTION_ID: subscriptionId
       IS_GOV_CLOUD_DEPLOYMENT: isGovCloudDeployment
       CHAT_WARNING_BANNER_TEXT: chatWarningBannerText
+      //Auth settings
+      APP_SECRET: ''
+      CLIENT_ID: ''
+      CLIENT_SECRET: ''
+      TENANT_ID: tenantId
+      REDIRECT_URI: 'https://infoasst-web-kr839.azurewebsites.net/authorized'
     }
     aadClientId: aadWebClientId
   }
@@ -700,18 +701,6 @@ module containerRegistryPush 'core/security/role.bicep' = if( aadMgmtServicePrin
   }
 }
 
-<<<<<<< HEAD
-// MANAGEMENT SERVICE PRINCIPAL
-module openAiRoleMgmt 'core/security/role.bicep' = if (!isInAutomation) {
-  scope: resourceGroup(useExistingAOAIService && !isGovCloudDeployment ? azureOpenAIResourceGroup : rg.name)
-  name: 'openai-role-mgmt'
-  params: {
-    principalId: aadMgmtServicePrincipalId
-    roleDefinitionId: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
-    principalType: 'ServicePrincipal'
-  }
-}
-=======
 // // MANAGEMENT SERVICE PRINCIPAL
 // module openAiRoleMgmt 'core/security/role.bicep' =  if (!isInAutomation) {
 //   scope: resourceGroup(useExistingAOAIService && !isGovCloudDeployment? azureOpenAIResourceGroup : rg.name)
@@ -722,7 +711,6 @@ module openAiRoleMgmt 'core/security/role.bicep' = if (!isInAutomation) {
 //     principalType: 'ServicePrincipal'
 //   }
 // }
->>>>>>> main
 
 // DEPLOYMENT OF AZURE CUSTOMER ATTRIBUTION TAG
 resource customerAttribution 'Microsoft.Resources/deployments@2021-04-01' = if (cuaEnabled) {
@@ -739,7 +727,6 @@ resource customerAttribution 'Microsoft.Resources/deployments@2021-04-01' = if (
 }
 
 output AZURE_LOCATION string = location
-output AZURE_OPENAI_ACCOUNT_NAME string = azureOpenAIAccountName
 output AZURE_OPENAI_SERVICE string = azureOpenAIServiceName
 output AZURE_SEARCH_INDEX string = searchIndexName
 output AZURE_SEARCH_SERVICE string = searchServices.outputs.name
@@ -771,29 +758,9 @@ output FR_API_VERSION string = formRecognizerApiVersion
 output TARGET_PAGES string = targetPages
 output BLOB_CONNECTION_STRING string = storage.outputs.connectionString
 output AzureWebJobsStorage string = storage.outputs.connectionString
-<<<<<<< HEAD
-output ENRICHMENT_KEY string = enrichment.outputs.cognitiveServiceAccountKey
-output ENRICHMENT_ENDPOINT string = enrichment.outputs.cognitiveServiceEndpoint
-output ENRICHMENT_NAME string = enrichment.outputs.cognitiveServicerAccountName
-=======
-output PDFSUBMITQUEUE string = pdfSubmitQueue
-output PDFPOLLINGQUEUE string = pdfPollingQueue
-output NONPDFSUBMITQUEUE string = nonPdfSubmitQueue
-output MEDIASUBMITQUEUE string = mediaSubmitQueue
-output TEXTENRICHMENTQUEUE string = textEnrichmentQueue
-output EMBEDDINGSQUEUE string = embeddingsQueue
-output MAX_SECONDS_HIDE_ON_UPLOAD string = maxSecondsHideOnUpload
-output MAX_SUBMIT_REQUEUE_COUNT string = maxSubmitRequeueCount
-output POLL_QUEUE_SUBMIT_BACKOFF string = pollQueueSubmitBackoff
-output PDF_SUBMIT_QUEUE_BACKOFF string = pdfSubmitQueueBackoff
-output MAX_POLLING_REQUEUE_COUNT string = maxPollingRequeueCount 
-output SUBMIT_REQUEUE_HIDE_SECONDS string = submitRequeueHideSeconds
-output POLLING_BACKOFF string = pollingBackoff
-output MAX_READ_ATTEMPTS string = maxReadAttempts 
 output ENRICHMENT_KEY string = searchServices.outputs.cogServiceKey
 output ENRICHMENT_ENDPOINT string = searchServices.outputs.cogServiceEndpoint
 output ENRICHMENT_NAME string = searchServices.outputs.cogServiceName
->>>>>>> main
 output TARGET_TRANSLATION_LANGUAGE string = targetTranslationLanguage
 output ENABLE_DEV_CODE bool = enableDevCode
 output AZURE_CLIENT_ID string = aadMgmtClientId

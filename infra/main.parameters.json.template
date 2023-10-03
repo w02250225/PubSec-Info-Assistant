@@ -23,9 +23,6 @@
     "randomString": {
       "value": "${RANDOM_STRING}"
     },
-    "azureOpenAIAccountName": {
-      "value": "${AZURE_OPENAI_ACCOUNT_NAME}"
-    },
     "azureOpenAIServiceName": {
       "value": "${AZURE_OPENAI_SERVICE_NAME}"
     },
