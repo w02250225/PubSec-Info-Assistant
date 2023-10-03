@@ -48,7 +48,7 @@ max_polling_requeue_count = int(os.environ["MAX_POLLING_REQUEUE_COUNT"])
 submit_requeue_hide_seconds = int(os.environ["SUBMIT_REQUEUE_HIDE_SECONDS"])
 polling_backoff = int(os.environ["POLLING_BACKOFF"])
 max_read_attempts = int(os.environ["MAX_READ_ATTEMPTS"])
-enableDevCode = string_to_bool(os.environ["ENABLE_DEV_CODE"]) or True
+enableDevCode = string_to_bool(os.environ["ENABLE_DEV_CODE"]) or False
 
 function_name = "FileFormRecPollingPDF"
 utilities = Utilities(azure_blob_storage_account, azure_blob_storage_endpoint, azure_blob_drop_storage_container, azure_blob_content_storage_container, azure_blob_storage_key)
@@ -104,18 +104,18 @@ def main(msg: func.QueueMessage) -> None:
                 chunk_count = utilities.build_chunks(document_map, blob_name, blob_uri, CHUNK_TARGET_SIZE)
                 statusLog.upsert_document(blob_name, f'{function_name} - Chunking complete, {chunk_count} chunks created.', StatusClassification.DEBUG)  
 
-                # create chunks
-                if enableDevCode:
-                    # Dev code
-                    # submit message to the enrichment queue to continue processing
-                    queue_client = QueueClient.from_connection_string(azure_blob_connection_string, queue_name=text_enrichment_queue, message_encode_policy=TextBase64EncodePolicy())
-                    message_json["enrichment_queued_count"] = 1
-                    message_string = json.dumps(message_json)
-                    queue_client.send_message(message_string)
-                    statusLog.upsert_document(blob_name, f"{function_name} - message sent to enrichment queue", StatusClassification.DEBUG, State.QUEUED)
-                else:
-                    # Released code
-                    statusLog.upsert_document(blob_name, f'{function_name} - Processing of file is now complete.', StatusClassification.INFO, State.COMPLETE)
+                # # create chunks
+                # if enableDevCode:
+                #     # Dev code
+                #     # submit message to the enrichment queue to continue processing
+                #     queue_client = QueueClient.from_connection_string(azure_blob_connection_string, queue_name=text_enrichment_queue, message_encode_policy=TextBase64EncodePolicy())
+                #     message_json["enrichment_queued_count"] = 1
+                #     message_string = json.dumps(message_json)
+                #     queue_client.send_message(message_string)
+                #     statusLog.upsert_document(blob_name, f"{function_name} - message sent to enrichment queue", StatusClassification.DEBUG, State.QUEUED)
+                # else:
+                #     # Released code
+                statusLog.upsert_document(blob_name, f'{function_name} - Processing of file is now complete.', StatusClassification.INFO, State.COMPLETE)
 
             elif response_status == "running":
                 # still running so requeue with a backoff
@@ -124,9 +124,9 @@ def main(msg: func.QueueMessage) -> None:
                     backoff += random.randint(0, 10)
                     queued_count += 1
                     message_json['polling_queue_count'] = queued_count
-                    statusLog.upsert_document(blob_name, f"{function_name} - FR has not completed processing, requeuing. Polling back off of attempt {queued_count} of {max_polling_requeue_count} for {backoff} seconds", StatusClassification.DEBUG, State.QUEUED) 
+                    statusLog.upsert_document(blob_name, f"{function_name} - FR has not completed processing, requeuing. Polling back off of attempt {queued_count} of {max_read_attempts} for {backoff} seconds", StatusClassification.DEBUG, State.QUEUED) 
                     queue_client = QueueClient.from_connection_string(azure_blob_connection_string, queue_name=pdf_polling_queue, message_encode_policy=TextBase64EncodePolicy())
-                    message_json_str = json.dumps(message_json)  
+                    message_json_str = json.dumps(message_json)
                     queue_client.send_message(message_json_str, visibility_timeout=backoff)
                 else:
                     statusLog.upsert_document(blob_name, f'{function_name} - maximum submissions to FR reached', StatusClassification.ERROR, State.ERROR)     
@@ -142,14 +142,14 @@ def main(msg: func.QueueMessage) -> None:
                     statusLog.upsert_document(blob_name, f'{function_name} file resent to submit queue. Visible in {submit_requeue_hide_seconds} seconds', StatusClassification.DEBUG, State.THROTTLED)      
                 else:
                     statusLog.upsert_document(blob_name, f'{function_name} - maximum submissions to FR reached', StatusClassification.ERROR, State.ERROR)     
-                
+   
         else:
             statusLog.upsert_document(blob_name, f'{function_name} - Error raised by FR polling', StatusClassification.ERROR, State.ERROR)    
-                            
+
     except Exception as e:
         # a general error 
         statusLog.upsert_document(blob_name, f"{function_name} - An error occurred - code: {response.status_code} - {str(e)}", StatusClassification.ERROR, State.ERROR)
-        
+
     statusLog.save_document()
 
 
