@@ -59,9 +59,9 @@ for key, value in ENV.items():
         ENV[key] = new_value
     elif value is None:
         raise ValueError(f"Environment variable {key} not set")
-    
+
 search_creds = AzureKeyCredential(ENV["AZURE_SEARCH_SERVICE_KEY"])
-    
+
 openai.api_base = "https://" + ENV["AZURE_OPENAI_SERVICE"] + ".openai.azure.com/"
 openai.api_type = "azure"
 openai.api_key = ENV["AZURE_OPENAI_SERVICE_KEY"]
@@ -71,7 +71,7 @@ class AzOAIEmbedding(object):
     """A wrapper for a Azure OpenAI Embedding model"""
     def __init__(self, deployment_name) -> None:
         self.deployment_name = deployment_name
-    
+
     @retry(wait=wait_random_exponential(multiplier=1, max=10), stop=stop_after_attempt(5))
     def encode(self, texts):
         """Embeds a list of texts using a given model"""
@@ -85,7 +85,7 @@ class STModel(object):
     """A wrapper for a sentence-transformers model"""
     def __init__(self, deployment_name) -> None:
         self.deployment_name = deployment_name
-        
+
     @retry(wait=wait_random_exponential(multiplier=1, max=10), stop=stop_after_attempt(5))
     def encode(self, texts) -> None:
         """Embeds a list of texts using a given model"""
@@ -233,7 +233,7 @@ def embed_texts(model: str, texts: List[str]):
         embeddings = model_obj.encode(texts)
         # embeddings = embeddings[0]
         embeddings = embeddings.tolist()
-        
+
     output = {
         "model": model,
         "model_info": model_info[model],

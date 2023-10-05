@@ -103,7 +103,7 @@ def main(msg: func.QueueMessage) -> None:
                 statusLog.upsert_document(blob_name, f'{function_name} - Starting chunking', StatusClassification.DEBUG)  
                 chunk_count = utilities.build_chunks(document_map, blob_name, blob_uri, CHUNK_TARGET_SIZE)
                 statusLog.upsert_document(blob_name, f'{function_name} - Chunking complete, {chunk_count} chunks created.', StatusClassification.DEBUG)  
-                
+
                 # submit message to the enrichment queue to continue processing                
                 queue_client = QueueClient.from_connection_string(azure_blob_connection_string, queue_name=text_enrichment_queue, message_encode_policy=TextBase64EncodePolicy())
                 message_json["text_enrichment_queued_count"] = 1

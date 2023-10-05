@@ -45,7 +45,7 @@ def main(myblob: func.InputStream):
         elif file_extension in ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tif', 'tiff']:
             # Else a message is sent to the Image processing queue
             queue_name = image_enrichment_queue
-                 
+
         else:
             # Unknown file type
             logging.info("Unknown file type")
