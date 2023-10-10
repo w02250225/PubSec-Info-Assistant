@@ -71,7 +71,7 @@ def main(msg: func.QueueMessage) -> None:
         submit_queued_count = message_json["submit_queued_count"]
         statusLog.upsert_document(blob_name, f'{function_name} - Message received from pdf polling queue attempt {queued_count}', StatusClassification.DEBUG, State.PROCESSING)        
         statusLog.upsert_document(blob_name, f'{function_name} - Polling Form Recognizer function started', StatusClassification.INFO)
-        
+
         # Construct and submmit the polling message to FR
         headers = {
             'Ocp-Apim-Subscription-Key': FR_key
@@ -81,17 +81,17 @@ def main(msg: func.QueueMessage) -> None:
             'api-version': api_version
         }
         url = f"{endpoint}formrecognizer/documentModels/{FR_MODEL}/analyzeResults/{FR_resultId}"
-        
+
         # retry logic to handle 'Connection broken: IncompleteRead' errors, up to n times
-     
+
         response = durable_get(url, headers, params)   
-        
+
         # Check response and process
         if response.status_code == 200:
             # FR processing is complete OR still running- create document map 
             response_json = response.json()
             response_status = response_json['status']
-            
+
             if response_status == "succeeded":
                 # successful, so continue to document map and chunking
                 statusLog.upsert_document(blob_name, f'{function_name} - Form Recognizer has completed processing and the analyze results have been received', StatusClassification.DEBUG)  

@@ -550,6 +550,7 @@ module functions 'core/function/function.bicep' = {
     maxReadAttempts: maxReadAttempts
     enrichmentKey: searchServices.outputs.cogServiceKey
     enrichmentEndpoint: searchServices.outputs.cogServiceEndpoint
+    enrichmentEndpointRegion: searchServices.outputs.cogServiceLocation
     enrichmentName: searchServices.outputs.cogServiceName
     enrichmentLocation: location
     targetTranslationLanguage: targetTranslationLanguage

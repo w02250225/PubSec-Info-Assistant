@@ -121,6 +121,9 @@ param enrichmentKey string
 @description('Endpoint of the enrichment service')
 param enrichmentEndpoint string
 
+@description('The region to use for the enrichment service')
+param enrichmentEndpointRegion string
+
 @description('Name of the enrichment service')
 param enrichmentName string
 
@@ -325,6 +328,10 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
         {
           name: 'ENRICHMENT_ENDPOINT'
           value: enrichmentEndpoint
+        }
+        {
+          name: 'ENRICHMENT_ENDPOINT_REGION'
+          value: enrichmentEndpointRegion
         }
         {
           name: 'ENRICHMENT_NAME'

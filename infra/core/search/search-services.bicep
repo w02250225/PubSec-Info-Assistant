@@ -69,4 +69,5 @@ output searchServiceKey string = search.listAdminKeys().primaryKey
 #disable-next-line outputs-should-not-contain-secrets 
 output cogServiceKey string = cogService.listKeys().key1
 output cogServiceName string = cogService.name
+output cogServiceLocation string = cogService.location
 output cogServiceEndpoint string = 'https://${cogService.name}.cognitiveservices.azure.com/'

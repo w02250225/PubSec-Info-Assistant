@@ -7,7 +7,6 @@ import requests
 import azure.functions as func
 from azure.storage.queue import QueueClient, TextBase64EncodePolicy
 from azure.storage.blob import BlobServiceClient
-from shared_code.utilities import Utilities
 from shared_code.status_log import State, StatusClassification, StatusLog
 from shared_code.utilities import Utilities
 
@@ -29,13 +28,13 @@ cosmosdb_key = os.environ["COSMOSDB_KEY"]
 cosmosdb_database_name = os.environ["COSMOSDB_DATABASE_NAME"]
 cosmosdb_container_name = os.environ["COSMOSDB_CONTAINER_NAME"]
 text_enrichment_queue = os.environ["TEXT_ENRICHMENT_QUEUE"]
-enrichmentKey =  os.environ["ENRICHMENT_KEY"]
-enrichmentEndpoint = os.environ["ENRICHMENT_ENDPOINT"] 
-targetTranslationLanguage = os.environ["TARGET_TRANSLATION_LANGUAGE"] 
+enrichment_key =  os.environ["ENRICHMENT_KEY"]
+enrichment_endpoint_region = os.environ["ENRICHMENT_ENDPOINT_REGION"]
+target_translation_language = os.environ["TARGET_TRANSLATION_LANGUAGE"]
 max_requeue_count = int(os.environ["MAX_ENRICHMENT_REQUEUE_COUNT"])
 backoff = int(os.environ["ENRICHMENT_BACKOFF"])
 azure_blob_content_storage_container = os.environ["BLOB_STORAGE_ACCOUNT_OUTPUT_CONTAINER_NAME"]
-queueName = os.environ["EMBEDDINGS_QUEUE"]
+queue_name = os.environ["EMBEDDINGS_QUEUE"]
 
 FUNCTION_NAME = "TextEnrichment"
 MAX_CHARS_FOR_DETECTION = 1000
@@ -105,12 +104,11 @@ def main(msg: func.QueueMessage) -> None:
                 chunk_content = chunk_content + " " + trim_content(chunk_dict["content"], remaining_chars)
                 break
 
-        # detect language           
-        endpoint_region = enrichmentEndpoint.split("https://")[1].split(".api")[0]
+        # detect language
         headers = {
-            'Ocp-Apim-Subscription-Key': enrichmentKey,
+            'Ocp-Apim-Subscription-Key': enrichment_key,
             'Content-type': 'application/json',
-            'Ocp-Apim-Subscription-Region': endpoint_region
+            'Ocp-Apim-Subscription-Region': enrichment_endpoint_region
         }
         data = [{"text": chunk_content}]
 
@@ -129,7 +127,7 @@ def main(msg: func.QueueMessage) -> None:
             return
 
         # If the language of the document is not equal to target language then translate the generated chunks
-        if detected_language != targetTranslationLanguage:
+        if detected_language != target_translation_language:
             status_log.upsert_document(
                 blob_path,
                 f"{FUNCTION_NAME} - Non-target language detected",
@@ -145,12 +143,12 @@ def main(msg: func.QueueMessage) -> None:
             response = requests.get(blob_path_plus_sas)
             response.raise_for_status()
             chunk_dict = json.loads(response.text)
-            params = {'to': targetTranslationLanguage}              
+            params = {'to': target_translation_language}              
 
             # Translate content, title, subtitle, and section if required
             fields_to_translate = ["content", "title", "subtitle", "section"]
             for field in fields_to_translate:
-                translate_and_set(field, chunk_dict, headers, params, message_json, detected_language, targetTranslationLanguage, api_translate_endpoint)                
+                translate_and_set(field, chunk_dict, headers, params, message_json, detected_language, target_translation_language, api_translate_endpoint)                
 
             # Get path and file name minus the root container
             json_str = json.dumps(chunk_dict, indent=2, ensure_ascii=False)
@@ -158,7 +156,7 @@ def main(msg: func.QueueMessage) -> None:
             block_blob_client.upload_blob(json_str, overwrite=True)
 
         # Queue message to embeddings queue for downstream processing
-        queue_client = QueueClient.from_connection_string(azure_blob_connection_string, queueName, message_encode_policy=TextBase64EncodePolicy())
+        queue_client = QueueClient.from_connection_string(azure_blob_connection_string, queue_name, message_encode_policy=TextBase64EncodePolicy())
         embeddings_queue_backoff =  random.randint(1, 60)
         message_string = json.dumps(message_json)
         queue_client.send_message(message_string, visibility_timeout = embeddings_queue_backoff)
@@ -167,7 +165,14 @@ def main(msg: func.QueueMessage) -> None:
             blob_path,
             f"{FUNCTION_NAME} - Text enrichment is complete",
             StatusClassification.DEBUG,
-            State.COMPLETE,
+            State.QUEUED,
+        )
+
+        status_log.upsert_document(
+            blob_path,
+            f"{FUNCTION_NAME} - message sent to embeddings queue",
+            StatusClassification.DEBUG,
+            State.QUEUED,
         )
 
     except Exception as error:
@@ -181,9 +186,9 @@ def main(msg: func.QueueMessage) -> None:
     status_log.save_document()
 
 
-def translate_and_set(field_name, chunk_dict, headers, params, message_json, detected_language, targetTranslationLanguage, api_translate_endpoint):
+def translate_and_set(field_name, chunk_dict, headers, params, message_json, detected_language, target_translation_language, api_translate_endpoint):
     '''Translate text if it is not in target language'''
-    if detected_language != targetTranslationLanguage:
+    if detected_language != target_translation_language:
         data = [{"text": chunk_dict[field_name]}]
         response = requests.post(api_translate_endpoint, headers=headers, json=data, params=params)
 
@@ -249,3 +254,5 @@ def requeue(response, message_json):
             f"{FUNCTION_NAME} - Error on language detection - {response.status_code} - {response.reason}",
             StatusClassification.ERROR
             )
+        
+    status_log.save_document()
