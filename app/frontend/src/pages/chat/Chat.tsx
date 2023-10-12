@@ -2,8 +2,13 @@
 // Licensed under the MIT license.
 
 import { useRef, useState, useEffect } from "react";
+<<<<<<< HEAD
 import { Checkbox, Panel, DefaultButton, TextField, SpinButton } from "@fluentui/react";
 import Coeus from "../../assets/coeus.png";
+=======
+import { Checkbox, Panel, DefaultButton, TextField, SpinButton} from "@fluentui/react";
+import { SparkleFilled, ClockFilled, TargetArrowFilled, OptionsFilled, SearchInfoFilled, PersonStarFilled, TextBulletListSquareSparkleFilled } from "@fluentui/react-icons";
+>>>>>>> vNext-Dev
 
 import styles from "./Chat.module.css";
 import rlbgstyles from "../../components/ResponseLengthButtonGroup/ResponseLengthButtonGroup.module.css";

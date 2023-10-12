@@ -36,7 +36,7 @@ def main(myblob: func.InputStream):
         if file_extension == 'pdf':
              # If the file is a PDF a message is sent to the PDF processing queue.
             queue_name = pdf_submit_queue
-        elif file_extension in ['htm', 'html', 'docx', 'xlsx']:
+        elif file_extension in ['htm', 'csv', 'doc', 'docx', 'eml', 'html', 'md', 'msg', 'ppt', 'pptx', 'txt', 'xlsx', 'xml']:
             # Else a message is sent to the non PDF processing queue
             queue_name = non_pdf_submit_queue
         elif file_extension in ['flv', 'mxf', 'gxf', 'ts', 'ps', '3gp', '3gpp', 'mpg', 'wmv', 'asf', 'avi', 'wmv', 'mp4', 'm4a', 'm4v', 'isma', 'ismv', 'dvr-ms', 'mkv', 'wav', 'mov']:

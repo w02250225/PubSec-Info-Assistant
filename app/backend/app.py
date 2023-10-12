@@ -56,6 +56,9 @@ str_to_bool = {'true': True, 'false': False}
 IS_GOV_CLOUD_DEPLOYMENT = str_to_bool.get(os.environ.get("IS_GOV_CLOUD_DEPLOYMENT").lower()) or False
 CHAT_WARNING_BANNER_TEXT = os.environ.get("CHAT_WARNING_BANNER_TEXT") or ""
 
+TARGET_EMBEDDING_MODEL = os.environ.get("TARGET_EMBEDDING_MODEL") or "BAAI/bge-small-en-v1.5"
+ENRICHMENT_APPSERVICE_NAME = os.environ.get("ENRICHMENT_APPSERVICE_NAME") or "enrichment"
+
 KB_FIELDS_CONTENT = os.environ.get("KB_FIELDS_CONTENT") or "content"
 KB_FIELDS_CATEGORY = os.environ.get("KB_FIELDS_CATEGORY") or "category"
 KB_FIELDS_SOURCEPAGE = os.environ.get("KB_FIELDS_SOURCEPAGE") or "file_uri"
@@ -91,6 +94,8 @@ msal_client = msal.ConfidentialClientApplication(
     CLIENT_ID, authority=AUTHORITY,
     client_credential=CLIENT_SECRET,
 )
+
+# embedding_service_suffix = "xyoek"
 
 # Use the current user identity to authenticate with Azure OpenAI, Cognitive Search and Blob Storage (no secrets needed,
 # just use 'az login' locally, and managed identity when deployed on Azure). If you need to use keys, use separate AzureKeyCredential instances with the
@@ -170,7 +175,9 @@ chat_approaches = {
         QUERY_TERM_LANGUAGE,
         MODEL_NAME,
         MODEL_VERSION,
-        IS_GOV_CLOUD_DEPLOYMENT
+        IS_GOV_CLOUD_DEPLOYMENT,
+        TARGET_EMBEDDING_MODEL,
+        ENRICHMENT_APPSERVICE_NAME
     )
 }
 
