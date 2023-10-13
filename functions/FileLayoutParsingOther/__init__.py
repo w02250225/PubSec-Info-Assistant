@@ -194,7 +194,11 @@ def main(msg: func.QueueMessage) -> None:
         queue_client.send_message(message_string)
         status_log.upsert_document(blob_name, f"{FUNCTION_NAME} - message sent to enrichment queue", StatusClassification.DEBUG, State.QUEUED)    
 
+<<<<<<< HEAD
     except Exception as e:
         status_log.upsert_document(blob_name, f"{FUNCTION_NAME} - An error occurred - {str(e)}", StatusClassification.ERROR, State.ERROR)
 
     status_log.save_document()
+=======
+    statusLog.save_document(blob_name)
+>>>>>>> vNext-Dev

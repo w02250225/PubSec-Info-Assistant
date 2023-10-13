@@ -178,8 +178,8 @@ def main(msg: func.QueueMessage) -> None:
             StatusClassification.ERROR,
             State.ERROR,
         )
-
-    status_log.save_document()
+        
+    status_log.save_document(blob_path)
 
 
 def translate_and_set(field_name, chunk_dict, headers, params, message_json, detected_language, target_translation_language, api_translate_endpoint):

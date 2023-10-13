@@ -29,7 +29,7 @@ from azure.storage.blob import (
 )
 from flask import Flask, jsonify, redirect, request, send_file, session, url_for
 from opencensus.ext.azure.log_exporter import AzureLogHandler
-from shared_code.status_log import State, StatusLog
+from shared_code.status_log import State, StatusClassification, StatusLog
 from request_log import RequestLog
 
 # Replace these with your own values, either in environment variables or directly here
@@ -60,8 +60,9 @@ TARGET_EMBEDDING_MODEL = os.environ.get("TARGET_EMBEDDING_MODEL") or "BAAI/bge-s
 ENRICHMENT_APPSERVICE_NAME = os.environ.get("ENRICHMENT_APPSERVICE_NAME") or "enrichment"
 
 KB_FIELDS_CONTENT = os.environ.get("KB_FIELDS_CONTENT") or "content"
-KB_FIELDS_CATEGORY = os.environ.get("KB_FIELDS_CATEGORY") or "category"
-KB_FIELDS_SOURCEPAGE = os.environ.get("KB_FIELDS_SOURCEPAGE") or "file_uri"
+KB_FIELDS_PAGENUMBER = os.environ.get("KB_FIELDS_PAGENUMBER") or "pages"
+KB_FIELDS_SOURCEFILE = os.environ.get("KB_FIELDS_SOURCEFILE") or "file_uri"
+KB_FIELDS_CHUNKFILE = os.environ.get("KB_FIELDS_CHUNKFILE") or "chunk_file"
 
 COSMOSDB_URL = os.environ.get("COSMOSDB_URL")
 COSMODB_KEY = os.environ.get("COSMOSDB_KEY")
@@ -169,8 +170,11 @@ chat_approaches = {
         AZURE_OPENAI_SERVICE,
         AZURE_OPENAI_SERVICE_KEY,
         AZURE_OPENAI_CHATGPT_DEPLOYMENT,
-        KB_FIELDS_SOURCEPAGE,
+        KB_FIELDS_SOURCEFILE,
         KB_FIELDS_CONTENT,
+        KB_FIELDS_PAGENUMBER,
+        KB_FIELDS_CHUNKFILE,
+        AZURE_BLOB_STORAGE_CONTAINER,
         BLOB_CLIENT,
         QUERY_TERM_LANGUAGE,
         MODEL_NAME,
@@ -257,11 +261,13 @@ def logout():
 @app.route("/", defaults={"path": "index.html"})
 @app.route("/<path:path>")
 def static_file(path):
+    """Serve static files from the 'static' directory"""
     return app.send_static_file(path)
 
 
 @app.route("/chat", methods=["POST"])
 def chat():
+    """Chat with the bot using a given approach"""
     approach = request.json["approach"]
     try:
         request_id = str(uuid.uuid4())
@@ -299,6 +305,7 @@ def chat():
 
 @app.route("/getblobclienturl")
 def get_blob_client_url():
+    """Get a URL for a file in Blob Storage with SAS token"""
     sas_token = generate_account_sas(
         AZURE_BLOB_STORAGE_ACCOUNT,
         AZURE_BLOB_STORAGE_KEY,
@@ -344,11 +351,11 @@ def get_blob_sas():
 
 @app.route("/getalluploadstatus", methods=["POST"])
 def get_all_upload_status():
+    """Get the status of all file uploads in the last N hours"""
     timeframe = request.json["timeframe"]
     state = request.json["state"]
     try:
-        results = statusLog.read_files_status_by_timeframe(
-            timeframe, State[state])
+        results = statusLog.read_files_status_by_timeframe(timeframe, State[state])
     except Exception as ex:
         logging.exception("Exception in /getalluploadstatus")
         return jsonify({"error": str(ex)}), 500
@@ -357,6 +364,7 @@ def get_all_upload_status():
 
 @app.route("/getInfoData")
 def get_info_data():
+    """Get the info data for the app"""
     user_data = session["user_data"]
     user_data["session_id"] = session["state"]
     response = jsonify(
@@ -372,8 +380,32 @@ def get_info_data():
         })
     return response
 
+
+@app.route("/logstatus", methods=["POST"])
+def logstatus():
+    """Log the status of a file upload to CosmosDB"""
+    try:
+        path = request.json["path"]
+        status = request.json["status"]
+        status_classification = StatusClassification[request.json["status_classification"].upper()]
+        state = State[request.json["state"].upper()]
+
+        statusLog.upsert_document(document_path=path,
+                                  status=status,
+                                  status_classification=status_classification,
+                                  state=state,
+                                  fresh_start=True)
+        statusLog.save_document(document_path=path)
+        
+    except Exception as ex:
+        logging.exception("Exception in /logstatus")
+        return jsonify({"error": str(ex)}), 500
+    return jsonify({"status": 200})
+
+
 @app.route("/getWarningBanner")
 def get_warning_banner():
+    """Get the warning banner text"""
     response = jsonify(
         {
             "WARNING_BANNER_TEXT": f"{CHAT_WARNING_BANNER_TEXT}"
@@ -382,6 +414,7 @@ def get_warning_banner():
 
 @app.route("/getcitation", methods=["POST"])
 def get_citation():
+    """Get the citation for a given file"""
     citation = urllib.parse.unquote(request.json["citation"])
     try:
         blob = blob_container.get_blob_client(citation).download_blob()

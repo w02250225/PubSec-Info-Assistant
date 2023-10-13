@@ -176,5 +176,5 @@ def main(msg: func.QueueMessage) -> None:
             StatusClassification.ERROR,
             State.ERROR,
         )
-        
-    status_log.save_document()
+
+    status_log.save_document(blob_path)

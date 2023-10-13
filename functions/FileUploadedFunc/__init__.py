@@ -28,9 +28,10 @@ status_log = StatusLog(cosmosdb_url, cosmosdb_key, cosmosdb_database_name, cosmo
 def main(myblob: func.InputStream):
     """ Function to read supported file types and pass to the correct queue for processing"""
     try:
-        status_log.upsert_document(myblob.name, 'File Uploaded', StatusClassification.INFO, State.PROCESSING, True)
-        status_log.upsert_document(myblob.name, f'{FUNCTION_NAME} - FileUploadedFunc function started', StatusClassification.DEBUG)
-
+        status_log = StatusLog(cosmosdb_url, cosmosdb_key, cosmosdb_database_name, cosmosdb_container_name)
+        status_log.upsert_document(myblob.name, 'Pipeline triggered by Blob Upload', StatusClassification.INFO, State.PROCESSING, False)            
+        status_log.upsert_document(myblob.name, f'{function_name} - FileUploadedFunc function started', StatusClassification.DEBUG)    
+        
         # Create message structure to send to queue
         file_extension = os.path.splitext(myblob.name)[1][1:].lower()
         if file_extension == 'pdf':
@@ -67,7 +68,4 @@ def main(myblob: func.InputStream):
         queue_client.send_message(message_string, visibility_timeout = backoff)
         status_log.upsert_document(myblob.name, f'{FUNCTION_NAME} - {file_extension} file sent to submit queue. Visible in {backoff} seconds', StatusClassification.DEBUG, State.QUEUED)
 
-    except Exception as e:
-        status_log.upsert_document(myblob.name, f"{FUNCTION_NAME} - An error occurred - {str(e)}", StatusClassification.ERROR, State.ERROR)
-
-    status_log.save_document()
+    status_log.save_document(myblob.name)
