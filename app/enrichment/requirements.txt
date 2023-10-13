@@ -1,11 +1,12 @@
-sentence-transformers
-fastapi
+azure-core == 1.29.4
+azure-cosmos == 4.5.1
+azure-search-documents == 11.4.0b8
+azure-storage-blob == 12.18.3
+azure-storage-queue == 12.7.3
+fastapi == 0.103.2
 fastapi-utils
-uvicorn
-azure-storage-queue == 12.6.0
-azure-storage-blob==12.16.0
-azure.search.documents==11.3.0
-azure-cosmos == 4.3.1
-azure-core == 1.26.4
-tenacity
-openai
+openai == 0.28.1
+opencensus-ext-azure == 1.1.10
+sentence-transformers
+tenacity == 8.2.3
+uvicorn == 0.23.2

@@ -33,14 +33,13 @@ NEW_AFTER_N_CHARS = 1500
 COMBINE_UNDER_N_CHARS = 500
 MAX_CHARACTERS = 1500
 
-
 FUNCTION_NAME = "FileLayoutParsingOther"
 utilities = Utilities(azure_blob_storage_account, azure_blob_storage_endpoint, azure_blob_drop_storage_container, azure_blob_content_storage_container, azure_blob_storage_key)
 
 class UnstructuredError(Exception):
     pass
 
-def PartitionFile(file_extension: str, file_url: str):      
+def partition_file(file_extension: str, file_url: str):      
     """ uses the unstructured.io libraries to analyse a document
     Returns:
         elements: A list of available models
@@ -110,7 +109,6 @@ def PartitionFile(file_extension: str, file_url: str):
 
     return elements, metadata
 
-	
 
 def main(msg: func.QueueMessage) -> None:
     try:
@@ -137,16 +135,15 @@ def main(msg: func.QueueMessage) -> None:
         file_name, file_extension, file_directory = utilities.get_filename_and_extension(blob_name)
 
         response = requests.get(blob_path_plus_sas, timeout=30)
-        response.raise_for_status()              
-			  
-        
+        response.raise_for_status()
+
         # Partition the file dependent on file extension
-        elements, metadata = PartitionFile(file_extension, blob_path_plus_sas)
+        elements, metadata = partition_file(file_extension, blob_path_plus_sas)
         metdata_text = ''
         for metadata_value in metadata:
             metdata_text += metadata_value + '\n'    
         status_log.upsert_document(blob_name, f'{FUNCTION_NAME} - partitioning complete', StatusClassification.DEBUG)
-        
+
         title = ''
         # Capture the file title
         try:
@@ -158,28 +155,28 @@ def main(msg: func.QueueMessage) -> None:
         except:
             # if this type of eleemnt does not include title, then process with emty value
             pass
-        
-        # Chunk the file     
+
+        # Chunk the file
         from unstructured.chunking.title import chunk_by_title
         chunks = chunk_by_title(elements, multipage_sections=True, new_after_n_chars=NEW_AFTER_N_CHARS, combine_under_n_chars=COMBINE_UNDER_N_CHARS)
         # chunks = chunk_by_title(elements, multipage_sections=True, new_after_n_chars=NEW_AFTER_N_CHARS, combine_under_n_chars=COMBINE_UNDER_N_CHARS, max_characters=MAX_CHARACTERS)        
-        status_log.upsert_document(blob_name, f'{FUNCTION_NAME} - chunking complete. {str(chunks.count)} chunks created', StatusClassification.DEBUG)
-                
+        status_log.upsert_document(blob_name, f'{FUNCTION_NAME} - chunking complete. {str(len(chunks))} chunks created', StatusClassification.DEBUG)
+
         subtitle_name = ''
         section_name = ''
         # Complete and write chunks
-        for i, chunk in enumerate(chunks):      
-            if chunk.metadata.page_number == None:
+        for i, chunk in enumerate(chunks):
+            if chunk.metadata.page_number is None:
                 page_list = [1]
             else:
-                page_list = [chunk.metadata.page_number] 
-            # substitute html if text is a table            
+                page_list = [chunk.metadata.page_number]
+            # substitute html if text is a table
             if chunk.category == 'Table':
                 chunk_text = chunk.metadata.text_as_html
             else:
                 chunk_text = chunk.text
             # add filetype specific metadata as chunk text header
-            chunk_text = metdata_text + chunk_text                    
+            chunk_text = metdata_text + chunk_text
             utilities.write_chunk(blob_name, blob_uri,
                                 f"{i}",
                                 utilities.token_count(chunk.text),
@@ -187,9 +184,9 @@ def main(msg: func.QueueMessage) -> None:
                                 section_name, title, subtitle_name,
                                 MediaType.TEXT
                                 )
-        
+
         status_log.upsert_document(blob_name, f'{FUNCTION_NAME} - chunking stored.', StatusClassification.DEBUG)   
-        
+
         # submit message to the enrichment queue to continue processing                
         queue_client = QueueClient.from_connection_string(azure_blob_connection_string, queue_name=text_enrichment_queue, message_encode_policy=TextBase64EncodePolicy())
         message_json["enrichment_queued_count"] = 1

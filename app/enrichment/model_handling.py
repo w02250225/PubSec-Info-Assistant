@@ -25,7 +25,7 @@ def load_models():
         sanitized_model_name = re.sub(r'[^a-zA-Z0-9_\-.]', '_', model_name)
         model.save(os.path.join(models_path,sanitized_model_name))
         models[sanitized_model_name] = model
-        logging.debug(f"Loaded model {model_name}")
+        logging.debug("Loaded model %s", model_name)
 
         model_info_entry = {
             "model": sanitized_model_name,

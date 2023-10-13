@@ -12,12 +12,8 @@ from shared_code.utilities import Utilities
 
 azure_blob_storage_account = os.environ["BLOB_STORAGE_ACCOUNT"]
 azure_blob_storage_endpoint = os.environ["BLOB_STORAGE_ACCOUNT_ENDPOINT"]
-azure_blob_drop_storage_container = os.environ[
-    "BLOB_STORAGE_ACCOUNT_UPLOAD_CONTAINER_NAME"
-]
-azure_blob_content_storage_container = os.environ[
-    "BLOB_STORAGE_ACCOUNT_OUTPUT_CONTAINER_NAME"
-]
+azure_blob_drop_storage_container = os.environ["BLOB_STORAGE_ACCOUNT_UPLOAD_CONTAINER_NAME"]
+azure_blob_content_storage_container = os.environ["BLOB_STORAGE_ACCOUNT_OUTPUT_CONTAINER_NAME"]
 azure_blob_storage_key = os.environ["BLOB_STORAGE_ACCOUNT_KEY"]
 azure_blob_connection_string = os.environ["BLOB_CONNECTION_STRING"]
 azure_blob_storage_endpoint = os.environ["BLOB_STORAGE_ACCOUNT_ENDPOINT"]
@@ -80,80 +76,80 @@ def main(msg: func.QueueMessage) -> None:
             StatusClassification.DEBUG,
             State.PROCESSING,
         )
-        file_name, file_extension, file_directory  = utilities.get_filename_and_extension(blob_path)
-        chunk_folder_path = file_directory + file_name + file_extension
+        # file_name, file_extension, file_directory  = utilities.get_filename_and_extension(blob_path)
+        # chunk_folder_path = file_directory + file_name + file_extension
 
-        # Detect language of the document
-        chunk_content = ''
-        blob_service_client = BlobServiceClient.from_connection_string(azure_blob_connection_string)
-        container_client = blob_service_client.get_container_client(azure_blob_content_storage_container)
-        # Iterate over the chunks in the container, retrieving up to the max number of chars required
-        chunk_list = container_client.list_blobs(name_starts_with=chunk_folder_path)
-        chunk_content = ''
-        for i, chunk in enumerate(chunk_list):
-            # open the file and extract the content
-            blob_path_plus_sas = utilities.get_blob_and_sas(azure_blob_content_storage_container + '/' + chunk.name)
-            response = requests.get(blob_path_plus_sas)
-            response.raise_for_status()
-            chunk_dict = json.loads(response.text)   
-            if len(chunk_content) + len(chunk_dict["content"]) <= MAX_CHARS_FOR_DETECTION:
-                chunk_content = chunk_content + " " + chunk_dict["content"]
-            else:
-                # return chars up to the maximum
-                remaining_chars = MAX_CHARS_FOR_DETECTION - len(chunk_content)
-                chunk_content = chunk_content + " " + trim_content(chunk_dict["content"], remaining_chars)
-                break
+        # # Detect language of the document
+        # chunk_content = ''
+        # blob_service_client = BlobServiceClient.from_connection_string(azure_blob_connection_string)
+        # container_client = blob_service_client.get_container_client(azure_blob_content_storage_container)
+        # # Iterate over the chunks in the container, retrieving up to the max number of chars required
+        # chunk_list = container_client.list_blobs(name_starts_with=chunk_folder_path)
+        # chunk_content = ''
+        # for i, chunk in enumerate(chunk_list):
+        #     # open the file and extract the content
+        #     blob_path_plus_sas = utilities.get_blob_and_sas(azure_blob_content_storage_container + '/' + chunk.name)
+        #     response = requests.get(blob_path_plus_sas)
+        #     response.raise_for_status()
+        #     chunk_dict = json.loads(response.text)   
+        #     if len(chunk_content) + len(chunk_dict["content"]) <= MAX_CHARS_FOR_DETECTION:
+        #         chunk_content = chunk_content + " " + chunk_dict["content"]
+        #     else:
+        #         # return chars up to the maximum
+        #         remaining_chars = MAX_CHARS_FOR_DETECTION - len(chunk_content)
+        #         chunk_content = chunk_content + " " + trim_content(chunk_dict["content"], remaining_chars)
+        #         break
 
-        # detect language
-        headers = {
-            'Ocp-Apim-Subscription-Key': enrichment_key,
-            'Content-type': 'application/json',
-            'Ocp-Apim-Subscription-Region': enrichment_endpoint_region
-        }
-        data = [{"text": chunk_content}]
+        # # detect language
+        # headers = {
+        #     'Ocp-Apim-Subscription-Key': enrichment_key,
+        #     'Content-type': 'application/json',
+        #     'Ocp-Apim-Subscription-Region': enrichment_endpoint_region
+        # }
+        # data = [{"text": chunk_content}]
 
-        response = requests.post(api_detect_endpoint, headers=headers, json=data)      
-        if response.status_code == 200:
-            detected_language = response.json()[0]['language']
-            status_log.upsert_document(
-                blob_path,
-                f"{FUNCTION_NAME} - detected language of text is {detected_language}.",
-                StatusClassification.DEBUG,
-                State.PROCESSING,
-            )
-        else:
-            # error or requeue
-            requeue(response, message_json)
-            return
+        # response = requests.post(api_detect_endpoint, headers=headers, json=data)      
+        # if response.status_code == 200:
+        #     detected_language = response.json()[0]['language']
+        #     status_log.upsert_document(
+        #         blob_path,
+        #         f"{FUNCTION_NAME} - detected language of text is {detected_language}.",
+        #         StatusClassification.DEBUG,
+        #         State.PROCESSING,
+        #     )
+        # else:
+        #     # error or requeue
+        #     requeue(response, message_json)
+        #     return
 
-        # If the language of the document is not equal to target language then translate the generated chunks
-        if detected_language != target_translation_language:
-            status_log.upsert_document(
-                blob_path,
-                f"{FUNCTION_NAME} - Non-target language detected",
-                StatusClassification.DEBUG,
-                State.ERROR,
-            )
+        # # If the language of the document is not equal to target language then translate the generated chunks
+        # if detected_language != target_translation_language:
+        #     status_log.upsert_document(
+        #         blob_path,
+        #         f"{FUNCTION_NAME} - Non-target language detected",
+        #         StatusClassification.DEBUG,
+        #         State.ERROR,
+        #     )
 
-        # regenerate the iterator to reset it to the first chunk
-        chunk_list = container_client.list_blobs(name_starts_with=chunk_folder_path)
-        for i, chunk in enumerate(chunk_list):
-            # open the file and extract the content
-            blob_path_plus_sas = utilities.get_blob_and_sas(azure_blob_content_storage_container + '/' + chunk.name)
-            response = requests.get(blob_path_plus_sas)
-            response.raise_for_status()
-            chunk_dict = json.loads(response.text)
-            params = {'to': target_translation_language}              
+        # # regenerate the iterator to reset it to the first chunk
+        # chunk_list = container_client.list_blobs(name_starts_with=chunk_folder_path)
+        # for i, chunk in enumerate(chunk_list):
+        #     # open the file and extract the content
+        #     blob_path_plus_sas = utilities.get_blob_and_sas(azure_blob_content_storage_container + '/' + chunk.name)
+        #     response = requests.get(blob_path_plus_sas)
+        #     response.raise_for_status()
+        #     chunk_dict = json.loads(response.text)
+        #     params = {'to': target_translation_language}              
 
-            # Translate content, title, subtitle, and section if required
-            fields_to_translate = ["content", "title", "subtitle", "section"]
-            for field in fields_to_translate:
-                translate_and_set(field, chunk_dict, headers, params, message_json, detected_language, target_translation_language, api_translate_endpoint)                
+        #     # Translate content, title, subtitle, and section if required
+        #     fields_to_translate = ["content", "title", "subtitle", "section"]
+        #     for field in fields_to_translate:
+        #         translate_and_set(field, chunk_dict, headers, params, message_json, detected_language, target_translation_language, api_translate_endpoint)                
 
-            # Get path and file name minus the root container
-            json_str = json.dumps(chunk_dict, indent=2, ensure_ascii=False)
-            block_blob_client = blob_service_client.get_blob_client(container=azure_blob_content_storage_container, blob=chunk.name)
-            block_blob_client.upload_blob(json_str, overwrite=True)
+        #     # Get path and file name minus the root container
+        #     json_str = json.dumps(chunk_dict, indent=2, ensure_ascii=False)
+        #     block_blob_client = blob_service_client.get_blob_client(container=azure_blob_content_storage_container, blob=chunk.name)
+        #     block_blob_client.upload_blob(json_str, overwrite=True)
 
         # Queue message to embeddings queue for downstream processing
         queue_client = QueueClient.from_connection_string(azure_blob_connection_string, queue_name, message_encode_policy=TextBase64EncodePolicy())
@@ -198,7 +194,7 @@ def translate_and_set(field_name, chunk_dict, headers, params, message_json, det
         else:
             # error so requeue
             requeue(response, message_json)
-            return   
+            return
     else:
         chunk_dict[f"translated_{field_name}"] = chunk_dict[f"{field_name}"]
         return
@@ -254,5 +250,5 @@ def requeue(response, message_json):
             f"{FUNCTION_NAME} - Error on language detection - {response.status_code} - {response.reason}",
             StatusClassification.ERROR
             )
-        
+
     status_log.save_document()

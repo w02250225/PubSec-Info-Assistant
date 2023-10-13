@@ -719,15 +719,15 @@ module storageRoleFunc 'core/security/role.bicep' = {
   }
 }
 
-module containerRegistryPush 'core/security/role.bicep' = if( aadMgmtServicePrincipalId !='' ) {
-  scope: rg
-  name: 'AcrPush'
-  params: {
-    principalId: aadMgmtServicePrincipalId
-    roleDefinitionId: '8311e382-0749-4cb8-b61a-304f252e45ec'
-    principalType: 'ServicePrincipal'
-  }
-}
+// module containerRegistryPush 'core/security/role.bicep' = if( aadMgmtServicePrincipalId !='' ) {
+//   scope: rg
+//   name: 'AcrPush'
+//   params: {
+//     principalId: aadMgmtServicePrincipalId
+//     roleDefinitionId: '8311e382-0749-4cb8-b61a-304f252e45ec'
+//     principalType: 'ServicePrincipal'
+//   }
+// }
 
 // // MANAGEMENT SERVICE PRINCIPAL
 // module openAiRoleMgmt 'core/security/role.bicep' =  if (!isInAutomation) {

@@ -8,8 +8,8 @@ import re
 from datetime import datetime
 from typing import List
 import base64
-import requests
 import random
+import requests
 from azure.storage.blob import BlobServiceClient
 from azure.storage.queue import QueueClient, TextBase64EncodePolicy
 from azure.search.documents import SearchClient
@@ -21,6 +21,7 @@ from fastapi.responses import RedirectResponse
 from fastapi_utils.tasks import repeat_every
 from model_handling import load_models
 import openai
+from opencensus.ext.azure.log_exporter import AzureLogHandler
 from tenacity import retry, wait_random_exponential, stop_after_attempt
 from sentence_transformers import SentenceTransformer
 from shared_code.utilities_helper import UtilitiesHelper
@@ -98,6 +99,7 @@ class STModel(object):
 
 log = logging.getLogger("uvicorn")
 log.setLevel(ENV["LOG_LEVEL"])
+log.addHandler(AzureLogHandler())
 log.info("Starting up")
 
 # === Azure Setup ===
