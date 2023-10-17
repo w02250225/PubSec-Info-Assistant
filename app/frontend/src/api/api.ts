@@ -59,7 +59,8 @@ export async function chatApi(options: ChatRequest): Promise<AskResponse> {
                 system_persona: options.overrides?.systemPersona,
                 ai_persona: options.overrides?.aiPersona,
                 response_length: options.overrides?.responseLength,
-                response_temp: options.overrides?.responseTemp
+                response_temp: options.overrides?.responseTemp,
+                top_p: options.overrides?.topP
             }
         })
     });

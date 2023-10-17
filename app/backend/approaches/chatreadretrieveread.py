@@ -45,7 +45,7 @@ Each source has a file name followed by a pipe character and the actual informat
 Use square brackets to reference the source, e.g. [info1.txt]. Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
 
 Here is how you should answer every question:
-- Look for relevant information in the above source documents to answer the question.       
+- Look for relevant information in the above source documents to answer the question.
 - If there is specific information related to question available in the above sources, provide an answer along with the appropriate citation.Do not forget to include the citation!
 - Always include citation from sources listed above.
 - If there is no specific information related to the question available in the source document, respond with "I\'m not sure" without providing any citation. Do not provide personal opinions or assumptions.
@@ -299,6 +299,7 @@ Always include citations if you reference the source documents. Use square brack
             model=self.model_name,
             messages=messages,
             temperature=float(overrides.get("response_temp")) or 0.6,
+            top_p=float(overrides.get("top_p")) or 1.0,
             n=1
         )
 
@@ -329,6 +330,7 @@ Always include citations if you reference the source documents. Use square brack
             model=self.model_name,
             messages=messages,
             temperature=float(overrides.get("response_temp")) or 0.6,
+            top_p=float(overrides.get("top_p")) or 1.0,
             max_tokens=response_length,
             n=1
 

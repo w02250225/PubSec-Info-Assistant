@@ -22,6 +22,7 @@ import { ResponseTempSlider } from "../../components/ResponseTempSlider";
 import { Tooltips } from "../../components/Tooltips"
 import { InfoContent } from "../../components/InfoContent/InfoContent";
 import { PromptOverride } from "../../components/PromptOverride";
+import { TopPInput } from "../../components/TopPInput";
 
 const Chat = () => {
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
@@ -36,13 +37,15 @@ const Chat = () => {
     const [systemPersona, setSystemPersona] = useState<string>("an Assistant");
     const [aiPersona, setAiPersona] = useState<string>("");
     // Setting responseLength to 2048 by default, this will effect the default display of the ResponseLengthButtonGroup below.
-    // It must match a valid value of one of the buttons in the ResponseLengthButtonGroup.tsx file. 
+    // It must match a valid value of one of the buttons in the ResponseLengthButtonGroup.tsx file.
     // If you update the default value here, you must also update the default value in the onResponseLengthChange method.
     const [responseLength, setResponseLength] = useState<number>(2048);
     // Setting responseTemp to 0.7 by default, this will effect the default display of the ResponseTempButtonGroup below.
     // It must match a valid value of one of the buttons in the ResponseTempButtonGroup.tsx file.
     // If you update the default value here, you must also update the default value in the onResponseTempChange method.
     const [responseTemp, setResponseTemp] = useState<number>(0.4);
+
+    const [topP, setTopP] = useState<number>(1.0);
 
     const lastQuestionRef = useRef<string>("");
     const chatMessageStreamEnd = useRef<HTMLDivElement | null>(null);
@@ -82,7 +85,8 @@ const Chat = () => {
                     systemPersona: systemPersona,
                     aiPersona: aiPersona,
                     responseLength: responseLength,
-                    responseTemp: responseTemp
+                    responseTemp: responseTemp,
+                    topP: topP
                 }
             };
             const result = await chatApi(request);
@@ -302,6 +306,7 @@ const Chat = () => {
                         <TextField className={styles.chatSettingsSeparator} defaultValue={systemPersona} label="System Persona" onChange={onSystemPersonaChange} />
                         <ResponseLengthButtonGroup className={styles.chatSettingsSeparator} onClick={onResponseLengthChange} defaultValue={responseLength}/>
                         <ResponseTempSlider className={styles.chatSettingsSeparator} onChange={setResponseTemp} value={responseTemp}/>
+                        <TopPInput className={styles.chatSettingsSeparator} value={topP} onChange={setTopP} />
                         <PromptOverride className={styles.chatSettingsSeparator} defaultValue={promptTemplate} onChange={onPromptTemplateChange}/>
             </Panel>
 
