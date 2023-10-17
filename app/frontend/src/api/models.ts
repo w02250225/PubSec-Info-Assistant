@@ -22,6 +22,7 @@ export type AskRequestOverrides = {
     aiPersona?: string;
     responseLength?: number;
     responseTemp?: number;
+    topP?: number;
 };
 
 export type AskRequest = {
@@ -89,7 +90,7 @@ export type GetUploadStatusRequest = {
 }
 
 
-// These keys need to match case with the defined Enum in the 
+// These keys need to match case with the defined Enum in the
 // shared code (functions/shared_code/status_log.py)
 export const enum FileState {
     All = "ALL",

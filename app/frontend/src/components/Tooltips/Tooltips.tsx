@@ -15,8 +15,13 @@ export const Tooltips = () => {
       className={`${styles.tooltip}`}
       place="left"
       variant="info" />
-      <ReactTooltip
+    <ReactTooltip
         id="PromptOverride-tooltip"
+        className={`${styles.tooltip}`}
+        place="left"
+        variant="info" />
+    <ReactTooltip
+        id="TopPInput-tooltip"
         className={`${styles.tooltip}`}
         place="left"
         variant="info" />
