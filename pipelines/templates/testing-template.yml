@@ -12,9 +12,9 @@ parameters:
   default: ''
 
 steps:
-  - script: echo The value of environment is ${{ parameters.environment }} ${{ startsWith(parameters.environment, 'tmp') }}
+  - script: echo The value of environment is ${{ parameters.environment }} ${{ eq(parameters.environment, 'tmp-ia') }}
     displayName: Check environment value
-  - ${{ if startsWith(parameters.environment, 'tmp') }}:
+  - ${{ if eq(parameters.environment, 'tmp-ia') }}:
     - template: make-command.yml
       parameters:
         displayName: 'Functional Tests'
