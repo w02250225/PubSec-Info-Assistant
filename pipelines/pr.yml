@@ -27,6 +27,7 @@ stages:
         runOnce:    #rolling, canary are the other strategies that are supported
           deploy:
             steps:
+            - script: echo The environment file - $(environment)
             - template: templates/deploy-template.yml
             - template: templates/testing-template.yml
               parameters:

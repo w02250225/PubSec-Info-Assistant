@@ -10,13 +10,15 @@ parameters:
 - name: environment
   type: string
   default: ''
-#startswith instead of ne
+
 steps:
-- ${{ if and(startsWith(parameters.environment, 'tmp'), eq(parameters.fullBuild, true)) }}:
-  - template: make-command.yml
-    parameters:
-      displayName: 'Functional Tests'
-      makeCommand: 'functional-tests' 
+  - script: echo The value of environment is ${{ parameter.environment }}
+    displayName: Check environment value
+  - ${{ if and(startsWith(parameters.environment, 'tmp'), eq(parameters.fullBuild, true)) }}:
+    - template: make-command.yml
+      parameters:
+        displayName: 'Functional Tests'
+        makeCommand: 'functional-tests' 
 
  
   
