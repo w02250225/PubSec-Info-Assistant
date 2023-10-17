@@ -12,7 +12,7 @@ parameters:
   default: ''
 
 steps:
-  - script: echo The value of environment is ${{ parameters.environment }}
+  - script: echo Check condition result ${{ and(startsWith(parameters.environment, 'tmp'), eq(parameters.fullBuild, true) }}
     displayName: Check environment value
   - ${{ if and(startsWith(parameters.environment, 'tmp'), eq(parameters.fullBuild, true)) }}:
     - template: make-command.yml
