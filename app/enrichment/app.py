@@ -110,7 +110,7 @@ utilities_helper = UtilitiesHelper(
     azure_blob_storage_key=ENV["AZURE_BLOB_STORAGE_KEY"],
 )
 
-statusLog = StatusLog(ENV["COSMOSDB_URL"], ENV["COSMOSDB_KEY"], ENV["COSMOSDB_DATABASE_NAME"], ENV["COSMOSDB_CONTAINER_NAME"])
+status_log = StatusLog(ENV["COSMOSDB_URL"], ENV["COSMOSDB_KEY"], ENV["COSMOSDB_DATABASE_NAME"], ENV["COSMOSDB_CONTAINER_NAME"])
 
 # === API Setup ===
 
@@ -224,7 +224,7 @@ def embed_texts(model: str, texts: List[str]):
     else:
         embeddings = model_obj.encode(texts)
         embeddings = embeddings.tolist()[0]
-        
+
     output = {
         "model": model,
         "model_info": model_info[model],
@@ -237,7 +237,7 @@ def embed_texts(model: str, texts: List[str]):
 
 def index_sections(chunks):
     """ Pushes a batch of content to the search index
-    """    
+    """
     search_client = SearchClient(endpoint=ENV["AZURE_SEARCH_SERVICE_ENDPOINT"],
                                     index_name=ENV["AZURE_SEARCH_INDEX"],
                                     credential=search_creds)    
@@ -249,13 +249,13 @@ def index_sections(chunks):
         if i % 1000 == 0:
             results = search_client.upload_documents(documents=batch)
             succeeded = sum([1 for r in results if r.succeeded])
-            logging.debug(f"\tIndexed {len(results)} chunks, {succeeded} succeeded")
+            log.debug(f"\tIndexed {len(results)} chunks, {succeeded} succeeded")
             batch = []
 
     if len(batch) > 0:
         results = search_client.upload_documents(documents=batch)
         succeeded = sum([1 for r in results if r.succeeded])
-        logging.debug(f"\tIndexed {len(results)} chunks, {succeeded} succeeded")
+        log.debug(f"\tIndexed {len(results)} chunks, {succeeded} succeeded")
 
 
 @app.on_event("startup")
@@ -264,7 +264,7 @@ def poll_queue() -> None:
     """Polls the queue for messages and embeds them"""
 
     if IS_READY == False:
-        logging.debug("Skipping poll_queue call, models not yet loaded")
+        log.debug("Skipping poll_queue call, models not yet loaded")
         return
 
     log.debug("Setting up Azure Storage Queue Client...")
@@ -279,15 +279,15 @@ def poll_queue() -> None:
     log.debug(f"Received {len(messages)} messages")
 
     target_embeddings_model = re.sub(r'[^a-zA-Z0-9_\-.]', '_', ENV["TARGET_EMBEDDINGS_MODEL"])
-    
-    for message in messages:        
-        logging.debug(f"Received message {message.id}")
+
+    for message in messages:
+        log.debug(f"Received message {message.id}")
         message_b64 = message.content
         message_json = json.loads(base64.b64decode(message_b64))
         blob_path = message_json["blob_name"]
-        statusLog.upsert_document(blob_path, f'Embeddings process started with model {target_embeddings_model}', StatusClassification.INFO, State.PROCESSING)
-        
-        try:          
+        status_log.upsert_document(blob_path, f'Embeddings process started with model {target_embeddings_model}', StatusClassification.INFO, State.PROCESSING)
+
+        try:
             file_name, file_extension, file_directory  = utilities_helper.get_filename_and_extension(blob_path)
             chunk_folder_path = file_directory + file_name + file_extension
             blob_service_client = BlobServiceClient.from_connection_string(ENV["BLOB_CONNECTION_STRING"])
@@ -325,15 +325,15 @@ def poll_queue() -> None:
                 embedding_data = embedding['data']
 
                 index_chunk = {}
-                index_chunk['id'] = statusLog.encode_document_id(chunk.name)
+                index_chunk['id'] = status_log.encode_document_id(chunk.name)
                 index_chunk['processed_datetime'] = f"{chunk_dict['processed_datetime']}+00:00"
                 index_chunk['file_name'] = chunk_dict["file_name"]
-                index_chunk['file_uri'] = chunk_dict["file_uri"] 
+                index_chunk['file_uri'] = chunk_dict["file_uri"]
                 index_chunk['chunk_file'] = chunk.name
                 index_chunk['file_class'] = chunk_dict["file_class"]
                 index_chunk['title'] = chunk_dict["title"]
                 index_chunk['pages'] = chunk_dict["pages"]
-                index_chunk['translated_title'] = chunk_dict["translated_title"]
+                index_chunk['translated_title'] = chunk_dict.get("translated_title")
                 index_chunk['content'] = text
                 index_chunk['contentVector'] = embedding_data
                 index_chunks.append(index_chunk)
@@ -343,7 +343,7 @@ def poll_queue() -> None:
 
             # delete message once complete, in case of failure
             queue_client.delete_message(message)
-            statusLog.upsert_document(blob_path,
+            status_log.upsert_document(blob_path,
                                       'Embeddings process complete',
                                       StatusClassification.INFO, State.COMPLETE)
 
@@ -368,17 +368,17 @@ def poll_queue() -> None:
                 backoff = random.randint(
                     int(ENV["EMBEDDING_REQUEUE_BACKOFF"]) * requeue_count, max_seconds)                
                 queue_client.send_message(message_string, visibility_timeout=backoff)
-                statusLog.upsert_document(blob_path, f'Message requed to embeddings queue, attempt {str(requeue_count)}. Visible in {str(backoff)} seconds. Error: {str(error)}.',
+                status_log.upsert_document(blob_path, f'Message requed to embeddings queue, attempt {str(requeue_count)}. Visible in {str(backoff)} seconds. Error: {str(error)}.',
                                           StatusClassification.ERROR,
                                           State.QUEUED)
             else:
                 # dequeue as max retries has been reached
                 queue_client.delete_message(message)
-                statusLog.upsert_document(
+                status_log.upsert_document(
                     blob_path,
                     f"An error occurred, max requeue limit was reache. Error description: {str(error)}",
                     StatusClassification.ERROR,
                     State.ERROR,
                 )
 
-        statusLog.save_document(blob_path)
+        status_log.save_document(blob_path)

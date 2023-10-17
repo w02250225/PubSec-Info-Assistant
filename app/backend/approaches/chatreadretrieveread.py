@@ -99,10 +99,10 @@ Always include citations if you reference the source documents. Use square brack
     {'role': USER, 'content': 'What steps are being taken to promote energy conservation?'},
     {'role': ASSISTANT, 'content': 'Several steps are being taken to promote energy conservation including reducing energy consumption, increasing energy efficiency, and increasing the use of renewable energy sources.Citations[info1.json]'}
     ]
-    
+
     # # Define a class variable for the base URL
     # EMBEDDING_SERVICE_BASE_URL = 'https://infoasst-cr-{}.azurewebsites.net'
-    
+
     def __init__(
         self,
         search_client: SearchClient,
@@ -136,12 +136,12 @@ Always include citations if you reference the source documents. Use square brack
         self.chatgpt_token_limit = get_token_limit(model_name)
         #escape target embeddiong model name
         self.escaped_target_model = re.sub(r'[^a-zA-Z0-9_\-.]', '_', TARGET_EMBEDDING_MODEL)
-        
+
         if is_gov_cloud_deployment:
             self.embedding_service_url = f'https://{ENRICHMENT_APPSERVICE_NAME}.azurewebsites.us'
         else:
             self.embedding_service_url = f'https://{ENRICHMENT_APPSERVICE_NAME}.azurewebsites.net'
-        
+
         openai.api_base = 'https://' + oai_service_name + '.openai.azure.com/'
         openai.api_type = 'azure'
         openai.api_key = oai_service_key
@@ -191,20 +191,20 @@ Always include citations if you reference the source documents. Use square brack
         response = requests.post(url, json=data,headers=headers,timeout=300)
         if response.status_code == 200:
             response_data = response.json()
-            embedded_query_vector =response_data.get('data')          
+            embedded_query_vector =response_data.get('data')
         else:
             print('Error generating embedding:', response.status_code)
             raise Exception('Error generating embedding:', response.status_code)
-        
+
          #vector set up for pure vector search & hybrid search
         vector = Vector(value=embedded_query_vector, k=top, fields="contentVector")
-            
+
         # Hybrid Search
         r = self.search_client.search(generated_query, vectors=[vector], top=top)
-        
+
         # Pure Vector Search
         # r=self.search_client.search(search_text=None, vectors=[vector], top=top)
-        
+
         # vector search with filter
         # r=self.search_client.search(search_text=None, vectors=[vector], filter="processed_datetime le 2023-09-18T04:06:29.675Z" , top=top)
         # r=self.search_client.search(search_text=None, vectors=[vector], filter="search.ismatch('upload/ospolicydocs/China, climate change and the energy transition.pdf', 'file_name')", top=top)
