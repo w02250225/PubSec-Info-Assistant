@@ -1,7 +1,6 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import json
 import re
 import logging
 import urllib.parse
@@ -10,14 +9,9 @@ from typing import Any, Sequence
 
 import openai
 from approaches.approach import Approach
-from azure.core.credentials import AzureKeyCredential 
-from azure.search.documents import SearchClient  
-from azure.search.documents.indexes import SearchIndexClient  
+from azure.search.documents import SearchClient
 from azure.search.documents.models import Vector
 from azure.search.documents.models import QueryType
-
-from text import nonewlines
-from datetime import datetime, timedelta
 from azure.storage.blob import (
     AccountSasPermissions,
     BlobServiceClient,
@@ -28,9 +22,7 @@ from text import nonewlines
 import tiktoken
 from core.messagebuilder import MessageBuilder
 from core.modelhelper import get_token_limit
-from core.modelhelper import num_tokens_from_messages
 import requests
-from urllib.parse import quote
 
 # Simple retrieve-then-read implementation, using the Cognitive Search and
 # OpenAI APIs directly. It first retrieves top documents from search,
@@ -134,6 +126,7 @@ Always include citations if you reference the source documents. Use square brack
         self.blob_client = blob_client
         self.query_term_language = query_term_language
         self.chatgpt_token_limit = get_token_limit(model_name)
+        self.is_gov_cloud_deployment = is_gov_cloud_deployment
         #escape target embeddiong model name
         self.escaped_target_model = re.sub(r'[^a-zA-Z0-9_\-.]', '_', TARGET_EMBEDDING_MODEL)
 
@@ -195,13 +188,13 @@ Always include citations if you reference the source documents. Use square brack
         else:
             print('Error generating embedding:', response.status_code)
             raise Exception('Error generating embedding:', response.status_code)
-
-         #vector set up for pure vector search & hybrid search
+        
+        #vector set up for pure vector search & Hybrid search & Hybrid semantic
         vector = Vector(value=embedded_query_vector, k=top, fields="contentVector")
 
         # Hybrid Search
-        r = self.search_client.search(generated_query, vectors=[vector], top=top)
-
+        # r = self.search_client.search(generated_query, vectors=[vector], top=top)
+        
         # Pure Vector Search
         # r=self.search_client.search(search_text=None, vectors=[vector], top=top)
 
@@ -209,24 +202,23 @@ Always include citations if you reference the source documents. Use square brack
         # r=self.search_client.search(search_text=None, vectors=[vector], filter="processed_datetime le 2023-09-18T04:06:29.675Z" , top=top)
         # r=self.search_client.search(search_text=None, vectors=[vector], filter="search.ismatch('upload/ospolicydocs/China, climate change and the energy transition.pdf', 'file_name')", top=top)
 
-        # #  hybrid semantic search
-        # if (not self.is_gov_cloud_deployment and overrides.get("semantic_ranker")):
-        #     r = self.search_client.search(
-        #         generated_query,
-        #         filter=category_filter,
-        #         query_type=QueryType.SEMANTIC,
-        #         query_language="en-us",
-        #         query_speller="lexicon",
-        #         semantic_configuration_name="default",
-        #         top=top,
-        #         query_caption="extractive|highlight-false"
-        #         if use_semantic_captions else None,
-                #   vectors=[vector]
-        #     )
-        # else:
-        #     r = self.search_client.search(
-        #         generated_query, filter=category_filter, top=top,vectors=[vector]
-        #     )
+        #  hybrid semantic search using semantic reranker
+        if (not self.is_gov_cloud_deployment and overrides.get("semantic_ranker")):
+            r = self.search_client.search(
+                generated_query,
+                query_type=QueryType.SEMANTIC,
+                query_language="en-us",
+                query_speller="lexicon",
+                semantic_configuration_name="default",
+                top=top,
+                query_caption="extractive|highlight-false"
+                if use_semantic_captions else None,
+                vectors=[vector]
+            )
+        else:
+            r = self.search_client.search(
+                generated_query, top=top,vectors=[vector]
+            )
 
         citation_lookup = {}  # dict of "FileX" moniker to the actual file name
         results = []  # list of results to be used in the prompt
