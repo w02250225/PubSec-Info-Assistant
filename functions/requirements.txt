@@ -19,4 +19,4 @@ pandas == 2.1.0
 pyoo == 1.4
 tenacity == 8.2.3
 tiktoken == 0.5.1
-unstructured[csv,doc,docx,md,msg,ppt,pptx,xlsx] == 0.10.21
+unstructured[csv,doc,docx,md,msg,ppt,pptx,xlsx] == 0.10.23

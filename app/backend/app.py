@@ -396,7 +396,7 @@ def logstatus():
                                   state=state,
                                   fresh_start=True)
         statusLog.save_document(document_path=path)
-        
+
     except Exception as ex:
         logging.exception("Exception in /logstatus")
         return jsonify({"error": str(ex)}), 500

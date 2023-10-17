@@ -76,6 +76,7 @@
 			"type": "python",
 			"request": "attach",
 			"port": 9091,
+			"justMyCode": false,
 			"preLaunchTask": "func host start"
 		},
 		{

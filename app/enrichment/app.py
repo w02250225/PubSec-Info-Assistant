@@ -234,13 +234,12 @@ def embed_texts(model: str, texts: List[str]):
     return output
 
 
-
 def index_sections(chunks):
     """ Pushes a batch of content to the search index
     """
     search_client = SearchClient(endpoint=ENV["AZURE_SEARCH_SERVICE_ENDPOINT"],
                                     index_name=ENV["AZURE_SEARCH_INDEX"],
-                                    credential=search_creds)    
+                                    credential=search_creds)
     i = 0
     batch = []
     for c in chunks:

@@ -64,9 +64,9 @@ def main(msg: func.QueueMessage) -> None:
         blob_name =  message_json['blob_name']
         blob_uri =  message_json['blob_uri']
         FR_resultId = message_json['FR_resultId']
-        queued_count = message_json['polling_queue_count']      
+        queued_count = message_json['polling_queue_count']
         submit_queued_count = message_json["submit_queued_count"]
-        status_log.upsert_document(blob_name, f'{function_name} - Message received from pdf polling queue attempt {queued_count}', StatusClassification.DEBUG, State.PROCESSING)        
+        status_log.upsert_document(blob_name, f'{function_name} - Message received from pdf polling queue attempt {queued_count}', StatusClassification.DEBUG, State.PROCESSING)
         status_log.upsert_document(blob_name, f'{function_name} - Polling Form Recognizer function started', StatusClassification.INFO)
 
         # Construct and submmit the polling message to FR
@@ -81,32 +81,32 @@ def main(msg: func.QueueMessage) -> None:
 
         # retry logic to handle 'Connection broken: IncompleteRead' errors, up to n times
 
-        response = durable_get(url, headers, params)   
+        response = durable_get(url, headers, params)
 
         # Check response and process
         if response.status_code == 200:
-            # FR processing is complete OR still running- create document map 
+            # FR processing is complete OR still running- create document map
             response_json = response.json()
             response_status = response_json['status']
 
             if response_status == "succeeded":
                 # successful, so continue to document map and chunking
-                status_log.upsert_document(blob_name, f'{function_name} - Form Recognizer has completed processing and the analyze results have been received', StatusClassification.DEBUG)  
-                # build the document map     
-                status_log.upsert_document(blob_name, f'{function_name} - Starting document map build', StatusClassification.DEBUG)  
-                document_map = utilities.build_document_map_pdf(blob_name, blob_uri, response_json["analyzeResult"], azure_blob_log_storage_container)  
-                status_log.upsert_document(blob_name, f'{function_name} - Document map build complete', StatusClassification.DEBUG)     
+                status_log.upsert_document(blob_name, f'{function_name} - Form Recognizer has completed processing and the analyze results have been received', StatusClassification.DEBUG)
+                # build the document map
+                status_log.upsert_document(blob_name, f'{function_name} - Starting document map build', StatusClassification.DEBUG)
+                document_map = utilities.build_document_map_pdf(blob_name, blob_uri, response_json["analyzeResult"], azure_blob_log_storage_container)
+                status_log.upsert_document(blob_name, f'{function_name} - Document map build complete', StatusClassification.DEBUG)
                 # create chunks
-                status_log.upsert_document(blob_name, f'{function_name} - Starting chunking', StatusClassification.DEBUG)  
+                status_log.upsert_document(blob_name, f'{function_name} - Starting chunking', StatusClassification.DEBUG)
                 chunk_count = utilities.build_chunks(document_map, blob_name, blob_uri, CHUNK_TARGET_SIZE)
-                status_log.upsert_document(blob_name, f'{function_name} - Chunking complete, {chunk_count} chunks created.', StatusClassification.DEBUG)  
+                status_log.upsert_document(blob_name, f'{function_name} - Chunking complete, {chunk_count} chunks created.', StatusClassification.DEBUG)
 
-                # submit message to the enrichment queue to continue processing                
+                # submit message to the enrichment queue to continue processing
                 queue_client = QueueClient.from_connection_string(azure_blob_connection_string, queue_name=text_enrichment_queue, message_encode_policy=TextBase64EncodePolicy())
                 message_json["text_enrichment_queued_count"] = 1
                 message_string = json.dumps(message_json)
                 queue_client.send_message(message_string)
-                status_log.upsert_document(blob_name, f"{function_name} - message sent to enrichment queue", StatusClassification.DEBUG, State.QUEUED) 
+                status_log.upsert_document(blob_name, f"{function_name} - message sent to enrichment queue", StatusClassification.DEBUG, State.QUEUED)
 
             elif response_status == "running":
                 # still running so requeue with a backoff
@@ -115,30 +115,30 @@ def main(msg: func.QueueMessage) -> None:
                     backoff += random.randint(0, 10)
                     queued_count += 1
                     message_json['polling_queue_count'] = queued_count
-                    status_log.upsert_document(blob_name, f"{function_name} - FR has not completed processing, requeuing. Polling back off of attempt {queued_count} of {max_read_attempts} for {backoff} seconds", StatusClassification.DEBUG, State.QUEUED) 
+                    status_log.upsert_document(blob_name, f"{function_name} - FR has not completed processing, requeuing. Polling back off of attempt {queued_count} of {max_read_attempts} for {backoff} seconds", StatusClassification.DEBUG, State.QUEUED)
                     queue_client = QueueClient.from_connection_string(azure_blob_connection_string, queue_name=pdf_polling_queue, message_encode_policy=TextBase64EncodePolicy())
                     message_json_str = json.dumps(message_json)
                     queue_client.send_message(message_json_str, visibility_timeout=backoff)
                 else:
-                    status_log.upsert_document(blob_name, f'{function_name} - maximum submissions to FR reached', StatusClassification.ERROR, State.ERROR)     
+                    status_log.upsert_document(blob_name, f'{function_name} - maximum submissions to FR reached', StatusClassification.ERROR, State.ERROR)
             else:
                 # unexpected status returned by FR, such as internal capacity overload, so requeue
                 if submit_queued_count < max_submit_requeue_count:
-                    status_log.upsert_document(blob_name, f'{function_name} - unhandled response from Form Recognizer- code: {response.status_code} status: {response_status} - text: {response.text}. Document will be resubmitted', StatusClassification.ERROR)                  
-                    queue_client = QueueClient.from_connection_string(azure_blob_connection_string, pdf_submit_queue, message_encode_policy=TextBase64EncodePolicy())  
+                    status_log.upsert_document(blob_name, f'{function_name} - unhandled response from Form Recognizer- code: {response.status_code} status: {response_status} - text: {response.text}. Document will be resubmitted', StatusClassification.ERROR)
+                    queue_client = QueueClient.from_connection_string(azure_blob_connection_string, pdf_submit_queue, message_encode_policy=TextBase64EncodePolicy())
                     submit_queued_count += 1
                     message_json["submit_queued_count"] = submit_queued_count
-                    message_string = json.dumps(message_json)    
-                    queue_client.send_message(message_string, visibility_timeout = submit_requeue_hide_seconds)  
-                    status_log.upsert_document(blob_name, f'{function_name} file resent to submit queue. Visible in {submit_requeue_hide_seconds} seconds', StatusClassification.DEBUG, State.THROTTLED)      
+                    message_string = json.dumps(message_json)
+                    queue_client.send_message(message_string, visibility_timeout = submit_requeue_hide_seconds)
+                    status_log.upsert_document(blob_name, f'{function_name} file resent to submit queue. Visible in {submit_requeue_hide_seconds} seconds', StatusClassification.DEBUG, State.THROTTLED)
                 else:
-                    status_log.upsert_document(blob_name, f'{function_name} - maximum submissions to FR reached', StatusClassification.ERROR, State.ERROR)     
+                    status_log.upsert_document(blob_name, f'{function_name} - maximum submissions to FR reached', StatusClassification.ERROR, State.ERROR)
 
         else:
-            status_log.upsert_document(blob_name, f'{function_name} - Error raised by FR polling', StatusClassification.ERROR, State.ERROR)    
+            status_log.upsert_document(blob_name, f'{function_name} - Error raised by FR polling', StatusClassification.ERROR, State.ERROR)
 
     except Exception as e:
-        # a general error 
+        # a general error
         status_log.upsert_document(blob_name, f"{function_name} - An error occurred - code: {response.status_code} - {str(e)}", StatusClassification.ERROR, State.ERROR)
 
     status_log.save_document(blob_name)
@@ -146,6 +146,6 @@ def main(msg: func.QueueMessage) -> None:
 
 @retry(stop=stop_after_attempt(max_read_attempts), wait=wait_fixed(5))
 def durable_get(url, headers, params):
-    response = requests.get(url, headers=headers, params=params)   
+    response = requests.get(url, headers=headers, params=params)
     response.raise_for_status()  # Raise stored HTTPError, if one occurred.
     return response

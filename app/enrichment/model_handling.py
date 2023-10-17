@@ -21,16 +21,20 @@ def load_models():
     model_info = {}
 
     for model_name in models_to_download:
-        model = SentenceTransformer(model_name)
-        sanitized_model_name = re.sub(r'[^a-zA-Z0-9_\-.]', '_', model_name)
-        model.save(os.path.join(models_path,sanitized_model_name))
-        models[sanitized_model_name] = model
-        logging.debug("Loaded model %s", model_name)
+        try:
+            model = SentenceTransformer(model_name)
+            sanitized_model_name = re.sub(r'[^a-zA-Z0-9_\-.]', '_', model_name)
+            model.save(os.path.join(models_path,sanitized_model_name))
+            models[sanitized_model_name] = model
+            logging.debug("Loaded model %s", model_name)
 
-        model_info_entry = {
-            "model": sanitized_model_name,
-            "vector_size": model.get_sentence_embedding_dimension(),
-        }
-        model_info[sanitized_model_name] = model_info_entry
+            model_info_entry = {
+                "model": sanitized_model_name,
+                "vector_size": model.get_sentence_embedding_dimension(),
+            }
+            model_info[sanitized_model_name] = model_info_entry
+
+        except Exception:
+            pass
 
     return models, model_info

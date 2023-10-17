@@ -1,16 +1,18 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
+import traceback
 
 import logging
-import os
 import json
+import requests
+import os
+from enum import Enum
 from io import BytesIO
 import azure.functions as func
+from azure.storage.blob import generate_blob_sas
 from azure.storage.queue import QueueClient, TextBase64EncodePolicy
 from shared_code.status_log import StatusLog, State, StatusClassification
 from shared_code.utilities import Utilities, MediaType
-
-import requests
 
 azure_blob_storage_account = os.environ["BLOB_STORAGE_ACCOUNT"]
 azure_blob_storage_endpoint = os.environ["BLOB_STORAGE_ACCOUNT_ENDPOINT"]
@@ -33,13 +35,13 @@ NEW_AFTER_N_CHARS = 1500
 COMBINE_UNDER_N_CHARS = 500
 MAX_CHARACTERS = 1500
 
-FUNCTION_NAME = "FileLayoutParsingOther"
 utilities = Utilities(azure_blob_storage_account, azure_blob_storage_endpoint, azure_blob_drop_storage_container, azure_blob_content_storage_container, azure_blob_storage_key)
+function_name = "FileLayoutParsingOther"
 
 class UnstructuredError(Exception):
     pass
 
-def partition_file(file_extension: str, file_url: str):      
+def PartitionFile(file_extension: str, file_url: str):
     """ uses the unstructured.io libraries to analyse a document
     Returns:
         elements: A list of available models
@@ -65,7 +67,7 @@ def partition_file(file_extension: str, file_url: str):
         elif file_extension == '.eml' or file_extension == '.msg':
             if file_extension == '.msg':
                 from unstructured.partition.msg import partition_msg
-                elements = partition_msg(file=bytes_io) 
+                elements = partition_msg(file=bytes_io)
             else:
                 from unstructured.partition.email import partition_email
                 elements = partition_email(file=bytes_io)
@@ -76,9 +78,9 @@ def partition_file(file_extension: str, file_url: str):
                 sent_to_str = sent_to_str + " " + sent_to
             metadata.append(sent_to_str)
 
-        elif file_extension == '.html' or file_extension == '.htm':  
+        elif file_extension == '.html' or file_extension == '.htm':
             from unstructured.partition.html import partition_html
-            elements = partition_html(file=bytes_io) 
+            elements = partition_html(file=bytes_io)
 
         elif file_extension == '.md':
             from unstructured.partition.md import partition_md
@@ -88,7 +90,7 @@ def partition_file(file_extension: str, file_url: str):
             from unstructured.partition.ppt import partition_ppt
             elements = partition_ppt(file=bytes_io)
 
-        elif file_extension == '.pptx':    
+        elif file_extension == '.pptx':
             from unstructured.partition.pptx import partition_pptx
             elements = partition_pptx(file=bytes_io)
 
@@ -105,6 +107,7 @@ def partition_file(file_extension: str, file_url: str):
             elements = partition_xml(file=bytes_io)
 
     except Exception as e:
+        logging.error(traceback.format_exc())
         raise UnstructuredError(f"An error occurred trying to parse the file: {str(e)}") from e
 
     return elements, metadata
@@ -112,37 +115,33 @@ def partition_file(file_extension: str, file_url: str):
 
 def main(msg: func.QueueMessage) -> None:
     try:
-        status_log = StatusLog(cosmosdb_url, cosmosdb_key,
-                              cosmosdb_database_name, cosmosdb_container_name)
+        statusLog = StatusLog(cosmosdb_url, cosmosdb_key, cosmosdb_database_name, cosmosdb_container_name)
         logging.info('Python queue trigger function processed a queue item: %s',
-                     msg.get_body().decode('utf-8'))
+                    msg.get_body().decode('utf-8'))
 
         # Receive message from the queue
         message_body = msg.get_body().decode('utf-8')
         message_json = json.loads(message_body)
-        blob_name = message_json['blob_name']
-        blob_uri = message_json['blob_uri']
-        status_log.upsert_document(
-            blob_name, f'{FUNCTION_NAME} - Starting to parse the non-PDF file', StatusClassification.INFO, State.PROCESSING)
-        status_log.upsert_document(
-            blob_name, f'{FUNCTION_NAME} - Message received from non-pdf submit queue', StatusClassification.DEBUG)
+        blob_name =  message_json['blob_name']
+        blob_uri =  message_json['blob_uri']
+        statusLog.upsert_document(blob_name, f'{function_name} - Starting to parse the non-PDF file', StatusClassification.INFO, State.PROCESSING)
+        statusLog.upsert_document(blob_name, f'{function_name} - Message received from non-pdf submit queue', StatusClassification.DEBUG)
 
         # construct blob url
         blob_path_plus_sas = utilities.get_blob_and_sas(blob_name)
-        status_log.upsert_document(
-            blob_name, f'{FUNCTION_NAME} - SAS token generated to access the file', StatusClassification.DEBUG)
+        statusLog.upsert_document(blob_name, f'{function_name} - SAS token generated to access the file', StatusClassification.DEBUG)
 
-        file_name, file_extension, file_directory = utilities.get_filename_and_extension(blob_name)
+        file_name, file_extension, file_directory  = utilities.get_filename_and_extension(blob_name)
 
-        response = requests.get(blob_path_plus_sas, timeout=30)
+        response = requests.get(blob_path_plus_sas)
         response.raise_for_status()
 
         # Partition the file dependent on file extension
-        elements, metadata = partition_file(file_extension, blob_path_plus_sas)
+        elements, metadata = PartitionFile(file_extension, blob_path_plus_sas)
         metdata_text = ''
         for metadata_value in metadata:
-            metdata_text += metadata_value + '\n'    
-        status_log.upsert_document(blob_name, f'{FUNCTION_NAME} - partitioning complete', StatusClassification.DEBUG)
+            metdata_text += metadata_value + '\n'
+        statusLog.upsert_document(blob_name, f'{function_name} - partitioning complete', StatusClassification.DEBUG)
 
         title = ''
         # Capture the file title
@@ -158,9 +157,9 @@ def main(msg: func.QueueMessage) -> None:
 
         # Chunk the file
         from unstructured.chunking.title import chunk_by_title
-        chunks = chunk_by_title(elements, multipage_sections=True, new_after_n_chars=NEW_AFTER_N_CHARS, combine_under_n_chars=COMBINE_UNDER_N_CHARS)
-        # chunks = chunk_by_title(elements, multipage_sections=True, new_after_n_chars=NEW_AFTER_N_CHARS, combine_under_n_chars=COMBINE_UNDER_N_CHARS, max_characters=MAX_CHARACTERS)        
-        status_log.upsert_document(blob_name, f'{FUNCTION_NAME} - chunking complete. {str(len(chunks))} chunks created', StatusClassification.DEBUG)
+        chunks = chunk_by_title(elements, multipage_sections=True, new_after_n_chars=NEW_AFTER_N_CHARS, combine_text_under_n_chars=COMBINE_UNDER_N_CHARS)
+        # chunks = chunk_by_title(elements, multipage_sections=True, new_after_n_chars=NEW_AFTER_N_CHARS, combine_under_n_chars=COMBINE_UNDER_N_CHARS, max_characters=MAX_CHARACTERS)
+        statusLog.upsert_document(blob_name, f'{function_name} - chunking complete. {str(chunks.count)} chunks created', StatusClassification.DEBUG)
 
         subtitle_name = ''
         section_name = ''
@@ -185,20 +184,16 @@ def main(msg: func.QueueMessage) -> None:
                                 MediaType.TEXT
                                 )
 
-        status_log.upsert_document(blob_name, f'{FUNCTION_NAME} - chunking stored.', StatusClassification.DEBUG)   
+        statusLog.upsert_document(blob_name, f'{function_name} - chunking stored.', StatusClassification.DEBUG)
 
-        # submit message to the enrichment queue to continue processing                
+        # submit message to the enrichment queue to continue processing
         queue_client = QueueClient.from_connection_string(azure_blob_connection_string, queue_name=text_enrichment_queue, message_encode_policy=TextBase64EncodePolicy())
         message_json["enrichment_queued_count"] = 1
         message_string = json.dumps(message_json)
         queue_client.send_message(message_string)
-        status_log.upsert_document(blob_name, f"{FUNCTION_NAME} - message sent to enrichment queue", StatusClassification.DEBUG, State.QUEUED)    
+        statusLog.upsert_document(blob_name, f"{function_name} - message sent to enrichment queue", StatusClassification.DEBUG, State.QUEUED)
 
-<<<<<<< HEAD
     except Exception as e:
-        status_log.upsert_document(blob_name, f"{FUNCTION_NAME} - An error occurred - {str(e)}", StatusClassification.ERROR, State.ERROR)
+        statusLog.upsert_document(blob_name, f"{function_name} - An error occurred - {str(e)}", StatusClassification.ERROR, State.ERROR)
 
-    status_log.save_document()
-=======
     statusLog.save_document(blob_name)
->>>>>>> vNext-Dev

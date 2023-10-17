@@ -188,13 +188,13 @@ Always include citations if you reference the source documents. Use square brack
         else:
             print('Error generating embedding:', response.status_code)
             raise Exception('Error generating embedding:', response.status_code)
-        
+
         #vector set up for pure vector search & Hybrid search & Hybrid semantic
         vector = Vector(value=embedded_query_vector, k=top, fields="contentVector")
 
         # Hybrid Search
         # r = self.search_client.search(generated_query, vectors=[vector], top=top)
-        
+
         # Pure Vector Search
         # r=self.search_client.search(search_text=None, vectors=[vector], top=top)
 
