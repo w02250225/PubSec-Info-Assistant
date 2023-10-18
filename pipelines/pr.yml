@@ -29,6 +29,6 @@ stages:
             steps:
             - script: echo The environment file - $(environment)
             #- template: templates/deploy-template.yml
-            - ${{ if eq($(environment), 'tmp-ia') }}:
+            - ${{ if eq(variables['environment'], 'tmp-ia') }}:
               - template: templates/testing-template.yml
             #- template: templates/destroy-template.yml
