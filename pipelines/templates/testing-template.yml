@@ -7,12 +7,11 @@ parameters:
 - name: fullBuild  
   type: boolean
   default: true
-  doTheThing: 'false'  
 
 steps:
   - script: echo Inside template
     displayName: Check environment value
-    condition: ${{ parameters.doTheThing }}
+    #condition: ${{ parameters.doTheThing }}
 
   # - template: make-command.yml
   #   parameters:
