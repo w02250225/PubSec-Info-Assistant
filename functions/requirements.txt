@@ -6,7 +6,7 @@ azure-ai-vision == 0.15.1b1
 azure-core == 1.29.4
 azure-cosmos == 4.5.1
 azure-functions
-azure-search-documents == 11.4.0b8
+azure-search-documents == 11.4.0b6
 azure-storage-blob == 12.18.3
 azure-storage-queue == 12.7.3
 azure-ai-formrecognizer == 3.3.1
