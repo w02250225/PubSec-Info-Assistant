@@ -39,7 +39,7 @@ if [ -n "${IN_AUTOMATION}" ]
 then
 
     if [ -n "${IS_USGOV_DEPLOYMENT}" ] && $IS_USGOV_DEPLOYMENT; then
-        az cloud set --name AzureUSGovernment 
+        az cloud set --name AzureUSGovernment
     fi
 
     az login --service-principal -u "$ARM_CLIENT_ID" -p "$ARM_CLIENT_SECRET" --tenant "$ARM_TENANT_ID"
@@ -48,5 +48,8 @@ fi
 
 # deploy the zip file to the webapp
 az webapp deploy --name $AZURE_WEBAPP_NAME --resource-group $RESOURCE_GROUP_NAME --type zip --src-path webapp.zip --async true --timeout 600000 --verbose
+
+AZURE_WEBAPP_NAME_GPT4="${AZURE_WEBAPP_NAME/web/web-gpt4}"
+az webapp deploy --name $AZURE_WEBAPP_NAME_GPT4 --resource-group $RESOURCE_GROUP_NAME --type zip --src-path webapp.zip --async true --timeout 600000 --verbose
 
 echo "Webapp deployed successfully"
