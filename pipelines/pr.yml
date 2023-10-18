@@ -27,7 +27,7 @@ stages:
         runOnce:    #rolling, canary are the other strategies that are supported
           deploy:
             steps:
-            - script: echo The environment file - $(environment) ${{ if eq(variables['environment'], 'tmp-ia') }}
+            - script: echo The environment file - $(environment) ${{ eq(variables['environment'], 'tmp-ia') }}
             #- template: templates/deploy-template.yml
             - ${{ if eq(variables['environment'], 'tmp-ia') }}:
               - template: templates/testing-template.yml
