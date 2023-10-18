@@ -28,8 +28,7 @@ stages:
           deploy:
             steps:
             - script: echo The environment file - $(environment)
-            - template: templates/deploy-template.yml
-            - template: templates/testing-template.yml
-              parameters:
-                environment: $(environment)
-            - template: templates/destroy-template.yml
+            #- template: templates/deploy-template.yml
+            - ${{ if eq($(environment), 'tmp-ia') }}:
+              - template: templates/testing-template.yml
+            #- template: templates/destroy-template.yml

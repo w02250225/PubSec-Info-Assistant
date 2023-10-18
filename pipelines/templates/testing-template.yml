@@ -7,18 +7,15 @@ parameters:
 - name: fullBuild  
   type: boolean
   default: true
-- name: environment
-  type: string
-  default: ''
 
 steps:
-  - script: echo The value of environment is ${{ parameters.environment }} ${{ eq(parameters.environment, 'tmp-ia') }}
+  - script: echo Inside template
     displayName: Check environment value
-  - ${{ if eq(parameters.environment, 'tmp-ia') }}:
-    - template: make-command.yml
-      parameters:
-        displayName: 'Functional Tests'
-        makeCommand: 'functional-tests' 
+
+  # - template: make-command.yml
+  #   parameters:
+  #     displayName: 'Functional Tests'
+  #     makeCommand: 'functional-tests' 
 
  
   
