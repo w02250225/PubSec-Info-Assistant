@@ -151,7 +151,7 @@ else:
 
     deployment = openai_mgmt_client.deployments.get(
         resource_group_name=AZURE_OPENAI_RESOURCE_GROUP,
-        account_name=AZURE_OPENAI_SERVICE,
+        account_name=AZURE_OPENAI_ACCOUNT_NAME,
         deployment_name=AZURE_OPENAI_CHATGPT_DEPLOYMENT)
 
     MODEL_NAME = deployment.properties.model.name
