@@ -54,15 +54,15 @@ param uploadContainerName string = 'upload'
 param functionLogsContainerName string = 'logs'
 param searchIndexName string = 'all-files-index'
 param chatGptDeploymentName string = 'chat'
-param chatGptModelName string = 'gpt-35-turbo'
+param chatGptModelName string = 'gpt-35-turbo-16k'
 param embeddingsModelName string = 'text-embedding-ada-002'
-param chatGptDeploymentCapacity int = 30
+param chatGptDeploymentCapacity int = 240
 param embeddingsDeploymentCapacity int = 240
-param chatGptModelVersion string = ''
+param chatGptModelVersion string = '0613'
 param chatWarningBannerText string = ''
-// metadata in our chunking strategy adds about 180-200 tokens to the size of the chunks, 
+// metadata in our chunking strategy adds about 180-200 tokens to the size of the chunks,
 // our default target size is 750 tokens so the chunk files that get indexed will be around 950 tokens each
-param chunkTargetSize string = '750' 
+param chunkTargetSize string = '750'
 param targetPages string = 'ALL'
 param formRecognizerApiVersion string = '2022-08-31'
 param pdfSubmitQueue string = 'pdf-submit-queue'
@@ -94,7 +94,7 @@ param subscriptionId string = ''
 param principalId string = ''
 
 var abbrs = loadJsonContent('abbreviations.json')
-var tags = { 
+var tags = {
   Environment: 'Development'
   'Project Name': 'Coeus'
   Release: buildNumber
@@ -265,7 +265,7 @@ module cognitiveServices 'core/ai/cognitiveservices.bicep' = if (!useExistingAOA
         sku: {
           name: 'Standard'
           capacity: chatGptDeploymentCapacity
-        }        
+        }
       }
       {
         name: !empty(embeddingsModelName) ? embeddingsModelName : embeddingsModelName
@@ -277,7 +277,7 @@ module cognitiveServices 'core/ai/cognitiveservices.bicep' = if (!useExistingAOA
         sku: {
           name: 'Standard'
           capacity: embeddingsDeploymentCapacity
-        }        
+        }
       }
     ]
   }
@@ -379,10 +379,10 @@ module storage 'core/storage/storage-account.bicep' = {
       }
       {
         name: nonPdfSubmitQueue
-      }  
+      }
       {
         name: mediaSubmitQueue
-      }          
+      }
       {
         name: textEnrichmentQueue
       }
@@ -440,10 +440,10 @@ module storage 'core/storage/storage-account.bicep' = {
 //       }
 //       {
 //         name: nonPdfSubmitQueue
-//       }  
+//       }
 //       {
 //         name: mediaSubmitQueue
-//       }          
+//       }
 //       {
 //         name: textEnrichmentQueue
 //       }
@@ -499,7 +499,7 @@ module cosmosrequestsdb 'core/db/cosmosdb.bicep' =  {
   dependsOn: [cosmosdb] // Cosmos doesn't like parallel deployments
 }
 
-// Function App 
+// Function App
 module functions 'core/function/function.bicep' = {
   name: 'functions'
   scope: rg
@@ -705,7 +705,7 @@ module containerRegistryPush 'core/security/role.bicep' = if( aadMgmtServicePrin
 
 // DEPLOYMENT OF AZURE CUSTOMER ATTRIBUTION TAG
 resource customerAttribution 'Microsoft.Resources/deployments@2021-04-01' = if (cuaEnabled) {
-  name: 'pid-${cuaId}' 
+  name: 'pid-${cuaId}'
   location: location
   properties: {
     mode: 'Incremental'
@@ -761,10 +761,10 @@ output MAX_SECONDS_HIDE_ON_UPLOAD string = maxSecondsHideOnUpload
 output MAX_SUBMIT_REQUEUE_COUNT string = maxSubmitRequeueCount
 output POLL_QUEUE_SUBMIT_BACKOFF string = pollQueueSubmitBackoff
 output PDF_SUBMIT_QUEUE_BACKOFF string = pdfSubmitQueueBackoff
-output MAX_POLLING_REQUEUE_COUNT string = maxPollingRequeueCount 
+output MAX_POLLING_REQUEUE_COUNT string = maxPollingRequeueCount
 output SUBMIT_REQUEUE_HIDE_SECONDS string = submitRequeueHideSeconds
 output POLLING_BACKOFF string = pollingBackoff
-output MAX_READ_ATTEMPTS string = maxReadAttempts 
+output MAX_READ_ATTEMPTS string = maxReadAttempts
 output ENRICHMENT_KEY string = searchServices.outputs.cogServiceKey
 output ENRICHMENT_ENDPOINT string = searchServices.outputs.cogServiceEndpoint
 output ENRICHMENT_NAME string = searchServices.outputs.cogServiceName

@@ -111,7 +111,6 @@ Always include citations if you reference the source documents. Use square brack
         self.blob_client = blob_client
         self.query_term_language = query_term_language
         self.chatgpt_token_limit = get_token_limit(model_name)
-        self.is_gov_cloud_deployment = is_gov_cloud_deployment
 
         openai.api_base = 'https://' + oai_service_name + '.openai.azure.com/'
         openai.api_type = 'azure'
