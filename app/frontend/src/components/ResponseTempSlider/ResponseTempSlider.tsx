@@ -55,6 +55,23 @@ export const ResponseTempSlider = ({ className, onChange, value }: Props) => {
     onChange(newValue);
   };
 
+  const [inputValue, setInputValue] = useState<string>(value?.toString() || "");
+
+  useEffect(() => {
+    setInputValue(value?.toString() || "");
+  }, [value]);
+
+  const handleInputChange = (ev: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = ev.target.value;
+    setInputValue(newValue); // update local state on every keystroke
+
+    const regex = /^0(\.\d{0,4})?$/;
+
+    if (regex.test(newValue) || newValue === "") {
+      onChange(parseFloat(newValue));
+    }
+  };
+
   return (
     <div className={`${styles.container} ${className ?? ""}`}>
       <Label>Response Temperature:&nbsp;

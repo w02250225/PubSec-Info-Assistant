@@ -177,7 +177,7 @@ Always include citations if you reference the source documents. Use square brack
         url = f'{self.embedding_service_url}/models/{self.escaped_target_model}/embed'
         data = [f'"{generated_query}"']
         headers = {
-                'Accept': 'application/json',  
+                'Accept': 'application/json',
                 'Content-Type': 'application/json',
             }
 
