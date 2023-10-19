@@ -46,7 +46,7 @@ def main(myblob: func.InputStream):
             logging.info("Unknown file type")
             error_message = f"{FUNCTION_NAME} - Unexpected file type submitted {file_extension}"
             status_log.state_description = error_message
-            status_log.upsert_document(myblob.name, error_message, StatusClassification.ERROR, State.SKIPPED) 
+            status_log.upsert_document(myblob.name, error_message, StatusClassification.ERROR, State.SKIPPED)
 
         # Create message
         message = {
