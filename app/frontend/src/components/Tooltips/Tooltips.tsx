@@ -21,7 +21,7 @@ export const Tooltips = () => {
         place="left"
         variant="info" />
     <ReactTooltip
-        id="TopPInput-tooltip"
+        id="TopPSlider-tooltip"
         className={`${styles.tooltip}`}
         place="left"
         variant="info" />

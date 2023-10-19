@@ -22,7 +22,7 @@ import { ResponseTempSlider } from "../../components/ResponseTempSlider";
 import { Tooltips } from "../../components/Tooltips"
 import { InfoContent } from "../../components/InfoContent/InfoContent";
 import { PromptOverride } from "../../components/PromptOverride";
-import { TopPInput } from "../../components/TopPInput";
+import { TopPSlider } from "../../components/TopPSlider";
 
 const Chat = () => {
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
@@ -306,7 +306,7 @@ const Chat = () => {
                         <TextField className={styles.chatSettingsSeparator} defaultValue={systemPersona} label="System Persona" onChange={onSystemPersonaChange} />
                         <ResponseLengthButtonGroup className={styles.chatSettingsSeparator} onClick={onResponseLengthChange} defaultValue={responseLength}/>
                         <ResponseTempSlider className={styles.chatSettingsSeparator} onChange={setResponseTemp} value={responseTemp}/>
-                        <TopPInput className={styles.chatSettingsSeparator} value={topP} onChange={setTopP} />
+                        <TopPSlider className={styles.chatSettingsSeparator} onChange={setTopP} value={topP} />
                         <PromptOverride className={styles.chatSettingsSeparator} defaultValue={promptTemplate} onChange={onPromptTemplateChange}/>
             </Panel>
 

@@ -1,7 +1,7 @@
 /* Copyright (c) Microsoft Corporation.
    Licensed under the MIT license. */
 
-.container {
+   .container {
     cursor: pointer;
 }
 
@@ -9,13 +9,13 @@
     opacity: 0.4;
 }
 
-.responseTempValue {
+.topPValue {
   text-align: center;
   display: block;
   margin: 0 auto;
 }
 
-.tempSlider {
+.topPSlider {
   -webkit-appearance: none;
   width: 100%;
   background: transparent;
@@ -23,11 +23,11 @@
   margin-top: 5px;
 }
 
-.tempSlider:focus {
+.topPSlider:focus {
   outline: 0;
 }
 
-.tempSlider::-webkit-slider-thumb {
+.topPSlider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 2em;
   height: 2em;
@@ -41,7 +41,7 @@
   cursor: pointer;
 }
 
-.tempSlider::-webkit-slider-runnable-track {
+.topPSlider::-webkit-slider-runnable-track {
   background: transparent;
   width: 100%;
   height: 3em;
