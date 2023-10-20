@@ -1,0 +1,464 @@
+{
+    "resources": [
+        {
+            "type": "Microsoft.Logic/workflows",
+            "apiVersion": "2017-07-01",
+            "name": "[parameters('workflows_infoasst_logicapp_news_xtcok_name')]",
+            "location": "westeurope",
+            "properties": {
+                "state": "Enabled",
+                "definition": {
+                    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "news_api_key": {
+                            "defaultValue": "gm471IZkhfSa6uAHCZhJoZiQunl_5hP1x3BXWi1KMHk",
+                            "type": "String"
+                        },
+                        "storage_account_name": {
+                            "defaultValue": "osintdatasdhsv",
+                            "type": "String"
+                        },
+                        "warning_image_path": {
+                            "defaultValue": "/newssearch/warning.jpg",
+                            "type": "String"
+                        },
+                        "$connections": {
+                            "defaultValue": {},
+                            "type": "Object"
+                        }
+                    },
+                    "triggers": {
+                        "Recurrence": {
+                            "recurrence": {
+                                "frequency": "Hour",
+                                "interval": 12
+                            },
+                            "evaluatedRecurrence": {
+                                "frequency": "Hour",
+                                "interval": 12
+                            },
+                            "type": "Recurrence"
+                        }
+                    },
+                    "actions": {
+                        "Compose_blob_to_string": {
+                            "runAfter": {
+                                "Get_blob_content_(V2)_news_config": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Compose",
+                            "inputs": "@base64ToString(body('Get_blob_content_(V2)_news_config').$content)"
+                        },
+                        "For_each_feed": {
+                            "foreach": "@body('Parse_JSON_news_config')?['NewsFeeds']",
+                            "actions": {
+                                "Condition_check_for_zero_hits": {
+                                    "actions": {
+                                        "For_each_item": {
+                                            "foreach": "@body('Parse_JSON_News_Response')?['articles']",
+                                            "actions": {
+                                                "Set_variable_thumbnailLink": {
+                                                    "type": "SetVariable",
+                                                    "inputs": {
+                                                        "name": "thumbnailLink",
+                                                        "value": "@items('For_each_item')?['media']"
+                                                    }
+                                                },
+                                                "Create_blob_(V2)": {
+                                                    "runAfter": {
+                                                        "Compose_article_with_no_child_image": [
+                                                            "Succeeded"
+                                                        ]
+                                                    },
+                                                    "type": "ApiConnection",
+                                                    "inputs": {
+                                                        "host": {
+                                                            "connection": {
+                                                                "name": "@parameters('$connections')['azureblob']['connectionId']"
+                                                            }
+                                                        },
+                                                        "method": "post",
+                                                        "body": "@outputs('Compose_article_with_no_child_image')",
+                                                        "headers": {
+                                                            "ReadFileMetadataFromServer": true
+                                                        },
+                                                        "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent('AccountNameFromSettings'))}/files",
+                                                        "queries": {
+                                                            "folderPath": "/upload",
+                                                            "name": "@{guid()}.html",
+                                                            "queryParametersSingleEncoded": true
+                                                        }
+                                                    }
+                                                },
+                                                "Compose_article_with_no_child_image": {
+                                                    "runAfter": {
+                                                        "Set_variable_thumbnailLink": [
+                                                            "Succeeded"
+                                                        ]
+                                                    },
+                                                    "type": "Compose",
+                                                    "inputs": "<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>@{items('For_each_item')?['title']}</title>\n</head>\n<body>\n<h1>@{items('For_each_item')?['title']}</h1>\n<h3>author: @{items('For_each_item')?['author']}</h3>\n<h3>published date: @{items('For_each_item')?['published_date']}</h3>\n<p>@{items('For_each_item')?['summary']}</p>\n<p> Link: @{items('For_each_item')?['link']}></p>\n</body>"
+                                                }
+                                            },
+                                            "type": "Foreach"
+                                        }
+                                    },
+                                    "runAfter": {
+                                        "Parse_JSON_News_Response": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "else": {
+                                        "actions": {}
+                                    },
+                                    "expression": {
+                                        "and": [
+                                            {
+                                                "greater": [
+                                                    "@body('Parse_JSON_News_Response')?['total_hits']",
+                                                    0
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    "type": "If"
+                                },
+                                "HTTP_get_feed": {
+                                    "type": "Http",
+                                    "inputs": {
+                                        "uri": "@items('For_each_feed')?['uri']",
+                                        "method": "GET",
+                                        "headers": {
+                                            "x-api-key": "@parameters('news_api_key')"
+                                        },
+                                        "queries": {
+                                            "from": "@{formatDateTime(addHours(utcNow(), -1), 'yyyy/MM/dd HH:mm:ss')}",
+                                            "q": "@items('For_each_feed')?['query']",
+                                            "topic": "news"
+                                        }
+                                    }
+                                },
+                                "Parse_JSON_News_Response": {
+                                    "runAfter": {
+                                        "HTTP_get_feed": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "ParseJson",
+                                    "inputs": {
+                                        "content": "@body('HTTP_get_feed')",
+                                        "schema": {
+                                            "properties": {
+                                                "body": {
+                                                    "properties": {
+                                                        "articles": {
+                                                            "items": {
+                                                                "properties": {
+                                                                    "_id": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "_score": {
+                                                                        "type": "number"
+                                                                    },
+                                                                    "author": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "authors": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "clean_url": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "country": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "excerpt": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "is_opinion": {
+                                                                        "type": "boolean"
+                                                                    },
+                                                                    "language": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "link": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "media": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "published_date": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "published_date_precision": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "rank": {
+                                                                        "type": "integer"
+                                                                    },
+                                                                    "rights": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "summary": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "title": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "topic": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "twitter_account": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "title",
+                                                                    "author",
+                                                                    "published_date",
+                                                                    "published_date_precision",
+                                                                    "link",
+                                                                    "clean_url",
+                                                                    "excerpt",
+                                                                    "summary",
+                                                                    "rights",
+                                                                    "rank",
+                                                                    "topic",
+                                                                    "country",
+                                                                    "language",
+                                                                    "authors",
+                                                                    "media",
+                                                                    "is_opinion",
+                                                                    "twitter_account",
+                                                                    "_score",
+                                                                    "_id"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            "type": "array"
+                                                        },
+                                                        "page": {
+                                                            "type": "integer"
+                                                        },
+                                                        "page_size": {
+                                                            "type": "integer"
+                                                        },
+                                                        "status": {
+                                                            "type": "string"
+                                                        },
+                                                        "total_hits": {
+                                                            "type": "integer"
+                                                        },
+                                                        "total_pages": {
+                                                            "type": "integer"
+                                                        },
+                                                        "user_input": {
+                                                            "properties": {
+                                                                "countries": {},
+                                                                "from": {
+                                                                    "type": "string"
+                                                                },
+                                                                "from_rank": {},
+                                                                "lang": {},
+                                                                "not_countries": {},
+                                                                "not_lang": {},
+                                                                "not_sources": {
+                                                                    "type": "array"
+                                                                },
+                                                                "page": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "published_date_precision": {},
+                                                                "q": {
+                                                                    "type": "string"
+                                                                },
+                                                                "ranked_only": {
+                                                                    "type": "string"
+                                                                },
+                                                                "search_in": {
+                                                                    "items": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "type": "array"
+                                                                },
+                                                                "size": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "sort_by": {
+                                                                    "type": "string"
+                                                                },
+                                                                "sources": {},
+                                                                "to": {},
+                                                                "to_rank": {},
+                                                                "topic": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "headers": {
+                                                    "properties": {
+                                                        "Alt-Svc": {
+                                                            "type": "string"
+                                                        },
+                                                        "Content-Length": {
+                                                            "type": "string"
+                                                        },
+                                                        "Content-Type": {
+                                                            "type": "string"
+                                                        },
+                                                        "Date": {
+                                                            "type": "string"
+                                                        },
+                                                        "Server": {
+                                                            "type": "string"
+                                                        },
+                                                        "Strict-Transport-Security": {
+                                                            "type": "string"
+                                                        },
+                                                        "Via": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "statusCode": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            },
+                            "runAfter": {
+                                "Initialize_variable_article_json": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Foreach",
+                            "runtimeConfiguration": {
+                                "concurrency": {
+                                    "repetitions": 1
+                                }
+                            }
+                        },
+                        "Initialize_variable_ThumbnailName": {
+                            "runAfter": {
+                                "Initialize_variable_thumbnailLink": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "ThumbnailName",
+                                        "type": "string"
+                                    }
+                                ]
+                            }
+                        },
+                        "Initialize_variable_article_json": {
+                            "runAfter": {
+                                "Initialize_variable_ThumbnailName": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "article json",
+                                        "type": "object"
+                                    }
+                                ]
+                            }
+                        },
+                        "Initialize_variable_thumbnailLink": {
+                            "runAfter": {
+                                "Parse_JSON_news_config": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "thumbnailLink",
+                                        "type": "string"
+                                    }
+                                ]
+                            }
+                        },
+                        "Parse_JSON_news_config": {
+                            "runAfter": {
+                                "Compose_blob_to_string": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "ParseJson",
+                            "inputs": {
+                                "content": "@outputs('Compose_blob_to_string')",
+                                "schema": {
+                                    "properties": {
+                                        "NewsFeeds": {
+                                            "items": {
+                                                "properties": {
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "query": {
+                                                        "type": "string"
+                                                    },
+                                                    "uri": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "name",
+                                                    "uri",
+                                                    "query"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            "type": "array"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        },
+                        "Get_blob_content_(V2)_news_config": {
+                            "runAfter": {},
+                            "metadata": {
+                                "JTJmY29uZmlnJTJmTmV3c0NvbmZpZy5qc29u": "/config/NewsConfig.json"
+                            },
+                            "type": "ApiConnection",
+                            "inputs": {
+                                "host": {
+                                    "connection": {
+                                        "name": "@parameters('$connections')['azureblob']['connectionId']"
+                                    }
+                                },
+                                "method": "get",
+                                "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent('AccountNameFromSettings'))}/files/@{encodeURIComponent(encodeURIComponent('JTJmY29uZmlnJTJmTmV3c0NvbmZpZy5qc29u'))}/content",
+                                "queries": {
+                                    "inferContentType": true
+                                }
+                            }
+                        }
+                    },
+                    "outputs": {}
+                },
+                "parameters": {
+                }
+            }
+        }
+    ]
+}
