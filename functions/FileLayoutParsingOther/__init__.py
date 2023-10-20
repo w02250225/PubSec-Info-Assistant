@@ -90,16 +90,16 @@ def main(msg: func.QueueMessage) -> None:
         chunk_count = utilities.build_chunks(document_map, blob_name, blob_uri, CHUNK_TARGET_SIZE)
         status_log.upsert_document(blob_name, f'{FUNCTION_NAME} - Chunking complete. {chunk_count} chunks created', StatusClassification.DEBUG)
 
-        if enableDevCode:
-            # Dev code
-            # submit message to the enrichment queue to continue processing
-            queue_client = QueueClient.from_connection_string(azure_blob_connection_string, queue_name=text_enrichment_queue, message_encode_policy=TextBase64EncodePolicy())
-            message_json["enrichment_queued_count"] = 1
-            message_string = json.dumps(message_json)
-            queue_client.send_message(message_string)
-            status_log.upsert_document(blob_name, f"{FUNCTION_NAME} - message sent to enrichment queue", StatusClassification.DEBUG, State.QUEUED)
-        else:
-            status_log.upsert_document(blob_name, f'{FUNCTION_NAME} - Processing of file is now complete.', StatusClassification.INFO, State.COMPLETE)
+        # if enableDevCode:
+        #     # Dev code
+        #     # submit message to the enrichment queue to continue processing
+        #     queue_client = QueueClient.from_connection_string(azure_blob_connection_string, queue_name=text_enrichment_queue, message_encode_policy=TextBase64EncodePolicy())
+        #     message_json["enrichment_queued_count"] = 1
+        #     message_string = json.dumps(message_json)
+        #     queue_client.send_message(message_string)
+        #     status_log.upsert_document(blob_name, f"{FUNCTION_NAME} - message sent to enrichment queue", StatusClassification.DEBUG, State.QUEUED)
+        # else:
+        status_log.upsert_document(blob_name, f'{FUNCTION_NAME} - Processing of file is now complete.', StatusClassification.INFO, State.COMPLETE)
 
     except Exception as e:
         status_log.upsert_document(blob_name, f"{FUNCTION_NAME} - An error occurred - {str(e)}", StatusClassification.ERROR, State.ERROR)
