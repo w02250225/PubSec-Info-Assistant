@@ -1,0 +1,514 @@
+Delivered-To: ryonsteele@gmail.com
+Received: by 2002:a17:906:ad8d:b0:9ba:663:ea63 with SMTP id la13csp2321261ejb;
+        Tue, 24 Oct 2023 13:34:49 -0700 (PDT)
+X-Google-Smtp-Source: AGHT+IHPGMdxnJoXdpOIVKPW9kK2QOEbYAu2uOO7lDS45x0pd2OEbFAayRs9NvgoavjZkrbQp+e6
+X-Received: by 2002:a05:6214:230c:b0:655:dc84:d744 with SMTP id gc12-20020a056214230c00b00655dc84d744mr18513248qvb.25.1698179689204;
+        Tue, 24 Oct 2023 13:34:49 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1698179689; cv=none;
+        d=google.com; s=arc-20160816;
+        b=wR8o4xtfiZ/z1eGeCZkbZvn82bH89nVyJokb5q9ifvYWhczMBLZ9HmBdkLdYUTFbuU
+         ttL0PiT4J+xjK49Tnd7btFLwNmQiiVzCWC89BVELyXU1YjAVdpP5jGOpZbHUW0Jzylfy
+         RRaFb74CTcrfxqTIk5kBETC81sRdNn/9TZa+W0CRbYaTi03ym5aUdor9P0pwwgVjxs7p
+         2nG0EvFIJ9DulJVpZ7ld4VroWSmXsUKmj+G/HWT1Kpj5kgB+TRmucfmN+amjgj1yWRIY
+         BNDLqoX17LoRRTJLMZROoIzq7B70xV/y0BoQ/RDiTCuDFXX2IWw2h+d4Cm2PySgj26MC
+         uKJg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20160816;
+        h=list-unsubscribe-post:list-unsubscribe:mime-version:subject:to
+         :reply-to:from:date:message-id:dkim-signature;
+        bh=aUJ7e2x1iSbNNdrHbbc3XN2WzcYZRZxNNPypVSuxnXc=;
+        fh=dai9SURRF0FVffL6WZYDC2f5WVSg9ALKCjKA0aJ8V2c=;
+        b=BGuf5fSgRrKcEEOh2gBKBharmeDAgk9P2LbX6aylNEFQL/R9J6Cs+L7dCidbfuGK0j
+         KFRJ67IRL2UYatF4blnXebbt26xw1bFsIIC9idFx81Jkjholg772TVF2jVcvRvXrTfXS
+         4Em5NhPaKRDj6+u1wC2N8uLoComgfThBeejL+h6CDjfQAoPGCmD8wSGC3s/2u8eISJa2
+         hd2/bcEGH/tmtp2iT50xzIxzc/Iutem7DDFBx1ysljEeV0hSoAL4puZ+Joii4Lm013Pg
+         bpIfvpc7Iff803SE0fed0Ie93FyITDiJq2N5hbZ1eRtJYoZalrsjGn8FuK+Nbau9fLna
+         tGQA==
+ARC-Authentication-Results: i=1; mx.google.com;
+       dkim=pass header.i=@auth.ccsend.com header.s=1000073432 header.b=PSxhXBUN;
+       spf=pass (google.com: domain of af8c+swkhqbw4wecrpivwka==_1140568749398_0k7fdm7aee6a1vowpixp2a==@in.constantcontact.com designates 208.75.123.171 as permitted sender) smtp.mailfrom="Af8c+sWKHQbW4wecRpIvWkA==_1140568749398_0k7Fdm7aEe6A1voWPiXp2A==@in.constantcontact.com";
+       dmarc=fail (p=NONE sp=NONE dis=NONE) header.from=archersystems.com
+Return-Path: <Af8c+sWKHQbW4wecRpIvWkA==_1140568749398_0k7Fdm7aEe6A1voWPiXp2A==@in.constantcontact.com>
+Received: from ccm171.constantcontact.com (ccm171.constantcontact.com. [208.75.123.171])
+        by mx.google.com with ESMTPS id bk12-20020a05620a1a0c00b0077419b27782si8222363qkb.339.2023.10.24.13.34.48
+        for <ryonsteele@gmail.com>
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Tue, 24 Oct 2023 13:34:49 -0700 (PDT)
+Received-SPF: pass (google.com: domain of af8c+swkhqbw4wecrpivwka==_1140568749398_0k7fdm7aee6a1vowpixp2a==@in.constantcontact.com designates 208.75.123.171 as permitted sender) client-ip=208.75.123.171;
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@auth.ccsend.com header.s=1000073432 header.b=PSxhXBUN;
+       spf=pass (google.com: domain of af8c+swkhqbw4wecrpivwka==_1140568749398_0k7fdm7aee6a1vowpixp2a==@in.constantcontact.com designates 208.75.123.171 as permitted sender) smtp.mailfrom="Af8c+sWKHQbW4wecRpIvWkA==_1140568749398_0k7Fdm7aEe6A1voWPiXp2A==@in.constantcontact.com";
+       dmarc=fail (p=NONE sp=NONE dis=NONE) header.from=archersystems.com
+Return-Path: <Af8c+sWKHQbW4wecRpIvWkA==_1140568749398_0k7Fdm7aEe6A1voWPiXp2A==@in.constantcontact.com>
+Received: from [10.252.0.3] ([10.252.0.3:52808] helo=p2-jbemailsyndicator34.ctct.net)
+	by 10.249.224.20 (envelope-from <Af8c+sWKHQbW4wecRpIvWkA==_1140568749398_0k7Fdm7aEe6A1voWPiXp2A==@in.constantcontact.com>)
+	(ecelerity 4.3.1.999 r(:)) with ESMTP
+	id E0/B0-35074-86A28356; Tue, 24 Oct 2023 16:34:48 -0400
+DKIM-Signature: v=1; q=dns/txt; a=rsa-sha256; c=relaxed/relaxed; s=1000073432; d=auth.ccsend.com; h=date:mime-version:subject:X-Feedback-ID:X-250ok-CID:message-id:from:reply-to:list-unsubscribe:list-unsubscribe-post:to; bh=aUJ7e2x1iSbNNdrHbbc3XN2WzcYZRZxNNPypVSuxnXc=; b=PSxhXBUN369mVtf7imY78WSLtBJoGhY60gAuMHvCkia9iPyXS82+2QNZjPStG6+yAWaB3E3pfyGCGBtwMiZlgk9SoqDEBmWAX3RAv9CGQ7tV+xzwPzKCGRd7NNWuukGCVS5zdHR6V6XEIZbo89IcBYV+VkkEyZyAwledM4Vm1/k=
+Message-ID: <1140748388470.1140568749398.1252915289.0.221634JL.2002@synd.ccsend.com>
+Date: Tue, 24 Oct 2023 16:34:48 -0400 (EDT)
+From: "Archer Systems, LLC" <3mcaesettlement@archersystems.com>
+Reply-To: 3mnoreplies@archersystems.com
+To: ryonsteele@gmail.com
+Subject: 3M Earplug Settlement Update
+MIME-Version: 1.0
+Content-Type: multipart/alternative; 
+	boundary="----=_Part_38307880_483927258.1698179688897"
+List-Unsubscribe: <https://visitor.constantcontact.com/do?p=un&m=001B0iB46mt0LqNbCqvIHoOOA%3D%3D&se=0015CSmy2VGd8tj4kqg586Y7g%3D%3D&t=001EkZLEx15CcE%3D&llr=wk6dthgbb>
+List-Unsubscribe-Post: List-Unsubscribe=One-Click
+X-Campaign-Activity-ID: 7fc73eb1-6287-41b5-b8c1-e711a48bd690
+X-250ok-CID: 7fc73eb1-6287-41b5-b8c1-e711a48bd690
+X-Channel-ID: d24ec576-6eda-11ee-80d6-fa163e25e9d8
+X-Return-Path-Hint: Af8c+sWKHQbW4wecRpIvWkA==_1140568749398_0k7Fdm7aEe6A1voWPiXp2A==@in.constantcontact.com
+X-Roving-Campaignid: 1140748388470
+X-Roving-Id: 1140568749398.1252915289
+X-Feedback-ID: d24ec576-6eda-11ee-80d6-fa163e25e9d8:7fc73eb1-6287-41b5-b8c1-e711a48bd690:1140568749398:CTCT
+X-CTCT-ID: d23a1d56-6eda-11ee-80d6-fa163e25e9d8
+
+------=_Part_38307880_483927258.1698179688897
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+=E2=80=8A Re: 3M CAE Claimant: Jeffery Steele,    ARCHER, the settlement ad=
+ministration company for the 3M Earplug Settlement will be reaching out to =
+claimants. Over the next two months, you will receive emails and texts from=
+ ARCHER and your attorney about how to access ARCHER=E2=80=99s secure porta=
+l to confirm your registration for settlement benefits. Once your Registrat=
+ion Form is ready, you will receive an email and/or text from ARCHER with a=
+ secure link to the Registration Portal that you can use to login and compl=
+ete your registration for benefits.     ARCHER has taken steps to protect t=
+he security of your personal information. They will verify your identity us=
+ing your name, date of birth, and attorney=E2=80=99s name. If needed, they =
+may also ask for the last four digits of your Social Security number.     R=
+emember, ARCHER will never ask for sensitive information like your full Soc=
+ial Security number or banking details, by phone or email.     To protect y=
+ourself from scammers:    Avoid sharing sensitive information by phone or e=
+mail.   Don=E2=80=99t post your settlement details online.  Whitelist the A=
+RCHER email address (form@relay.3m-earplugsettlement.com) to ensure timely =
+receipt of email communications.   Don=E2=80=99t click on links from unknow=
+n email addresses posing as ARCHER.  Report scams to your attorney, law enf=
+orcement, the Federal Communications Commission (=E2=80=9CFCC=E2=80=9D), an=
+d the Federal Trade Commission (=E2=80=9CFTC=E2=80=9D).    Find more tips a=
+t the FCC website.    For questions, reach out to your attorney or ARCHER d=
+irectly at (816) 319-4416.  Sincerly, ARCHER Systems, LLC Please do not rep=
+ly to this email, if you have questions, contact your attorney directly. Th=
+is email is for informational purposes only. Replies will not be returned. =
+=E2=80=8A Archer Systems, LLC | 1775 Saint James Place #200, Houston, TX 77=
+056 Unsubscribe ryonsteele@gmail.com Update Profile | Constant Contact Data=
+ Notice Sent by 3mcaesettlement@archersystems.com powered by Try email mark=
+eting for free today!
+------=_Part_38307880_483927258.1698179688897
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML>
+<html lang=3D"en-US"> <head>  <meta http-equiv=3D"Content-Type" content=3D"=
+text/html; charset=3Dutf-8"> <meta name=3D"viewport" content=3D"width=3Ddev=
+ice-width, initial-scale=3D1, maximum-scale=3D1">   <style type=3D"text/css=
+" data-premailer=3D"ignore">=20
+@media only screen and (max-width:480px) { .footer-main-width { width: 100%=
+ !important; }  .footer-mobile-hidden { display: none !important; }  .foote=
+r-mobile-hidden { display: none !important; }  .footer-column { display: bl=
+ock !important; }  .footer-mobile-stack { display: block !important; }  .fo=
+oter-mobile-stack-padding { padding-top: 3px; } }=20
+/* IE: correctly scale images with w/h attbs */ img { -ms-interpolation-mod=
+e: bicubic; }=20
+.layout { min-width: 100%; }=20
+table { table-layout: fixed; } .shell_outer-row { table-layout: auto; }=20
+/* Gmail/Web viewport fix */ u + .body .shell_outer-row { width: 700px; }=
+=20
+/* LIST AND p STYLE OVERRIDES */ .text .text_content-cell p { margin: 0; pa=
+dding: 0; margin-bottom: 0; } .text .text_content-cell ul, .text .text_cont=
+ent-cell ol { padding: 0; margin: 0 0 0 40px; } .text .text_content-cell li=
+ { padding: 0; margin: 0; /* line-height: 1.2; Remove after testing */ } /*=
+ Text Link Style Reset */ a { text-decoration: underline; } /* iOS: Autolin=
+k styles inherited */ a[x-apple-data-detectors] { text-decoration: underlin=
+e !important; font-size: inherit !important; font-family: inherit !importan=
+t; font-weight: inherit !important; line-height: inherit !important; color:=
+ inherit !important; } /* FF/Chrome: Smooth font rendering */ .text .text_c=
+ontent-cell { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing:=
+ grayscale; }=20
+</style> <!--[if gte mso 9]> <style id=3D"ol-styles">=20
+/* OUTLOOK-SPECIFIC STYLES */ li { text-indent: -1em; padding: 0; margin: 0=
+; /* line-height: 1.2; Remove after testing */ } ul, ol { padding: 0; margi=
+n: 0 0 0 40px; } p { margin: 0; padding: 0; margin-bottom: 0; }=20
+</style> <![endif]-->  <style>@media only screen and (max-width:480px) {
+.button_content-cell {
+padding-top: 10px !important; padding-right: 20px !important; padding-botto=
+m: 10px !important; padding-left: 20px !important;
+}
+.button_border-row .button_content-cell {
+padding-top: 10px !important; padding-right: 20px !important; padding-botto=
+m: 10px !important; padding-left: 20px !important;
+}
+.column .content-padding-horizontal {
+padding-left: 20px !important; padding-right: 20px !important;
+}
+.layout .column .content-padding-horizontal .content-padding-horizontal {
+padding-left: 0px !important; padding-right: 0px !important;
+}
+.layout .column .content-padding-horizontal .block-wrapper_border-row .cont=
+ent-padding-horizontal {
+padding-left: 20px !important; padding-right: 20px !important;
+}
+.dataTable {
+overflow: auto !important;
+}
+.dataTable .dataTable_content {
+width: auto !important;
+}
+.image--mobile-scale .image_container img {
+width: auto !important;
+}
+.image--mobile-center .image_container img {
+margin-left: auto !important; margin-right: auto !important;
+}
+.layout-margin .layout-margin_cell {
+padding: 0px 20px !important;
+}
+.layout-margin--uniform .layout-margin_cell {
+padding: 20px 20px !important;
+}
+.scale {
+width: 100% !important;
+}
+.stack {
+display: block !important; box-sizing: border-box;
+}
+.hide {
+display: none !important;
+}
+u + .body .shell_outer-row {
+width: 100% !important;
+}
+.socialFollow_container {
+text-align: center !important;
+}
+.text .text_content-cell {
+font-size: 16px !important;
+}
+.text .text_content-cell h1 {
+font-size: 24px !important;
+}
+.text .text_content-cell h2 {
+font-size: 20px !important;
+}
+.text .text_content-cell h3 {
+font-size: 20px !important;
+}
+.text--sectionHeading .text_content-cell {
+font-size: 24px !important;
+}
+.text--heading .text_content-cell {
+font-size: 24px !important;
+}
+.text--feature .text_content-cell h2 {
+font-size: 20px !important;
+}
+.text--articleHeading .text_content-cell {
+font-size: 20px !important;
+}
+.text--article .text_content-cell h3 {
+font-size: 20px !important;
+}
+.text--featureHeading .text_content-cell {
+font-size: 20px !important;
+}
+.text--feature .text_content-cell h3 {
+font-size: 20px !important;
+}
+.text--dataTable .text_content-cell .dataTable .dataTable_content-cell {
+font-size: 12px !important;
+}
+.text--dataTable .text_content-cell .dataTable th.dataTable_content-cell {
+font-size: px !important;
+}
+}
+</style>
+</head> <body class=3D"body template template--en-US" data-template-version=
+=3D"1.25.0" data-canonical-name=3D"CPE-PT17831" lang=3D"en-US" align=3D"cen=
+ter" style=3D"-ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%; m=
+in-width: 100%; width: 100%; margin: 0px; padding: 0px;"> <div id=3D"prehea=
+der" style=3D"color: transparent; display: none; font-size: 1px; line-heigh=
+t: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;"><sp=
+an data-entity-ref=3D"preheader"></span></div> <div id=3D"tracking-image" s=
+tyle=3D"color: transparent; display: none; font-size: 1px; line-height: 1px=
+; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;"><img src=
+=3D"https://r20.rs6.net/on.jsp?ca=3D7fc73eb1-6287-41b5-b8c1-e711a48bd690&a=
+=3D1140568749398&c=3Dd23a1d56-6eda-11ee-80d6-fa163e25e9d8&ch=3Dd24ec576-6ed=
+a-11ee-80d6-fa163e25e9d8" / alt=3D""></div> <div class=3D"shell" lang=3D"en=
+-US" style=3D"background-color: #474747;">  <table class=3D"shell_panel-row=
+" width=3D"100%" border=3D"0" cellpadding=3D"0" cellspacing=3D"0" style=3D"=
+background-color: #474747;" bgcolor=3D"#474747"> <tr class=3D""> <td class=
+=3D"shell_panel-cell" style=3D"" align=3D"center" valign=3D"top"> <table cl=
+ass=3D"shell_width-row scale" style=3D"width: 700px;" align=3D"center" bord=
+er=3D"0" cellpadding=3D"0" cellspacing=3D"0"> <tr> <td class=3D"shell_width=
+-cell" style=3D"padding: 15px 10px;" align=3D"center" valign=3D"top"> <tabl=
+e class=3D"shell_content-row" width=3D"100%" align=3D"center" border=3D"0" =
+cellpadding=3D"0" cellspacing=3D"0"> <tr> <td class=3D"shell_content-cell" =
+style=3D"background-color: #FFFFFF; padding: 0; border: 0px solid #3e3e3e;"=
+ align=3D"center" valign=3D"top" bgcolor=3D"#FFFFFF"> <table class=3D"layou=
+t layout--1-column" style=3D"table-layout: fixed;" width=3D"100%" border=3D=
+"0" cellpadding=3D"0" cellspacing=3D"0"> <tr> <td class=3D"column column--1=
+ scale stack" style=3D"width: 100%;" align=3D"center" valign=3D"top">
+<div class=3D"spacer" style=3D"height: 30px; line-height: 30px;">&#x200a;</=
+div>
+<table class=3D"image image--padding-vertical image--mobile-scale image--mo=
+bile-center" width=3D"100%" border=3D"0" cellpadding=3D"0" cellspacing=3D"0=
+"> <tr> <td class=3D"image_container content-padding-horizontal" align=3D"c=
+enter" valign=3D"top" style=3D"padding: 10px 40px;"> <img data-image-conten=
+t class=3D"image_content" width=3D"200" src=3D"https://files.constantcontac=
+t.com/655f13f8901/3ae1f47f-73c7-416c-b839-5f745a184dc3.jpg" alt=3D"" style=
+=3D"display: block; height: auto; max-width: 100%;"> </td> </tr> </table> <=
+table class=3D"divider" width=3D"100%" cellpadding=3D"0" cellspacing=3D"0" =
+border=3D"0"> <tr> <td class=3D"divider_container content-padding-horizonta=
+l" style=3D"padding: 10px 40px;" width=3D"100%" align=3D"center" valign=3D"=
+top"> <table class=3D"divider_content-row" style=3D"height: 1px; width: 100=
+%;" cellpadding=3D"0" cellspacing=3D"0" border=3D"0"> <tr> <td class=3D"div=
+ider_content-cell" style=3D"height: 1px; line-height: 1px; padding-bottom: =
+0px; background-color: #000000; border-bottom-width: 0px;" height=3D"1" ali=
+gn=3D"center" bgcolor=3D"#000000"> <img alt=3D"" width=3D"5" height=3D"1" b=
+order=3D"0" hspace=3D"0" vspace=3D"0" src=3D"https://imgssl.constantcontact=
+.com/letters/images/1101116784221/S.gif" style=3D"display: block; height: 1=
+px; width: 5px;"> </td> </tr> </table> </td> </tr> </table> <table class=3D=
+"text text--padding-vertical" width=3D"100%" border=3D"0" cellpadding=3D"0"=
+ cellspacing=3D"0" style=3D"table-layout: fixed;"> <tr> <td class=3D"text_c=
+ontent-cell content-padding-horizontal" style=3D"text-align: left; font-fam=
+ily: Arial,Verdana,Helvetica,sans-serif; color: #3E3E3E; font-size: 14px; l=
+ine-height: 1.2; display: block; word-wrap: break-word; padding: 10px 40px;=
+" align=3D"left" valign=3D"top">
+<p style=3D"margin: 0;"><span style=3D'font-size: 16px; color: rgb(0, 0, 0)=
+; font-family: "Times New Roman", Times, serif;'>Re: 3M CAE Claimant: <span=
+ data-id=3D"injured_party">Jeffery Steele</span>,</span></p>
+<p style=3D"margin: 0;"><span style=3D'font-size: 16px; color: rgb(0, 0, 0)=
+; font-family: "Times New Roman", Times, serif;'>&#xa0;&#xa0;</span></p>
+<p style=3D"text-align: justify; margin: 0;" align=3D"justify"><span style=
+=3D'font-size: 16px; color: rgb(0, 0, 0); font-family: "Times New Roman", T=
+imes, serif;'>ARCHER, the settlement administration company for the 3M Earp=
+lug Settlement will be reaching out to claimants. Over the next two months,=
+ you will receive emails and texts from ARCHER and your attorney about how =
+to access ARCHER&#x2019;s secure portal to confirm your registration for se=
+ttlement benefits. Once your Registration Form is ready, you will receive a=
+n email and/or text from ARCHER with a secure link to the Registration Port=
+al that you can use to login and complete your registration for benefits.&#=
+xa0;&#xa0;</span></p>
+<p style=3D"text-align: justify; margin: 0;" align=3D"justify"><span style=
+=3D'font-size: 16px; color: rgb(0, 0, 0); font-family: "Times New Roman", T=
+imes, serif;'>&#xa0;</span></p>
+<p style=3D"text-align: justify; margin: 0;" align=3D"justify"><span style=
+=3D'font-size: 16px; color: rgb(0, 0, 0); font-family: "Times New Roman", T=
+imes, serif;'>ARCHER has taken steps to protect the security of your person=
+al information.&#xa0;They will verify your identity using your name, date o=
+f birth, and attorney&#x2019;s name. If needed, they may also ask for the l=
+ast four digits of your Social Security number.&#xa0;&#xa0;</span></p>
+<p style=3D"text-align: justify; margin: 0;" align=3D"justify"><span style=
+=3D'font-size: 16px; color: rgb(0, 0, 0); font-family: "Times New Roman", T=
+imes, serif;'>&#xa0;</span></p>
+<p style=3D"text-align: justify; margin: 0;" align=3D"justify"><span style=
+=3D'font-size: 16px; color: rgb(0, 0, 0); text-decoration: underline; font-=
+weight: bold; font-family: "Times New Roman", Times, serif; font-style: ita=
+lic;'>Remember, ARCHER will never ask for sensitive information like your f=
+ull Social Security number or banking details, by phone or email.&#xa0;</sp=
+an><span style=3D'font-size: 16px; color: rgb(0, 0, 0); font-weight: bold; =
+font-family: "Times New Roman", Times, serif;'>&#xa0;</span></p>
+<p style=3D"text-align: justify; margin: 0;" align=3D"justify"><span style=
+=3D'font-size: 16px; color: rgb(0, 0, 0); font-family: "Times New Roman", T=
+imes, serif;'>&#xa0;</span></p>
+<p style=3D"text-align: justify; margin: 0;" align=3D"justify"><span style=
+=3D'font-size: 16px; color: rgb(0, 0, 0); font-family: "Times New Roman", T=
+imes, serif; font-weight: bold;'>To protect yourself from scammers:</span><=
+span style=3D'font-size: 16px; color: rgb(0, 0, 0); font-family: "Times New=
+ Roman", Times, serif;'>&#xa0;</span></p>
+<p style=3D"text-align: justify; margin: 0;" align=3D"justify"><span style=
+=3D'font-size: 16px; color: rgb(0, 0, 0); font-family: "Times New Roman", T=
+imes, serif;'>&#xa0;</span></p>
+<ul>
+<li style=3D"font-size: 16px; color: rgb(0, 0, 0); text-align: justify;"><s=
+pan style=3D'font-size: 16px; color: rgb(0, 0, 0); font-family: "Times New =
+Roman", Times, serif;'>Avoid sharing sensitive information by phone or emai=
+l.&#xa0;&#xa0;</span></li>
+<li style=3D"font-size: 16px; color: rgb(0, 0, 0); text-align: justify;"><s=
+pan style=3D'font-size: 16px; color: rgb(0, 0, 0); font-family: "Times New =
+Roman", Times, serif;'>Don&#x2019;t post your settlement details online.&#x=
+a0;</span></li>
+<li style=3D"font-size: 16px; color: rgb(0, 0, 0); text-align: justify;"><s=
+pan style=3D'font-size: 16px; color: rgb(0, 0, 0); font-family: "Times New =
+Roman", Times, serif;'>Whitelist the ARCHER email address (form@relay.3m-ea=
+rplugsettlement.com) to ensure timely receipt of email communications.&#xa0=
+;&#xa0;</span></li>
+<li style=3D"font-size: 16px; color: rgb(0, 0, 0); text-align: justify;"><s=
+pan style=3D'font-size: 16px; color: rgb(0, 0, 0); font-family: "Times New =
+Roman", Times, serif;'>Don&#x2019;t click on links from unknown email addre=
+sses posing as ARCHER.&#xa0;</span></li>
+<li style=3D"font-size: 16px; color: rgb(0, 0, 0); text-align: justify;"><s=
+pan style=3D'font-size: 16px; color: rgb(0, 0, 0); font-family: "Times New =
+Roman", Times, serif;'>Report scams to your attorney, law enforcement, the =
+Federal Communications Commission (&#x201c;FCC&#x201d;), and the Federal Tr=
+ade Commission (&#x201c;FTC&#x201d;).&#xa0;</span></li>
+</ul>
+<p style=3D"text-align: justify; margin: 0;" align=3D"justify"><span style=
+=3D'font-size: 16px; color: rgb(0, 0, 0); font-family: "Times New Roman", T=
+imes, serif;'>&#xa0;</span></p>
+<p style=3D"text-align: justify; margin: 0;" align=3D"justify"><span style=
+=3D'font-size: 16px; color: rgb(0, 0, 0); font-family: "Times New Roman", T=
+imes, serif;'>Find more tips at the FCC </span><a href=3D"https://r20.rs6.n=
+et/tn.jsp?f=3D001Cq8M2HiqvlTPoedFBC2gtj-n2N8u-VyzZkUiGxqT6c1xrab3PP1EqW2gtf=
+MfieDkaSQEeY_sa3snHvnqxloxDV_TWEN5c9Iv3bubulBMbLeC-5cBKg0CEk6FyRoiKtuCzrK8A=
+W-pQwekcCTHLKvBFZjGyQyhxws6thA_dOprURs6xJpLtAjhBqqszQ9_34q39wqEGbA0jgxME6UA=
+2yVh5A=3D=3D&c=3Dm_5Li3xdgnZu5MuKjWN6KrYvJgkXyIcA0ngyVsLw4N4Xgz-_9tQQqA=3D=
+=3D&ch=3D6QxLSs2cXPr5Uui4VB7gUxY1PrPNDRmzR_fLy-FEfhXe_Gl4mYHwzA=3D=3D" targ=
+et=3D"_blank" style=3D'font-size: 16px; color: rgb(49, 95, 195); font-famil=
+y: "Times New Roman", Times, serif; text-decoration: underline; font-weight=
+: bold;'>website</a><span style=3D'font-size: 16px; color: rgb(0, 0, 0); fo=
+nt-family: "Times New Roman", Times, serif;'>.&#xa0;</span></p>
+<p style=3D"text-align: justify; margin: 0;" align=3D"justify"><span style=
+=3D'font-size: 16px; color: rgb(0, 0, 0); font-family: "Times New Roman", T=
+imes, serif;'>&#xa0;</span></p>
+<p style=3D"text-align: justify; margin: 0;" align=3D"justify"><span style=
+=3D'font-size: 16px; color: rgb(0, 0, 0); font-family: "Times New Roman", T=
+imes, serif;'>For questions, reach out to your attorney or ARCHER directly =
+at (816) 319-4416.&#xa0;</span></p>
+<p style=3D"text-align: justify; margin: 0;" align=3D"justify"><br></p>
+<p style=3D"text-align: justify; margin: 0;" align=3D"justify"><br></p>
+<p style=3D"text-align: justify; margin: 0;" align=3D"justify"><span style=
+=3D'font-size: 16px; color: rgb(0, 0, 0); font-family: "Times New Roman", T=
+imes, serif;'>Sincerly, </span></p>
+<p style=3D"text-align: justify; margin: 0;" align=3D"justify"><br></p>
+<p style=3D"text-align: justify; margin: 0;" align=3D"justify"><span style=
+=3D'font-size: 16px; color: rgb(0, 0, 0); font-family: "Times New Roman", T=
+imes, serif;'>ARCHER Systems, LLC</span></p>
+<p style=3D"text-align: justify; margin: 0;" align=3D"justify"><br></p>
+</td> </tr> </table> <table class=3D"divider" width=3D"100%" cellpadding=3D=
+"0" cellspacing=3D"0" border=3D"0"> <tr> <td class=3D"divider_container con=
+tent-padding-horizontal" style=3D"padding: 10px 40px;" width=3D"100%" align=
+=3D"center" valign=3D"top"> <table class=3D"divider_content-row" style=3D"h=
+eight: 1px; width: 100%;" cellpadding=3D"0" cellspacing=3D"0" border=3D"0">=
+ <tr> <td class=3D"divider_content-cell" style=3D"height: 1px; line-height:=
+ 1px; padding-bottom: 0px; background-color: #000000; border-bottom-width: =
+0px;" height=3D"1" align=3D"center" bgcolor=3D"#000000"> <img alt=3D"" widt=
+h=3D"5" height=3D"1" border=3D"0" hspace=3D"0" vspace=3D"0" src=3D"https://=
+imgssl.constantcontact.com/letters/images/1101116784221/S.gif" style=3D"dis=
+play: block; height: 1px; width: 5px;"> </td> </tr> </table> </td> </tr> </=
+table> <table class=3D"text text--padding-vertical" width=3D"100%" border=
+=3D"0" cellpadding=3D"0" cellspacing=3D"0" style=3D"table-layout: fixed;"> =
+<tr> <td class=3D"text_content-cell content-padding-horizontal" style=3D"te=
+xt-align: left; font-family: Arial,Verdana,Helvetica,sans-serif; color: #3E=
+3E3E; font-size: 14px; line-height: 1.2; display: block; word-wrap: break-w=
+ord; padding: 10px 40px;" align=3D"left" valign=3D"top"><p style=3D"margin:=
+ 0;"><span style=3D'font-size: 16px; color: rgb(0, 0, 0); font-family: "Tim=
+es New Roman", Times, serif; font-weight: bold;'>Please do not reply to thi=
+s email, if you have questions, contact your attorney directly. This email =
+is for informational purposes only. Replies will not be returned.</span></p=
+></td> </tr> </table> <div class=3D"spacer" style=3D"height: 30px; line-hei=
+ght: 30px;">&#x200a;</div>
+</td> </tr> </table>  </td> </tr> </table> </td> </tr> </table> </td> </tr>=
+ <tr> <td class=3D"shell_panel-cell shell_panel-cell--systemFooter" style=
+=3D"" align=3D"center" valign=3D"top"> <table class=3D"shell_width-row scal=
+e" style=3D"width: 100%;" align=3D"center" border=3D"0" cellpadding=3D"0" c=
+ellspacing=3D"0"> <tr> <td class=3D"shell_width-cell" style=3D"padding: 0px=
+;" align=3D"center" valign=3D"top"> <table class=3D"shell_content-row" widt=
+h=3D"100%" align=3D"center" border=3D"0" cellpadding=3D"0" cellspacing=3D"0=
+"> <tr> <td class=3D"shell_content-cell" style=3D"background-color: #FFFFFF=
+; padding: 0; border: 0 solid #3e3e3e;" align=3D"center" valign=3D"top" bgc=
+olor=3D"#FFFFFF"> <table class=3D"layout layout--1-column" style=3D"table-l=
+ayout: fixed;" width=3D"100%" border=3D"0" cellpadding=3D"0" cellspacing=3D=
+"0"> <tr> <td class=3D"column column--1 scale stack" style=3D"width: 100%;"=
+ align=3D"center" valign=3D"top"> <table class=3D"footer" width=3D"100%" bo=
+rder=3D"0" cellpadding=3D"0" cellspacing=3D"0" style=3D"font-family: Verdan=
+a,Geneva,sans-serif; color: #5d5d5d; font-size: 12px;"> <tr> <td class=3D"f=
+ooter_container" align=3D"center"> <table class=3D"footer-container" width=
+=3D"100%" cellpadding=3D"0" cellspacing=3D"0" border=3D"0" style=3D"backgro=
+und-color: #ffffff; margin-left: auto; margin-right: auto; table-layout: au=
+to !important;" bgcolor=3D"#ffffff">
+<tr>
+<td width=3D"100%" align=3D"center" valign=3D"top" style=3D"width: 100%;">
+<div class=3D"footer-max-main-width" align=3D"center" style=3D"margin-left:=
+ auto; margin-right: auto; max-width: 100%;">
+<table width=3D"100%" cellpadding=3D"0" cellspacing=3D"0" border=3D"0">
+<tr>
+<td class=3D"footer-layout" align=3D"center" valign=3D"top" style=3D"paddin=
+g: 16px 0px;">
+<table class=3D"footer-main-width" style=3D"width: 580px;" border=3D"0" cel=
+lpadding=3D"0" cellspacing=3D"0">
+<tr>
+<td class=3D"footer-text" align=3D"center" valign=3D"top" style=3D"color: #=
+5d5d5d; font-family: Verdana,Geneva,sans-serif; font-size: 12px; padding: 4=
+px 0px;">
+<span class=3D"footer-column">Archer Systems, LLC<span class=3D"footer-mobi=
+le-hidden"> | </span></span><span class=3D"footer-column">1775 Saint James =
+Place #200<span class=3D"footer-mobile-hidden">, </span></span><span class=
+=3D"footer-column"></span><span class=3D"footer-column"></span><span class=
+=3D"footer-column">Houston, TX 77056</span><span class=3D"footer-column"></=
+span>
+</td>
+</tr>
+<tr>
+<td class=3D"footer-row" align=3D"center" valign=3D"top" style=3D"padding: =
+10px 0px;">
+<table cellpadding=3D"0" cellspacing=3D"0" border=3D"0">
+<tr>
+<td class=3D"footer-text" align=3D"center" valign=3D"top" style=3D"color: #=
+5d5d5d; font-family: Verdana,Geneva,sans-serif; font-size: 12px; padding: 4=
+px 0px;">
+<a href=3D"https://visitor.constantcontact.com/do?p=3Dun&m=3D001B0iB46mt0Lq=
+NbCqvIHoOOA%3D&ch=3Dd24ec576-6eda-11ee-80d6-fa163e25e9d8&ca=3D7fc73eb1-6287=
+-41b5-b8c1-e711a48bd690" data-track=3D"false" style=3D"color: #5d5d5d;">Uns=
+ubscribe ryonsteele@gmail.com<span class=3D"partnerOptOut"></span></a>
+<span class=3D"partnerOptOut"></span>
+</td>
+</tr>
+<tr>
+<td class=3D"footer-text" align=3D"center" valign=3D"top" style=3D"color: #=
+5d5d5d; font-family: Verdana,Geneva,sans-serif; font-size: 12px; padding: 4=
+px 0px;">
+<a href=3D"https://visitor.constantcontact.com/do?p=3Doo&m=3D001B0iB46mt0Lq=
+NbCqvIHoOOA%3D&ch=3Dd24ec576-6eda-11ee-80d6-fa163e25e9d8&ca=3D7fc73eb1-6287=
+-41b5-b8c1-e711a48bd690" data-track=3D"false" style=3D"color: #5d5d5d;">Upd=
+ate Profile</a> |
+<a class=3D"footer-about-provider" href=3D"http://www.constantcontact.com/l=
+egal/about-constant-contact" data-track=3D"false" style=3D"color: #5d5d5d;"=
+>Constant Contact Data Notice</a>
+</td>
+</tr>
+<tr>
+<td class=3D"footer-text" align=3D"center" valign=3D"top" style=3D"color: #=
+5d5d5d; font-family: Verdana,Geneva,sans-serif; font-size: 12px; padding: 4=
+px 0px;">
+Sent by
+<a href=3D"mailto:3mcaesettlement@archersystems.com" style=3D"color: #5d5d5=
+d; text-decoration: none;">3mcaesettlement@archersystems.com</a>
+<span class=3D"footer-column">powered by</span>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td class=3D"footer-text" align=3D"center" valign=3D"top" style=3D"color: #=
+5d5d5d; font-family: Verdana,Geneva,sans-serif; font-size: 12px; padding: 4=
+px 0px;">
+<a href=3D"http://www.constantcontact.com/index.jsp?cc=3Dnge&rmc=3DVF21_CPE=
+&pn=3DROVING&nav=3D7fc73eb1-6287-41b5-b8c1-e711a48bd690" data-track=3D"fals=
+e" style=3D"color: #5d5d5d; text-decoration: none;"> <img alt=3D"Trusted Em=
+ail from Constant Contact - Try it FREE today." width=3D"160" border=3D"0" =
+hspace=3D"0" vspace=3D"0" src=3D"https://imgssl.constantcontact.com/letters=
+/images/CTCTFooter/Logo_Blue_Orange_2022.png"></a>
+<div class=3D"footer-cta-text" style=3D"color: #5d5d5d; font-family: Verdan=
+a,Geneva,sans-serif; font-size: 9px; line-height: 2;">
+<a href=3D"http://www.constantcontact.com/index.jsp?cc=3Dnge&rmc=3DVF21_CPE=
+&pn=3DROVING&nav=3D7fc73eb1-6287-41b5-b8c1-e711a48bd690" data-track=3D"fals=
+e" style=3D"color: #5d5d5d; text-decoration: none;">Try email marketing for=
+ free today!</a>
+</div>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</div>
+</td>
+</tr>
+</table> </td> </tr> </table>   </td> </tr> </table>  </td> </tr> </table> =
+</td> </tr> </table> </td> </tr>  </table> </div>  </body> </html>
+
+------=_Part_38307880_483927258.1698179688897--
