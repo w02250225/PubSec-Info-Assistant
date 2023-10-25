@@ -94,7 +94,7 @@ def main(msg: func.QueueMessage) -> None:
                 status_log.upsert_document(blob_name, f'{function_name} - Form Recognizer has completed processing and the analyze results have been received', StatusClassification.DEBUG)
                 # build the document map
                 status_log.upsert_document(blob_name, f'{function_name} - Starting document map build', StatusClassification.DEBUG)
-                document_map = utilities.build_document_map_pdf(blob_name, blob_uri, response_json["analyzeResult"], azure_blob_log_storage_container)
+                document_map = utilities.build_document_map_pdf(blob_name, blob_uri, response_json["analyzeResult"], azure_blob_log_storage_container, enableDevCode)
                 status_log.upsert_document(blob_name, f'{function_name} - Document map build complete', StatusClassification.DEBUG)
                 # create chunks
                 status_log.upsert_document(blob_name, f'{function_name} - Starting chunking', StatusClassification.DEBUG)

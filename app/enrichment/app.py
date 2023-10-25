@@ -240,21 +240,10 @@ def index_sections(chunks):
     search_client = SearchClient(endpoint=ENV["AZURE_SEARCH_SERVICE_ENDPOINT"],
                                     index_name=ENV["AZURE_SEARCH_INDEX"],
                                     credential=search_creds)
-    i = 0
-    batch = []
-    for c in chunks:
-        batch.append(c)
-        i += 1
-        if i % 1000 == 0:
-            results = search_client.upload_documents(documents=batch)
-            succeeded = sum([1 for r in results if r.succeeded])
-            log.debug(f"\tIndexed {len(results)} chunks, {succeeded} succeeded")
-            batch = []
 
-    if len(batch) > 0:
-        results = search_client.upload_documents(documents=batch)
-        succeeded = sum([1 for r in results if r.succeeded])
-        log.debug(f"\tIndexed {len(results)} chunks, {succeeded} succeeded")
+    results = search_client.upload_documents(documents=chunks)
+    succeeded = sum([1 for r in results if r.succeeded])
+    logging.debug(f"\tIndexed {len(results)} chunks, {succeeded} succeeded")
 
 
 @app.on_event("startup")
@@ -279,8 +268,17 @@ def poll_queue() -> None:
 
     target_embeddings_model = re.sub(r'[^a-zA-Z0-9_\-.]', '_', ENV["TARGET_EMBEDDINGS_MODEL"])
 
+<<<<<<< HEAD
     for message in messages:
         log.debug(f"Received message {message.id}")
+=======
+    # Remove from queue to prevent duplicate processing from any additional instances
+    for message in messages:
+        queue_client.delete_message(message)
+
+    for message in messages:
+        logging.debug(f"Received message {message.id}")
+>>>>>>> vNext-Dev
         message_b64 = message.content
         message_json = json.loads(base64.b64decode(message_b64))
         blob_path = message_json["blob_name"]
@@ -295,7 +293,11 @@ def poll_queue() -> None:
 
             # Iterate over the chunks in the container
             chunk_list = container_client.list_blobs(name_starts_with=chunk_folder_path)
-            for i, chunk in enumerate(chunk_list):
+            chunks = list(chunk_list)
+            i = 0
+            for chunk in chunks:
+
+                statusLog.update_document_state( blob_path, f"Indexing {i+1}/{len(chunks)}")
                 # open the file and extract the content
                 blob_path_plus_sas = utilities_helper.get_blob_and_sas(
                     ENV["AZURE_BLOB_STORAGE_CONTAINER"] + '/' + chunk.name)
@@ -336,13 +338,24 @@ def poll_queue() -> None:
                 index_chunk['content'] = text
                 index_chunk['contentVector'] = embedding_data
                 index_chunks.append(index_chunk)
+                i += 1
 
-            # push chunk content to index
-            index_sections(index_chunks)
+                # push batch of content to index
+                if i % 200 == 0:
+                    index_sections(index_chunks)
+                    index_chunks = []
 
+            # push remainder chunks content to index
+            if len(index_chunks) > 0:
+                index_sections(index_chunks)
+
+<<<<<<< HEAD
             # delete message once complete, in case of failure
             queue_client.delete_message(message)
             status_log.upsert_document(blob_path,
+=======
+            statusLog.upsert_document(blob_path,
+>>>>>>> vNext-Dev
                                       'Embeddings process complete',
                                       StatusClassification.INFO, State.COMPLETE)
 
@@ -356,24 +369,28 @@ def poll_queue() -> None:
 
             if requeue_count <= int(ENV["MAX_EMBEDDING_REQUEUE_COUNT"]):
                 message_json['embeddings_queued_count'] = requeue_count
-                # Delete & requeue with a random backoff within limits
-                queue_client.delete_message(message)
+                # Requeue with a random backoff within limits
                 queue_client = QueueClient.from_connection_string(
-                    ENV["BLOB_CONNECTION_STRING"], 
-                    ENV["EMBEDDINGS_QUEUE"], 
+                    ENV["BLOB_CONNECTION_STRING"],
+                    ENV["EMBEDDINGS_QUEUE"],
                     message_encode_policy=TextBase64EncodePolicy())
                 message_string = json.dumps(message_json)
                 max_seconds = int(ENV["EMBEDDING_REQUEUE_BACKOFF"]) * (requeue_count**2)
                 backoff = random.randint(
-                    int(ENV["EMBEDDING_REQUEUE_BACKOFF"]) * requeue_count, max_seconds)                
+                    int(ENV["EMBEDDING_REQUEUE_BACKOFF"]) * requeue_count, max_seconds)
                 queue_client.send_message(message_string, visibility_timeout=backoff)
                 status_log.upsert_document(blob_path, f'Message requed to embeddings queue, attempt {str(requeue_count)}. Visible in {str(backoff)} seconds. Error: {str(error)}.',
                                           StatusClassification.ERROR,
                                           State.QUEUED)
             else:
+<<<<<<< HEAD
                 # dequeue as max retries has been reached
                 queue_client.delete_message(message)
                 status_log.upsert_document(
+=======
+                # max retries has been reached
+                statusLog.upsert_document(
+>>>>>>> vNext-Dev
                     blob_path,
                     f"An error occurred, max requeue limit was reache. Error description: {str(error)}",
                     StatusClassification.ERROR,
