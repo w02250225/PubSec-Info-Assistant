@@ -1,0 +1,222 @@
+[
+    {
+        "type": "UncategorizedText",
+        "element_id": "f7f4f202a81110158bfa2b28f8e015b0",
+        "metadata": {
+            "filename": "RequiredLearning.msg",
+            "file_directory": "email",
+            "last_modified": "2023-10-06T14:20:29+00:00",
+            "filetype": "application/vnd.ms-outlook",
+            "parent_id": "9ea2a6eba14b1464ec3342b6e0bdfd7f",
+            "languages": [
+                "eng"
+            ],
+            "sent_from": [
+                "David Robinson <David.Robinson@microsoft.com>"
+            ],
+            "sent_to": [
+                "David Robinson Direct Reports (davidrdirects@microsoft.com)"
+            ],
+            "subject": "Required Learning"
+        },
+        "text": "Folks,"
+    },
+    {
+        "type": "NarrativeText",
+        "element_id": "72ccb100e6d4d34d614268ed8258c19b",
+        "metadata": {
+            "filename": "RequiredLearning.msg",
+            "file_directory": "email",
+            "last_modified": "2023-10-06T14:20:29+00:00",
+            "filetype": "application/vnd.ms-outlook",
+            "parent_id": "9ea2a6eba14b1464ec3342b6e0bdfd7f",
+            "languages": [
+                "eng"
+            ],
+            "sent_from": [
+                "David Robinson <David.Robinson@microsoft.com>"
+            ],
+            "sent_to": [
+                "David Robinson Direct Reports (davidrdirects@microsoft.com)"
+            ],
+            "subject": "Required Learning"
+        },
+        "text": "Reminder to check on your Required Learning. We have a few courses for completion."
+    },
+    {
+        "type": "NarrativeText",
+        "element_id": "dff5e1cd1e85ffa348c7e3d56edc4dc1",
+        "metadata": {
+            "filename": "RequiredLearning.msg",
+            "file_directory": "email",
+            "last_modified": "2023-10-06T14:20:29+00:00",
+            "filetype": "application/vnd.ms-outlook",
+            "parent_id": "9ea2a6eba14b1464ec3342b6e0bdfd7f",
+            "languages": [
+                "eng"
+            ],
+            "sent_from": [
+                "David Robinson <David.Robinson@microsoft.com>"
+            ],
+            "sent_to": [
+                "David Robinson Direct Reports (davidrdirects@microsoft.com)"
+            ],
+            "subject": "Required Learning"
+        },
+        "text": "To check, go to Viva Learning in Teams and select \u2018My Learning\u2019."
+    },
+    {
+        "type": "Title",
+        "element_id": "dc286c4bae75db18064c5c0e2540cafe",
+        "metadata": {
+            "filename": "RequiredLearning.msg",
+            "file_directory": "email",
+            "last_modified": "2023-10-06T14:20:29+00:00",
+            "filetype": "application/vnd.ms-outlook",
+            "parent_id": "9ea2a6eba14b1464ec3342b6e0bdfd7f",
+            "languages": [
+                "eng"
+            ],
+            "sent_from": [
+                "David Robinson <David.Robinson@microsoft.com>"
+            ],
+            "sent_to": [
+                "David Robinson Direct Reports (davidrdirects@microsoft.com)"
+            ],
+            "subject": "Required Learning"
+        },
+        "text": "Best, Robbo"
+    },
+    {
+        "type": "Title",
+        "element_id": "c46689a9521550866598cda39446404d",
+        "metadata": {
+            "filename": "RequiredLearning.msg",
+            "file_directory": "email",
+            "last_modified": "2023-10-06T14:20:29+00:00",
+            "filetype": "application/vnd.ms-outlook",
+            "parent_id": "9ea2a6eba14b1464ec3342b6e0bdfd7f",
+            "languages": [
+                "eng"
+            ],
+            "sent_from": [
+                "David Robinson <David.Robinson@microsoft.com>"
+            ],
+            "sent_to": [
+                "David Robinson Direct Reports (davidrdirects@microsoft.com)"
+            ],
+            "subject": "Required Learning"
+        },
+        "text": "David \u2018Robbo\u2019 Robinson"
+    },
+    {
+        "type": "Title",
+        "element_id": "4cd1c9e529f3aa4ea1fad3bdbed2ed24",
+        "metadata": {
+            "filename": "RequiredLearning.msg",
+            "file_directory": "email",
+            "last_modified": "2023-10-06T14:20:29+00:00",
+            "filetype": "application/vnd.ms-outlook",
+            "parent_id": "9ea2a6eba14b1464ec3342b6e0bdfd7f",
+            "languages": [
+                "eng"
+            ],
+            "sent_from": [
+                "David Robinson <David.Robinson@microsoft.com>"
+            ],
+            "sent_to": [
+                "David Robinson Direct Reports (davidrdirects@microsoft.com)"
+            ],
+            "subject": "Required Learning"
+        },
+        "text": "Sr. Director"
+    },
+    {
+        "type": "Title",
+        "element_id": "5bb1f48ac1229e09914b8959e11e2756",
+        "metadata": {
+            "filename": "RequiredLearning.msg",
+            "file_directory": "email",
+            "last_modified": "2023-10-06T14:20:29+00:00",
+            "filetype": "application/vnd.ms-outlook",
+            "parent_id": "9ea2a6eba14b1464ec3342b6e0bdfd7f",
+            "languages": [
+                "eng"
+            ],
+            "sent_from": [
+                "David Robinson <David.Robinson@microsoft.com>"
+            ],
+            "sent_to": [
+                "David Robinson Direct Reports (davidrdirects@microsoft.com)"
+            ],
+            "subject": "Required Learning"
+        },
+        "text": "Head of Public Sector Solutions"
+    },
+    {
+        "type": "Title",
+        "element_id": "9ea2a6eba14b1464ec3342b6e0bdfd7f",
+        "metadata": {
+            "filename": "RequiredLearning.msg",
+            "file_directory": "email",
+            "last_modified": "2023-10-06T14:20:29+00:00",
+            "filetype": "application/vnd.ms-outlook",
+            "parent_id": "9ea2a6eba14b1464ec3342b6e0bdfd7f",
+            "languages": [
+                "eng"
+            ],
+            "sent_from": [
+                "David Robinson <David.Robinson@microsoft.com>"
+            ],
+            "sent_to": [
+                "David Robinson Direct Reports (davidrdirects@microsoft.com)"
+            ],
+            "subject": "Required Learning"
+        },
+        "text": "Microsoft Industry & Partner Sales"
+    },
+    {
+        "type": "UncategorizedText",
+        "element_id": "3b7ea5c23cfd1d5d3b4862429954bd8c",
+        "metadata": {
+            "filename": "RequiredLearning.msg",
+            "file_directory": "email",
+            "last_modified": "2023-10-06T14:20:29+00:00",
+            "filetype": "application/vnd.ms-outlook",
+            "parent_id": "9ea2a6eba14b1464ec3342b6e0bdfd7f",
+            "languages": [
+                "eng"
+            ],
+            "sent_from": [
+                "David Robinson <David.Robinson@microsoft.com>"
+            ],
+            "sent_to": [
+                "David Robinson Direct Reports (davidrdirects@microsoft.com)"
+            ],
+            "subject": "Required Learning"
+        },
+        "text": "Mobile: +1.954.732.7275"
+    },
+    {
+        "type": "EmailAddress",
+        "element_id": "9815dd980756322a12c81da5732a78f3",
+        "metadata": {
+            "filename": "RequiredLearning.msg",
+            "file_directory": "email",
+            "last_modified": "2023-10-06T14:20:29+00:00",
+            "filetype": "application/vnd.ms-outlook",
+            "parent_id": "9ea2a6eba14b1464ec3342b6e0bdfd7f",
+            "languages": [
+                "eng"
+            ],
+            "sent_from": [
+                "David Robinson <David.Robinson@microsoft.com>"
+            ],
+            "sent_to": [
+                "David Robinson Direct Reports (davidrdirects@microsoft.com)"
+            ],
+            "subject": "Required Learning"
+        },
+        "text": "david.robinson@microsoft.com <mailto:david.robinson@microsoft.com>"
+    }
+]

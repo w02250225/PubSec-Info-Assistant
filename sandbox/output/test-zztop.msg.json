@@ -1,0 +1,146 @@
+[
+    {
+        "type": "Title",
+        "element_id": "7e5bb673e3ad59349d50d166e8ef174d",
+        "metadata": {
+            "filename": "test-zztop.msg",
+            "file_directory": "email",
+            "filetype": "application/vnd.ms-outlook",
+            "parent_id": "be55ef3f4c4e6c2d9c2afe2a33ac90ad",
+            "languages": [
+                "eng"
+            ],
+            "sent_to": [
+                "George Earl (georearl@outlook.com)"
+            ],
+            "subject": "test"
+        },
+        "text": "zztop"
+    },
+    {
+        "type": "Title",
+        "element_id": "93382524aef3ace7e9a0f127263b7d43",
+        "metadata": {
+            "filename": "test-zztop.msg",
+            "file_directory": "email",
+            "filetype": "application/vnd.ms-outlook",
+            "parent_id": "be55ef3f4c4e6c2d9c2afe2a33ac90ad",
+            "languages": [
+                "eng"
+            ],
+            "sent_to": [
+                "George Earl (georearl@outlook.com)"
+            ],
+            "subject": "test"
+        },
+        "text": "George Earl"
+    },
+    {
+        "type": "Title",
+        "element_id": "861eea32ae9990e1fda0eed4a52552c3",
+        "metadata": {
+            "filename": "test-zztop.msg",
+            "file_directory": "email",
+            "filetype": "application/vnd.ms-outlook",
+            "parent_id": "be55ef3f4c4e6c2d9c2afe2a33ac90ad",
+            "languages": [
+                "eng"
+            ],
+            "sent_to": [
+                "George Earl (georearl@outlook.com)"
+            ],
+            "subject": "test"
+        },
+        "text": "Architect"
+    },
+    {
+        "type": "Title",
+        "element_id": "62535c5b6ae2d0416fa2986b251890ce",
+        "metadata": {
+            "filename": "test-zztop.msg",
+            "file_directory": "email",
+            "filetype": "application/vnd.ms-outlook",
+            "parent_id": "be55ef3f4c4e6c2d9c2afe2a33ac90ad",
+            "languages": [
+                "eng"
+            ],
+            "sent_to": [
+                "George Earl (georearl@outlook.com)"
+            ],
+            "subject": "test"
+        },
+        "text": "Microsoft Worldwide Public Sector"
+    },
+    {
+        "type": "Title",
+        "element_id": "be55ef3f4c4e6c2d9c2afe2a33ac90ad",
+        "metadata": {
+            "filename": "test-zztop.msg",
+            "file_directory": "email",
+            "filetype": "application/vnd.ms-outlook",
+            "parent_id": "be55ef3f4c4e6c2d9c2afe2a33ac90ad",
+            "languages": [
+                "eng"
+            ],
+            "sent_to": [
+                "George Earl (georearl@outlook.com)"
+            ],
+            "subject": "test"
+        },
+        "text": "Canada"
+    },
+    {
+        "type": "UncategorizedText",
+        "element_id": "0f038e42cc2d2b74bd86842d9f9002c5",
+        "metadata": {
+            "filename": "test-zztop.msg",
+            "file_directory": "email",
+            "filetype": "application/vnd.ms-outlook",
+            "parent_id": "be55ef3f4c4e6c2d9c2afe2a33ac90ad",
+            "languages": [
+                "eng"
+            ],
+            "sent_to": [
+                "George Earl (georearl@outlook.com)"
+            ],
+            "subject": "test"
+        },
+        "text": "Mobile:  778.985.5390"
+    },
+    {
+        "type": "EmailAddress",
+        "element_id": "7d59cca701fdcd28d7b19a8aa82bcb13",
+        "metadata": {
+            "filename": "test-zztop.msg",
+            "file_directory": "email",
+            "filetype": "application/vnd.ms-outlook",
+            "parent_id": "be55ef3f4c4e6c2d9c2afe2a33ac90ad",
+            "languages": [
+                "eng"
+            ],
+            "sent_to": [
+                "George Earl (georearl@outlook.com)"
+            ],
+            "subject": "test"
+        },
+        "text": "geearl@microsoft.com <mailto:geearl@microsoft.com>"
+    },
+    {
+        "type": "Title",
+        "element_id": "29e8b5777ad39ec81fc00f68efe59788",
+        "metadata": {
+            "filename": "test-zztop.msg",
+            "file_directory": "email",
+            "filetype": "application/vnd.ms-outlook",
+            "parent_id": "be55ef3f4c4e6c2d9c2afe2a33ac90ad",
+            "languages": [
+                "eng"
+            ],
+            "sent_to": [
+                "George Earl (georearl@outlook.com)"
+            ],
+            "subject": "test"
+        },
+        "text": "www.linkedin.com/in/georearl <http://www.linkedin.com/in/georearl>"
+    }
+]
