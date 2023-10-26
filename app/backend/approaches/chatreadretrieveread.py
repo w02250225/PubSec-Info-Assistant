@@ -42,7 +42,7 @@ Emphasize the use of facts listed in the above provided source documents.
 Instruct the model to use source name for each fact used in the response.
 Avoid generating speculative or generalized information, unless explicitly asked by the user.
 Each source has a file name followed by a pipe character and the actual information.
-Use square brackets to reference the source, e.g. [info1.txt]. Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
+Use square brackets to reference the source, for example [info1.txt]. Don't combine sources, list each source separately, for example [info1.txt][info2.pdf].
 
 Here is how you should answer every question:
 - Look for relevant information in the above source documents to answer the question.
@@ -50,20 +50,24 @@ Here is how you should answer every question:
 - Always include citation from sources listed above.
 - If there is no specific information related to the question available in the source document, respond with "I\'m not sure" without providing any citation. Do not provide personal opinions or assumptions.
 {follow_up_questions_prompt}
-{injected_prompt}
-    """
+{injected_prompt}"""
+
     follow_up_questions_prompt_content = """
-Generate three very brief follow-up questions that the user would likely ask next about their agencies data. Use triple angle brackets to reference the questions, e.g. <<<Are there exclusions for prescriptions?>>>. Try not to repeat questions that have already been asked.
-Only generate questions and do not generate any text before or after the questions, such as 'Next Questions'
-    """
+Generate three very brief follow-up questions that the user would likely ask next about their agencies data.
+Use triple angle brackets to reference the questions. Example:
+<<<What are the key initiatives of the Queensland Budget?>>>
+<<<What is the Empowered and Safe Communities project?>>>
+
+Do no repeat questions that have already been asked.
+Make sure the last question ends with ">>>"."""
+
     query_prompt_template = """Below is a history of the conversation so far, and a new question asked by the user that needs to be answered by searching in source documents.
 Generate a search query based on the conversation and the new question. Treat each search term as an individual keyword. Do not combine terms in quotes or brackets.
-Do not include cited source filenames and document names e.g info.txt or doc.pdf in the search query terms.
+Do not include cited source filenames and document names (for example info.txt or doc.pdf) in the search query terms.
 Do not include any text inside [] or <<<>>> in the search query terms.
 Do not include any special characters like '+'.
 If the question is not in {query_term_language}, translate the question to {query_term_language} before generating the search query.
-If you cannot generate a search query, return just the number 0.
-    """
+If you cannot generate a search query, return just the number 0."""
 
     system_message_override = """You are {systemPersona} who helps {userPersona} answer questions about a Government agency's data.
 {response_length_prompt}
@@ -359,6 +363,7 @@ Always include citations if you reference the source documents. Use square brack
         total_tokens = chat_completion.usage.total_tokens
 
         return {
+            "generated_query" : generated_query,
             "data_points": data_points,
             "answer": f"{urllib.parse.unquote(chat_completion.choices[0].message.content)}",
             "thoughts": f"Searched for:<br>{generated_query}<br><br>Conversations:<br>" + msg_to_display.replace('\n', '<br>'),
