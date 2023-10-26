@@ -258,6 +258,10 @@ def chat():
     try:
         request_id = str(uuid.uuid4())
         start_time = datetime.now()
+
+        # Log the request to CosmosDB
+        json_document = requestLog.log_request(request_id, request.json, start_time)
+
         impl = chat_approaches.get(approach)
         if not impl:
             return jsonify({"error": "unknown approach"}), 400
@@ -273,18 +277,21 @@ def chat():
                 "thoughts": r["thoughts"],
                 "citation_lookup": r["citation_lookup"],
                 "request_id": request_id,
+                "generated_query": r["generated_query"],
             }
         )
 
         finish_time = datetime.now()
 
         # Log the request/response to CosmosDB
-        requestLog.log_request_response(
-            request_id, request.json, r, start_time, finish_time)
+        requestLog.log_response(request_id, json_document, r, finish_time)
 
         return response
 
     except Exception as ex:
+        finish_time = datetime.now()
+        # Send the response body if it made it that far, otherwise send the exception message
+        requestLog.log_response(request_id, json_document, locals().get('r', {"error_message": str(ex)}), finish_time)
         logging.exception("Exception in /chat")
         return jsonify({"error": str(ex)}), 500
 

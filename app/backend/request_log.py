@@ -28,17 +28,14 @@ class RequestLog:
             self.container = self.database.create_container(id=self._container_name,
                                                             partition_key=PartitionKey("/user_id", "/session_id"))
 
-    def log_request_response(self, request_id, request_body, response_body, start_time, finish_time):
-        """Log the JSON Request and Response into CosmosDB"""
+    def log_request(self, request_id, request_body, start_time):
+        """Log the JSON Request into CosmosDB"""
         try:
             document_id = base64.urlsafe_b64encode(request_id.encode()).decode()
             session_id = session["state"]
             user_id = session.get('user_data', {}).get('userPrincipalName') or "Unknown User"
 
             logging.info('Logging Request ID %s for Session ID %s', request_id, session_id)
-
-            # Remove request_id if present in response_body
-            response_body.pop("request_id", None)
 
             json_document = jsonify(
                 {
@@ -47,13 +44,30 @@ class RequestLog:
                 "session_id": session_id,
                 "request_id": request_id,
                 "request_body": request_body,
-                "response_body": response_body,
                 "start_timestamp": str(start_time.strftime('%Y-%m-%d %H:%M:%S')),
-                "finish_timestamp": str(finish_time.strftime('%Y-%m-%d %H:%M:%S')),
                 }
             )
 
             self.container.create_item(body = json_document.json)
 
+            return json_document.json
+
         except Exception as ex:
-            logging.exception("Exception in log_request_response. Error: %s", str(ex))
+            logging.exception("Exception in log_request. Error: %s", str(ex))
+
+    def log_response(self, request_id, json_document, response_body, finish_time):
+        """Log the JSON Request into CosmosDB"""
+        try:
+            session_id = session["state"]
+            logging.info('Logging Request ID %s for Session ID %s', request_id, session_id)
+
+            # Remove request_id if present in response_body
+            response_body.pop("request_id", None)
+
+            json_document["response_body"] = response_body
+            json_document["finish_timestamp"] = str(finish_time.strftime('%Y-%m-%d %H:%M:%S'))
+
+            self.container.upsert_item(body = json_document)
+
+        except Exception as ex:
+            logging.exception("Exception in log_response. Error: %s", str(ex))
