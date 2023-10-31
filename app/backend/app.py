@@ -58,6 +58,7 @@ CHAT_WARNING_BANNER_TEXT = os.environ.get("CHAT_WARNING_BANNER_TEXT") or ""
 
 TARGET_EMBEDDING_MODEL = os.environ.get("TARGET_EMBEDDING_MODEL") or "BAAI/bge-small-en-v1.5"
 ENRICHMENT_APPSERVICE_NAME = os.environ.get("ENRICHMENT_APPSERVICE_NAME") or "enrichment"
+APPLICATION_TITLE = os.environ.get("APPLICATION_TITLE") or "Coeus - Internal Use Only"
 
 KB_FIELDS_CONTENT = os.environ.get("KB_FIELDS_CONTENT") or "content"
 KB_FIELDS_PAGENUMBER = os.environ.get("KB_FIELDS_PAGENUMBER") or "pages"
@@ -447,6 +448,15 @@ def export():
                      download_name=file_name
                      )
 
+# Return APPLICATION_TITLE
+@app.route("/getApplicationTitle")
+def get_application_title():
+    """Get the application title text"""
+    response = jsonify(
+        {
+            "APPLICATION_TITLE": f"{APPLICATION_TITLE}"
+        })
+    return response
 
 app.before_request(check_authenticated)
 

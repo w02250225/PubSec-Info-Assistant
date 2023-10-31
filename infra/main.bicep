@@ -62,7 +62,7 @@ param chatWarningBannerText string = ''
 param chatGptModelName string = 'gpt-35-turbo-16k'
 param chatGptModelVersion string = '0613'
 param chatGptDeploymentCapacity int = 240
-// metadata in our chunking strategy adds about 180-200 tokens to the size of the chunks, 
+// metadata in our chunking strategy adds about 180-200 tokens to the size of the chunks,
 // our default target size is 750 tokens so the chunk files that get indexed will be around 950 tokens each
 param chunkTargetSize string = '750'
 param targetPages string = 'ALL'
@@ -94,6 +94,10 @@ param imageEnrichmentQueue string = 'image-enrichment-queue'
 param embeddingsQueue string = 'embeddings-queue'
 // End of valued replicated in debug env files
 
+// This block of variables are used for Branding
+param applicationtitle string = ''
+// End branding
+
 param cuaEnabled bool = false
 param cuaId string = ''
 param enableDevCode bool = false
@@ -104,7 +108,7 @@ param subscriptionId string = ''
 param principalId string = ''
 
 var abbrs = loadJsonContent('abbreviations.json')
-var tags = { 
+var tags = {
   Environment: 'Development'
   'Project Name': 'Coeus'
   Release: buildNumber
@@ -280,6 +284,7 @@ module backend 'core/host/appservice.bicep' = {
       CLIENT_SECRET: ''
       TENANT_ID: tenantId
       REDIRECT_URI: 'https://infoasst-web-kr839.azurewebsites.net/authorized'
+      APPLICATION_TITLE: applicationtitle
     }
 
 
@@ -486,10 +491,10 @@ module storage 'core/storage/storage-account.bicep' = {
 //       }
 //       {
 //         name: nonPdfSubmitQueue
-//       }  
+//       }
 //       {
 //         name: mediaSubmitQueue
-//       }          
+//       }
 //       {
 //         name: textEnrichmentQueue
 //       }
@@ -545,7 +550,7 @@ module cosmosrequestsdb 'core/db/cosmosdb.bicep' =  {
   dependsOn: [cosmosdb] // Cosmos doesn't like parallel deployments
 }
 
-// Function App 
+// Function App
 module functions 'core/function/function.bicep' = {
   name: 'functions'
   scope: rg
@@ -755,6 +760,17 @@ module storageRoleFunc 'core/security/role.bicep' = {
 //     principalType: 'ServicePrincipal'
 //   }
 // }
+
+
+module azMonitor 'core/logging/monitor.bicep' = {
+  scope: rg
+  name: 'azure-monitor'
+  params: {
+    location: location
+    logWorkbookName: '${prefix}-${abbrs.logWorkbook}${randomString}'
+    componentResource: '/subscriptions/${subscriptionId}/resourceGroups/${rg.name}/providers/Microsoft.OperationalInsights/workspaces/${logging.outputs.logAnalyticsName}'
+  }
+}
 
 // DEPLOYMENT OF AZURE CUSTOMER ATTRIBUTION TAG
 resource customerAttribution 'Microsoft.Resources/deployments@2021-04-01' = if (cuaEnabled) {

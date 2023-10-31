@@ -1,7 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { AskRequest, AskResponse, ChatRequest, BlobClientUrlResponse, AllFilesUploadStatus, GetUploadStatusRequest, GetInfoResponse, ActiveCitation, GetWarningBanner, ExportRequest, StatusLogEntry, StatusLogResponse } from "./models";
+import { AskRequest, AskResponse, ChatRequest, BlobClientUrlResponse,
+    AllFilesUploadStatus, GetUploadStatusRequest, GetInfoResponse, ActiveCitation,
+    GetWarningBanner, ExportRequest, StatusLogEntry, StatusLogResponse, ApplicationTitle } from "./models";
 
 export async function askApi(options: AskRequest): Promise<AskResponse> {
     const response = await fetch("/ask", {
@@ -186,7 +188,7 @@ export async function logStatus(status_log_entry: StatusLogEntry): Promise<Statu
             "status": status_log_entry.status,
             "status_classification": status_log_entry.status_classification,
             "state": status_log_entry.state
-            })
+        })
     });
 
     var parsedResponse: StatusLogResponse = await response.json();
@@ -194,7 +196,7 @@ export async function logStatus(status_log_entry: StatusLogEntry): Promise<Statu
         throw Error(parsedResponse.error || "Unknown error");
     }
 
-    var results: StatusLogResponse = {status: parsedResponse.status};
+    var results: StatusLogResponse = { status: parsedResponse.status };
     return results;
 }
 
@@ -243,5 +245,23 @@ export async function getCitationObj(citation: string): Promise<ActiveCitation> 
         console.log(response);
         throw Error(parsedResponse.error || "Unknown error");
     }
+    return parsedResponse;
+}
+
+export async function getApplicationTitle(): Promise<ApplicationTitle> {
+    console.log("fetch Application Titless");
+    const response = await fetch("/getApplicationTitle", {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+
+    const parsedResponse: ApplicationTitle = await response.json();
+    if (response.status > 299 || !response.ok) {
+        console.log(response);
+        throw Error(parsedResponse.error || "Unknown error");
+    }
+    console.log(parsedResponse);
     return parsedResponse;
 }

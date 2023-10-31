@@ -7,6 +7,7 @@ import { WarningBanner } from "../../components/WarningBanner/WarningBanner";
 import qtlogo from "../../assets/qt-logo.png";
 
 import styles from "./Layout.module.css";
+// import { Title } from "../../components/Title/Title";
 
 const Layout = () => {
     return (
@@ -14,9 +15,10 @@ const Layout = () => {
             <header className={styles.header} role={"banner"}>
                 <WarningBanner />
                 <div className={styles.headerContainer}>
-                    <Link to="/" className={styles.headerTitleContainer}>
+                    <div className={styles.headerTitleContainer}>
                         <img src={qtlogo} className={styles.headerLogo} />
-                    </Link>
+                        {/* <h3 className={styles.headerTitle}><Title/></h3> */}
+                    </div>
                     <nav>
                         <ul className={styles.headerNavList}>
                             <li>

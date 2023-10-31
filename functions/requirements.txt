@@ -16,7 +16,8 @@ mammoth == 1.6.0
 nltk == 3.8.1
 openpyxl == 3.1.2
 pandas == 2.1.0
+azure-ai-vision
+unstructured[csv,doc,docx,email,html,md,msg,ppt,pptx,text,xlsx,xml] == 0.10.27
 pyoo == 1.4
 tenacity == 8.2.3
 tiktoken == 0.5.1
-unstructured[csv,doc,docx,md,msg,ppt,pptx,xlsx] == 0.10.23

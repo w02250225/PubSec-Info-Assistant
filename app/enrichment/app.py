@@ -110,7 +110,7 @@ utilities_helper = UtilitiesHelper(
     azure_blob_storage_key=ENV["AZURE_BLOB_STORAGE_KEY"],
 )
 
-status_log = StatusLog(ENV["COSMOSDB_URL"], ENV["COSMOSDB_KEY"], ENV["COSMOSDB_DATABASE_NAME"], ENV["COSMOSDB_CONTAINER_NAME"])
+statusLog = StatusLog(ENV["COSMOSDB_URL"], ENV["COSMOSDB_KEY"], ENV["COSMOSDB_DATABASE_NAME"], ENV["COSMOSDB_CONTAINER_NAME"])
 
 # === API Setup ===
 
@@ -268,21 +268,16 @@ def poll_queue() -> None:
 
     target_embeddings_model = re.sub(r'[^a-zA-Z0-9_\-.]', '_', ENV["TARGET_EMBEDDINGS_MODEL"])
 
-<<<<<<< HEAD
-    for message in messages:
-        log.debug(f"Received message {message.id}")
-=======
     # Remove from queue to prevent duplicate processing from any additional instances
     for message in messages:
         queue_client.delete_message(message)
 
     for message in messages:
         logging.debug(f"Received message {message.id}")
->>>>>>> vNext-Dev
         message_b64 = message.content
         message_json = json.loads(base64.b64decode(message_b64))
         blob_path = message_json["blob_name"]
-        status_log.upsert_document(blob_path, f'Embeddings process started with model {target_embeddings_model}', StatusClassification.INFO, State.PROCESSING)
+        statusLog.upsert_document(blob_path, f'Embeddings process started with model {target_embeddings_model}', StatusClassification.INFO, State.PROCESSING)
 
         try:
             file_name, file_extension, file_directory  = utilities_helper.get_filename_and_extension(blob_path)
@@ -326,7 +321,7 @@ def poll_queue() -> None:
                 embedding_data = embedding['data']
 
                 index_chunk = {}
-                index_chunk['id'] = status_log.encode_document_id(chunk.name)
+                index_chunk['id'] = statusLog.encode_document_id(chunk.name)
                 index_chunk['processed_datetime'] = f"{chunk_dict['processed_datetime']}+00:00"
                 index_chunk['file_name'] = chunk_dict["file_name"]
                 index_chunk['file_uri'] = chunk_dict["file_uri"]
@@ -349,13 +344,7 @@ def poll_queue() -> None:
             if len(index_chunks) > 0:
                 index_sections(index_chunks)
 
-<<<<<<< HEAD
-            # delete message once complete, in case of failure
-            queue_client.delete_message(message)
-            status_log.upsert_document(blob_path,
-=======
             statusLog.upsert_document(blob_path,
->>>>>>> vNext-Dev
                                       'Embeddings process complete',
                                       StatusClassification.INFO, State.COMPLETE)
 
@@ -379,22 +368,16 @@ def poll_queue() -> None:
                 backoff = random.randint(
                     int(ENV["EMBEDDING_REQUEUE_BACKOFF"]) * requeue_count, max_seconds)
                 queue_client.send_message(message_string, visibility_timeout=backoff)
-                status_log.upsert_document(blob_path, f'Message requed to embeddings queue, attempt {str(requeue_count)}. Visible in {str(backoff)} seconds. Error: {str(error)}.',
+                statusLog.upsert_document(blob_path, f'Message requed to embeddings queue, attempt {str(requeue_count)}. Visible in {str(backoff)} seconds. Error: {str(error)}.',
                                           StatusClassification.ERROR,
                                           State.QUEUED)
             else:
-<<<<<<< HEAD
-                # dequeue as max retries has been reached
-                queue_client.delete_message(message)
-                status_log.upsert_document(
-=======
                 # max retries has been reached
                 statusLog.upsert_document(
->>>>>>> vNext-Dev
                     blob_path,
                     f"An error occurred, max requeue limit was reache. Error description: {str(error)}",
                     StatusClassification.ERROR,
                     State.ERROR,
                 )
 
-        status_log.save_document(blob_path)
+        statusLog.save_document(blob_path)
