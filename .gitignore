@@ -384,3 +384,5 @@ app/backend/lib64
 app/backend/shared_code
 
 packages-microsoft*
+
+scripts/ip_addr.txt
