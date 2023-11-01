@@ -3,7 +3,7 @@
         {
             "type": "Microsoft.Logic/workflows",
             "apiVersion": "2017-07-01",
-            "name": "[parameters('workflows_infoasst_logicapp_news_xtcok_name')]",
+            "name": "[parameters('workflows_infoasst_logicapp_news_4pkce_name')]",
             "location": "westeurope",
             "properties": {
                 "state": "Enabled",
@@ -32,11 +32,11 @@
                         "Recurrence": {
                             "recurrence": {
                                 "frequency": "Hour",
-                                "interval": 12
+                                "interval": 4
                             },
                             "evaluatedRecurrence": {
                                 "frequency": "Hour",
-                                "interval": 12
+                                "interval": 4
                             },
                             "type": "Recurrence"
                         }
@@ -66,6 +66,15 @@
                                                         "value": "@items('For_each_item')?['media']"
                                                     }
                                                 },
+                                                "Compose_article_with_no_child_image": {
+                                                    "runAfter": {
+                                                        "Set_variable_thumbnailLink": [
+                                                            "Succeeded"
+                                                        ]
+                                                    },
+                                                    "type": "Compose",
+                                                    "inputs": "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"UTF-8\">\n</head>\n<body>\n<h1>@{items('For_each_item')?['title']}</h1>\n<h3>author: @{items('For_each_item')?['author']}</h3>\n<h3>published date: @{items('For_each_item')?['published_date']}</h3>\n<p>@{items('For_each_item')?['summary']}</p>\n<p><a href=\"@{items('For_each_item')?['link']}\">original article</a></p>\n</body>\n</html>"
+                                                },
                                                 "Create_blob_(V2)": {
                                                     "runAfter": {
                                                         "Compose_article_with_no_child_image": [
@@ -76,12 +85,13 @@
                                                     "inputs": {
                                                         "host": {
                                                             "connection": {
-                                                                "name": "@parameters('$connections')['azureblob']['connectionId']"
+                                                                "name": "@parameters('$connections')['azureblob-2']['connectionId']"
                                                             }
                                                         },
                                                         "method": "post",
                                                         "body": "@outputs('Compose_article_with_no_child_image')",
                                                         "headers": {
+                                                            "Content-Type": "text/html",
                                                             "ReadFileMetadataFromServer": true
                                                         },
                                                         "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent('AccountNameFromSettings'))}/files",
@@ -91,15 +101,6 @@
                                                             "queryParametersSingleEncoded": true
                                                         }
                                                     }
-                                                },
-                                                "Compose_article_with_no_child_image": {
-                                                    "runAfter": {
-                                                        "Set_variable_thumbnailLink": [
-                                                            "Succeeded"
-                                                        ]
-                                                    },
-                                                    "type": "Compose",
-                                                    "inputs": "<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>@{items('For_each_item')?['title']}</title>\n</head>\n<body>\n<h1>@{items('For_each_item')?['title']}</h1>\n<h3>author: @{items('For_each_item')?['author']}</h3>\n<h3>published date: @{items('For_each_item')?['published_date']}</h3>\n<p>@{items('For_each_item')?['summary']}</p>\n<p> Link: @{items('For_each_item')?['link']}></p>\n</body>"
                                                 }
                                             },
                                             "type": "Foreach"
@@ -134,8 +135,8 @@
                                             "x-api-key": "@parameters('news_api_key')"
                                         },
                                         "queries": {
-                                            "from": "@{formatDateTime(addHours(utcNow(), -1), 'yyyy/MM/dd HH:mm:ss')}",
-                                            "q": "@items('For_each_feed')?['query']",
+                                            "from": "@{formatDateTime(addHours(utcNow(), -4), 'yyyy/MM/dd HH:mm:ss')}",
+                                            "q": "@{items('For_each_feed')?['query']}",
                                             "topic": "news"
                                         }
                                     }
@@ -443,7 +444,7 @@
                             "inputs": {
                                 "host": {
                                     "connection": {
-                                        "name": "@parameters('$connections')['azureblob']['connectionId']"
+                                        "name": "@parameters('$connections')['azureblob-2']['connectionId']"
                                     }
                                 },
                                 "method": "get",
@@ -457,6 +458,15 @@
                     "outputs": {}
                 },
                 "parameters": {
+                    "$connections": {
+                        "value": {
+                            "azureblob-2": {
+                                "id": "/subscriptions/27ea3e54-dc70-42f2-bbb6-9c9e34fb2d01/providers/Microsoft.Web/locations/westeurope/managedApis/azureblob",
+                                "connectionId": "[parameters('connections_azureblob_externalid')]",
+                                "connectionName": "azureblob"
+                            }
+                        }
+                    }
                 }
             }
         }
