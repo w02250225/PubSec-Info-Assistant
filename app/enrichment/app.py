@@ -243,7 +243,7 @@ def index_sections(chunks):
 
     results = search_client.upload_documents(documents=chunks)
     succeeded = sum([1 for r in results if r.succeeded])
-    logging.debug(f"\tIndexed {len(results)} chunks, {succeeded} succeeded")
+    log.debug(f"\tIndexed {len(results)} chunks, {succeeded} succeeded")
 
 
 @app.on_event("startup")
@@ -255,16 +255,13 @@ def poll_queue() -> None:
         log.debug("Skipping poll_queue call, models not yet loaded")
         return
 
-    log.debug("Setting up Azure Storage Queue Client...")
     queue_client = QueueClient.from_connection_string(
         conn_str=ENV["BLOB_CONNECTION_STRING"], queue_name=ENV["EMBEDDINGS_QUEUE"]
     )
-    log.debug("Azure Storage Queue Client setup")
 
-    log.debug("Polling queue for messages...")
+    log.debug("Polling embeddings queue for messages...")
     response = queue_client.receive_messages(max_messages=int(ENV["DEQUEUE_MESSAGE_BATCH_SIZE"]))
     messages = [x for x in response]
-    log.debug(f"Received {len(messages)} messages")
 
     target_embeddings_model = re.sub(r'[^a-zA-Z0-9_\-.]', '_', ENV["TARGET_EMBEDDINGS_MODEL"])
 
@@ -273,13 +270,13 @@ def poll_queue() -> None:
         queue_client.delete_message(message)
 
     for message in messages:
-        logging.debug(f"Received message {message.id}")
         message_b64 = message.content
         message_json = json.loads(base64.b64decode(message_b64))
         blob_path = message_json["blob_name"]
-        statusLog.upsert_document(blob_path, f'Embeddings process started with model {target_embeddings_model}', StatusClassification.INFO, State.PROCESSING)
 
         try:
+            statusLog.upsert_document(blob_path, f'Embeddings process started with model {target_embeddings_model}', StatusClassification.INFO, State.PROCESSING)
+
             file_name, file_extension, file_directory  = utilities_helper.get_filename_and_extension(blob_path)
             chunk_folder_path = file_directory + file_name + file_extension
             blob_service_client = BlobServiceClient.from_connection_string(ENV["BLOB_CONNECTION_STRING"])
@@ -375,7 +372,7 @@ def poll_queue() -> None:
                 # max retries has been reached
                 statusLog.upsert_document(
                     blob_path,
-                    f"An error occurred, max requeue limit was reache. Error description: {str(error)}",
+                    f"An error occurred, max requeue limit was reached. Error description: {str(error)}",
                     StatusClassification.ERROR,
                     State.ERROR,
                 )

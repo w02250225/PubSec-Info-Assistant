@@ -462,4 +462,5 @@ app.before_request(check_authenticated)
 
 if __name__ == "__main__":
     # app.run(debug=DEBUG)
+    logging.info("IA WebApp Starting Up...")
     app.run()
