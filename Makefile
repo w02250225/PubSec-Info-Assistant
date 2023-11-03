@@ -35,6 +35,9 @@ extract-env-debug-webapp: ## Extract infrastructure.debug.env file from BICEP ou
 extract-env-debug-functions: ## Extract local.settings.json to debug functions from BICEP output
 	@./scripts/json-to-env.function.debug.sh < infra_output.json > ./functions/local.settings.json
 
+upgrade-secure:
+	@./scripts/inf-secure.sh
+	
 # Utils (used by other Makefile rules)
 check-subscription:
 	@./scripts/check-subscription.sh 
