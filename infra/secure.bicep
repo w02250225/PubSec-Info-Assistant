@@ -322,6 +322,16 @@ module privateDnsZoneMediaService 'core/dns/secure-private_dns_zone.bicep' = if 
   ]
 }
 
+module openAiBlob 'core/dns/secure-private_dns_zone-record.bicep' = {
+  scope: rg
+  name: 'a-record-openai-public-open'
+  params: {
+    hostname: 'openaipublic'
+    privateDnsZoneName: privateDnsZoneStorageAccountBlob.outputs.name
+    ipAddress: '20.150.77.132'
+  }
+}
+
 module appServicePlan 'core/host/appserviceplan.bicep' = {
   name: 'secure-app-service-plan'
   scope: rg
@@ -354,38 +364,6 @@ module backend 'core/host/secure-appservice.bicep' = {
   ]
 }
 
-module enrichmentAppServicePlan 'core/host/appserviceplan.bicep' = {
-  name: 'secure-enrichment-app-service-plan'
-  scope: rg
-  params: {
-    name: !empty(enrichmentAppServicePlanName) ? enrichmentAppServicePlanName : '${prefix}-enrichment${abbrs.webServerFarms}${randomString}'
-    location: location
-    tags: tags
-    sku: {
-      name: 'P2v3'
-      capacity: 1
-    }
-    kind: 'linux'
-  }
-}
-
-module enrichmentApp 'core/host/secure-enrichmentappservice.bicep' = {
-  name: 'secure-enrichment-app'
-  scope: rg
-  params: {
-    name: !empty(enrichmentServiceName) ? enrichmentServiceName : '${prefix}-enrichment${abbrs.webSitesAppService}${randomString}'
-    location: location
-    tags: tags
-    appServicePlanId: enrichmentAppServicePlan.outputs.id
-    dnsZoneName: privateDnsZoneApp.outputs.name
-    subnetResourceIdInbound: network.outputs.subnetIdAppInbound
-    subnetResourceIdOutbound: network.outputs.subnetIdAppOutbound
-  }
-  dependsOn: [
-    enrichmentAppServicePlan
-  ]
-}
-
 module cognitiveServices 'core/ai/secure-cognitiveservices.bicep' = if (!useExistingAOAIService) {
   scope: rg
   name: 'secure-azure-openai'
@@ -394,7 +372,7 @@ module cognitiveServices 'core/ai/secure-cognitiveservices.bicep' = if (!useExis
     location: location
     tags: tags
     subnetResourceId: network.outputs.subnetIdAzureAi
-    dnsZoneName: privateDnsZoneAzureAi.outputs.name
+    dnsZoneName: privateDnsZoneAzureOpenAi.outputs.name
   }
 }
 

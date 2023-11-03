@@ -37,3 +37,4 @@ module networkInterface 'secure-network_interface.bicep' = {
 output id string = privateEndpoint.id
 output name string = privateEndpoint.name
 output ipAddress string = networkInterface.outputs.ipAddress
+output inAddress2 string = networkInterface.outputs.ipAddress2

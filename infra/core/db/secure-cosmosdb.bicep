@@ -45,6 +45,15 @@ module self '../dns/secure-private_dns_zone-record.bicep' = {
   }
 }
 
+module selfRegion '../dns/secure-private_dns_zone-record.bicep' = {
+  name: 'a-record-${name}-self-region'
+  params: {
+    hostname: '${name}-${location}'
+    privateDnsZoneName: dnsZoneName
+    ipAddress: privateEndpoint.outputs.inAddress2
+  }
+}
+
 output privateEndpointId string = privateEndpoint.outputs.id
 output privateEndpointName string = privateEndpoint.outputs.name
 output privateEndpointIp string = privateEndpoint.outputs.ipAddress
