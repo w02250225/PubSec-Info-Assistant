@@ -5,8 +5,12 @@
 set -e
 
 printInfo() {
-    printf "This is secure test."
+    printf "$YELLOW\n%s$RESET\n" "$1"
 }
+# Get the directory that this script is in
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source "${DIR}/load-env.sh"
+pushd "$DIR/../infra" > /dev/null
 
 #make sure bicep is always the latest version
 az bicep upgrade
