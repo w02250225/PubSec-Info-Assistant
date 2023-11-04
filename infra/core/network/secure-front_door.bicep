@@ -9,10 +9,8 @@ param originFqdn string
 param backendResourceId string
 param wafPolicyResourceId string
 
-var random = substring((resourceGroup().id),0,5)
-
 resource frontDoor 'Microsoft.Cdn/profiles@2022-11-01-preview' = {
-  name: '${name}${random}'
+  name: name
   location: location
   tags: tags
   sku: {
