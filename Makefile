@@ -36,8 +36,9 @@ extract-env-debug-functions: ## Extract local.settings.json to debug functions f
 	@./scripts/json-to-env.function.debug.sh < infra_output.json > ./functions/local.settings.json
 
 upgrade-secure:
+	chmod +x ./scripts/inf-secure.sh
 	@./scripts/inf-secure.sh
-	
+
 # Utils (used by other Makefile rules)
 check-subscription:
 	@./scripts/check-subscription.sh 
