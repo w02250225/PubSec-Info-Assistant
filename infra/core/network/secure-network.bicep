@@ -109,7 +109,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
       {
         name: 'azureAi'
         properties: {
-          addressPrefix: '10.0.0.192/26'
+          addressPrefix: '10.0.1.192/26'
           serviceEndpoints: [
           ]
           networkSecurityGroup: {
