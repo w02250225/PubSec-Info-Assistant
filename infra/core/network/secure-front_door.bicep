@@ -11,7 +11,7 @@ param wafPolicyResourceId string
 
 resource frontDoor 'Microsoft.Cdn/profiles@2022-11-01-preview' = {
   name: name
-  location: location
+  location: 'global'
   tags: tags
   sku: {
     name: sku
@@ -19,14 +19,11 @@ resource frontDoor 'Microsoft.Cdn/profiles@2022-11-01-preview' = {
   identity: {
     type: identity
   }
-  properties: {
-    originResponseTimeoutSeconds: 60
-  }
 }
 
 resource endpoint 'Microsoft.Cdn/profiles/afdendpoints@2022-11-01-preview' = {
   parent: frontDoor
-  name: prefix
+  name: '${prefix}-${uniqueString(resourceGroup().id)}'
   location: location
   properties: {
     enabledState: 'Enabled'
@@ -35,12 +32,11 @@ resource endpoint 'Microsoft.Cdn/profiles/afdendpoints@2022-11-01-preview' = {
 
 resource originGroup 'Microsoft.Cdn/profiles/origingroups@2022-11-01-preview' = {
   parent: frontDoor
-  name: 'group'
+  name: 'originGroup'
   properties: {
     loadBalancingSettings: {
       sampleSize: 4
       successfulSamplesRequired: 3
-      additionalLatencyInMilliseconds: 50
     }
     healthProbeSettings: {
       probePath: '/'
@@ -48,13 +44,12 @@ resource originGroup 'Microsoft.Cdn/profiles/origingroups@2022-11-01-preview' = 
       probeProtocol: 'Http'
       probeIntervalInSeconds: 100
     }
-    sessionAffinityState: 'Disabled'
   }
 }
 
 resource origin 'Microsoft.Cdn/profiles/origingroups/origins@2022-11-01-preview' = {
   parent: originGroup
-  name: 'origin'
+  name: 'backendApp'
   properties: {
     hostName: originFqdn
     httpPort: 80
@@ -62,7 +57,6 @@ resource origin 'Microsoft.Cdn/profiles/origingroups/origins@2022-11-01-preview'
     originHostHeader: originFqdn
     priority: 1
     weight: 1000
-    enabledState: 'Enabled'
     sharedPrivateLinkResource: {
       privateLink: {
         id: backendResourceId
@@ -70,9 +64,7 @@ resource origin 'Microsoft.Cdn/profiles/origingroups/origins@2022-11-01-preview'
       groupId: 'sites'
       privateLinkLocation: locationRegion
       requestMessage: 'add'
-      status: 'Approved'
     }
-    enforceCertificateNameCheck: true
   }
 }
 
@@ -86,6 +78,7 @@ resource defaultRoute 'Microsoft.Cdn/profiles/afdendpoints/routes@2022-11-01-pre
     }
     ruleSets: []
     supportedProtocols: [
+      'Http'
       'Https'
     ]
     patternsToMatch: [
@@ -94,8 +87,10 @@ resource defaultRoute 'Microsoft.Cdn/profiles/afdendpoints/routes@2022-11-01-pre
     forwardingProtocol: 'HttpsOnly'
     linkToDefaultDomain: 'Enabled'
     httpsRedirect: 'Enabled'
-    enabledState: 'Enabled'
   }
+  dependsOn: [
+    origin
+  ]
 }
 
 resource assignWafPolicy 'Microsoft.Cdn/profiles/securitypolicies@2022-11-01-preview' = {
@@ -122,6 +117,7 @@ resource assignWafPolicy 'Microsoft.Cdn/profiles/securitypolicies@2022-11-01-pre
     }
   }
 }
+
 
 output id string = frontDoor.id
 output name string = frontDoor.name
