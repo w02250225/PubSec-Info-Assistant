@@ -41,7 +41,7 @@ resource originGroup 'Microsoft.Cdn/profiles/origingroups@2022-11-01-preview' = 
     healthProbeSettings: {
       probePath: '/'
       probeRequestType: 'HEAD'
-      probeProtocol: 'Http'
+      probeProtocol: 'Https'
       probeIntervalInSeconds: 100
     }
   }
@@ -78,7 +78,6 @@ resource defaultRoute 'Microsoft.Cdn/profiles/afdendpoints/routes@2022-11-01-pre
     }
     ruleSets: []
     supportedProtocols: [
-      'Http'
       'Https'
     ]
     patternsToMatch: [

@@ -10,14 +10,14 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
   properties: {
     addressSpace: {
       addressPrefixes: [
-        '10.0.0.0/24'
+        '10.0.0.0/22'
       ]
     }
     subnets: [
       {
         name: 'apiManagement'
         properties: {
-          addressPrefix: '10.0.0.0/27'
+          addressPrefix: '10.0.0.0/26'
           serviceEndpoints: [
             {
               service: 'Microsoft.Storage'
@@ -43,7 +43,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
       {
         name: 'appInbound'
         properties: {
-          addressPrefix: '10.0.0.32/28'
+          addressPrefix: '10.0.0.64/26'
           serviceEndpoints: []
           delegations: []
           networkSecurityGroup: {
@@ -54,7 +54,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
       {
         name: 'appOutbound'
         properties: {
-          addressPrefix: '10.0.0.48/28'
+          addressPrefix: '10.0.0.128/26'
           serviceEndpoints: [
             {
               service: 'Microsoft.storage'
@@ -79,7 +79,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
       {
         name: 'storageAccount'
         properties: {
-          addressPrefix: '10.0.0.64/27'
+          addressPrefix: '10.0.0.192/26'
           serviceEndpoints: [
           ]
           networkSecurityGroup: {
@@ -90,7 +90,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
       {
         name: 'publicAccess'
         properties: {
-          addressPrefix: '10.0.0.96/27'
+          addressPrefix: '10.0.1.0/26'
           serviceEndpoints: [
           ]
         }
@@ -98,7 +98,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
       {
         name: 'cosmosDb'
         properties: {
-          addressPrefix: '10.0.0.128/27'
+          addressPrefix: '10.0.1.64/26'
           serviceEndpoints: [
           ]
           networkSecurityGroup: {
@@ -109,7 +109,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
       {
         name: 'azureAi'
         properties: {
-          addressPrefix: '10.0.0.160/27'
+          addressPrefix: '10.0.0.192/26'
           serviceEndpoints: [
           ]
           networkSecurityGroup: {
@@ -120,7 +120,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
       {
         name: 'keyVault'
         properties: {
-          addressPrefix: '10.0.0.192/27'
+          addressPrefix: '10.0.2.0/26'
           serviceEndpoints: [
           ]
           networkSecurityGroup: {
@@ -131,7 +131,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
       {
         name: 'functionInbound'
         properties: {
-          addressPrefix: '10.0.0.224/28'
+          addressPrefix: '10.0.2.64/26'
           serviceEndpoints: [
           ]
           networkSecurityGroup: {
