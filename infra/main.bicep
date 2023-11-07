@@ -213,12 +213,12 @@ module enrichmentApp 'core/host/enrichmentappservice.bicep' = {
       AZURE_BLOB_STORAGE_CONTAINER: containerName
       AZURE_BLOB_STORAGE_UPLOAD_CONTAINER: uploadContainerName
       AZURE_BLOB_STORAGE_ENDPOINT: storage.outputs.primaryEndpoints.blob
-      COSMOSDB_URL: cosmosdb.outputs.CosmosDBEndpointURL
-      COSMOSDB_KEY: cosmosdb.outputs.CosmosDBKey
-      COSMOSDB_LOG_DATABASE_NAME: cosmosdb.outputs.CosmosDBLogDatabaseName
-      COSMOSDB_LOG_CONTAINER_NAME: cosmosdb.outputs.CosmosDBLogContainerName
-      COSMOSDB_TAGS_DATABASE_NAME: cosmosdb.outputs.CosmosDBTagsDatabaseName
-      COSMOSDB_TAGS_CONTAINER_NAME: cosmosdb.outputs.CosmosDBTagsContainerName
+      COSMOSDB_URL: cosmoslogdb.outputs.CosmosDBEndpointURL
+      COSMOSDB_KEY: cosmoslogdb.outputs.CosmosDBKey
+      COSMOSDB_LOG_DATABASE_NAME: cosmoslogdb.outputs.CosmosDBDatabaseName
+      COSMOSDB_LOG_CONTAINER_NAME: cosmoslogdb.outputs.CosmosDBContainerName
+      COSMOSDB_TAGS_DATABASE_NAME: cosmostagdb.outputs.CosmosDBDatabaseName
+      COSMOSDB_TAGS_CONTAINER_NAME: cosmostagdb.outputs.CosmosDBContainerName
       MAX_EMBEDDING_REQUEUE_COUNT: 5
       EMBEDDING_REQUEUE_BACKOFF: 60
       AZURE_OPENAI_SERVICE: useExistingAOAIService ? azureOpenAIServiceName : cognitiveServices.outputs.name
@@ -270,14 +270,14 @@ module backend 'core/host/appservice.bicep' = {
       AZURE_OPENAI_CHATGPT_MODEL_VERSION: chatGptModelVersion
       AZURE_OPENAI_SERVICE_KEY: useExistingAOAIService ? azureOpenAIServiceKey : cognitiveServices.outputs.key
       APPINSIGHTS_INSTRUMENTATIONKEY: logging.outputs.applicationInsightsInstrumentationKey
-      COSMOSDB_URL: cosmosdb.outputs.CosmosDBEndpointURL
-      COSMOSDB_KEY: cosmosdb.outputs.CosmosDBKey
+      COSMOSDB_URL: cosmoslogdb.outputs.CosmosDBEndpointURL
+      COSMOSDB_KEY: cosmoslogdb.outputs.CosmosDBKey
       COSMOSDB_REQUESTLOG_DATABASE_NAME: cosmosrequestsdb.outputs.CosmosDBDatabaseName
       COSMOSDB_REQUESTLOG_CONTAINER_NAME: cosmosrequestsdb.outputs.CosmosDBContainerName
-      COSMOSDB_LOG_DATABASE_NAME: cosmosdb.outputs.CosmosDBLogDatabaseName
-      COSMOSDB_LOG_CONTAINER_NAME: cosmosdb.outputs.CosmosDBLogContainerName
-      COSMOSDB_TAGS_DATABASE_NAME: cosmosdb.outputs.CosmosDBTagsDatabaseName
-      COSMOSDB_TAGS_CONTAINER_NAME: cosmosdb.outputs.CosmosDBTagsContainerName
+      COSMOSDB_LOG_DATABASE_NAME: cosmoslogdb.outputs.CosmosDBDatabaseName
+      COSMOSDB_LOG_CONTAINER_NAME: cosmoslogdb.outputs.CosmosDBContainerName
+      COSMOSDB_TAGS_DATABASE_NAME: cosmostagdb.outputs.CosmosDBDatabaseName
+      COSMOSDB_TAGS_CONTAINER_NAME: cosmostagdb.outputs.CosmosDBContainerName
       QUERY_TERM_LANGUAGE: queryTermLanguage
       AZURE_SUBSCRIPTION_ID: subscriptionId
       IS_GOV_CLOUD_DEPLOYMENT: isGovCloudDeployment
