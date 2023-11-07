@@ -67,7 +67,7 @@
 			"ms-azuretools.vscode-azurefunctions",
 			"ms-python.python",
 			"ms-python.pylint"
-		],
+		]
 	},
 	"remoteUser": "vscode"
 }
