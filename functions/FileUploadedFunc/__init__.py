@@ -8,7 +8,6 @@ import random
 import time
 from shared_code.status_log import StatusLog, State, StatusClassification
 import azure.functions as func
-from azure.storage.blob import generate_blob_sas
 from azure.storage.queue import QueueClient, TextBase64EncodePolicy
 
 azure_blob_connection_string = os.environ["BLOB_CONNECTION_STRING"]

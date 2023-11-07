@@ -9,7 +9,6 @@ import os
 from enum import Enum
 from io import BytesIO
 import azure.functions as func
-from azure.storage.blob import generate_blob_sas
 from azure.storage.queue import QueueClient, TextBase64EncodePolicy
 from shared_code.status_log import StatusLog, State, StatusClassification
 from shared_code.utilities import Utilities, MediaType
@@ -160,7 +159,7 @@ def main(msg: func.QueueMessage) -> None:
         # chunks = chunk_by_title(elements, multipage_sections=True, new_after_n_chars=NEW_AFTER_N_CHARS, combine_under_n_chars=COMBINE_UNDER_N_CHARS)
         # chunks = chunk_by_title(elements, multipage_sections=True, new_after_n_chars=NEW_AFTER_N_CHARS, combine_under_n_chars=COMBINE_UNDER_N_CHARS, max_characters=MAX_CHARACTERS)
         chunks = chunk_by_title(elements, multipage_sections=True, new_after_n_chars=NEW_AFTER_N_CHARS, combine_text_under_n_chars=COMBINE_UNDER_N_CHARS)
-        statusLog.upsert_document(blob_name, f'{function_name} - chunking complete. {str(chunks.count)} chunks created', StatusClassification.DEBUG)
+        statusLog.upsert_document(blob_name, f'{function_name} - chunking complete. {str(len(chunks))} chunks created', StatusClassification.DEBUG)
 
         subtitle_name = ''
         section_name = ''
