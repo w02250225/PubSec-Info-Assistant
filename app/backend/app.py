@@ -31,6 +31,7 @@ from flask import Flask, jsonify, redirect, request, send_file, session, url_for
 from opencensus.ext.azure.log_exporter import AzureLogHandler
 from shared_code.status_log import State, StatusClassification, StatusLog
 from request_log import RequestLog
+from shared_code.tags_helper import TagsHelper
 
 # Replace these with your own values, either in environment variables or directly here
 AZURE_BLOB_STORAGE_ACCOUNT = os.environ.get("AZURE_BLOB_STORAGE_ACCOUNT") or "mystorageaccount"
@@ -67,10 +68,13 @@ KB_FIELDS_CHUNKFILE = os.environ.get("KB_FIELDS_CHUNKFILE") or "chunk_file"
 
 COSMOSDB_URL = os.environ.get("COSMOSDB_URL")
 COSMODB_KEY = os.environ.get("COSMOSDB_KEY")
-COSMOSDB_DATABASE_NAME = os.environ.get("COSMOSDB_DATABASE_NAME") or "statusdb"
-COSMOSDB_CONTAINER_NAME = os.environ.get("COSMOSDB_CONTAINER_NAME") or "statuscontainer"
 COSMOSDB_REQUESTLOG_DATABASE_NAME = os.environ.get("COSMOSDB_REQUESTLOG_DATABASE_NAME")
 COSMOSDB_REQUESTLOG_CONTAINER_NAME = os.environ.get("COSMOSDB_REQUESTLOG_CONTAINER_NAME")
+COSMOSDB_LOG_DATABASE_NAME = os.environ.get("COSMOSDB_LOG_DATABASE_NAME") or "statusdb"
+COSMOSDB_LOG_CONTAINER_NAME = os.environ.get("COSMOSDB_LOG_CONTAINER_NAME") or "statuscontainer"
+COSMOSDB_TAGS_DATABASE_NAME = os.environ.get("COSMOSDB_TAGS_DATABASE_NAME") or "tagsdb"
+COSMOSDB_TAGS_CONTAINER_NAME = os.environ.get("COSMOSDB_TAGS_CONTAINER_NAME") or "tagscontainer"
+
 QUERY_TERM_LANGUAGE = os.environ.get("QUERY_TERM_LANGUAGE") or "English"
 
 # Oauth
@@ -119,7 +123,10 @@ if DEBUG:
 
 # Setup StatusLog to allow access to CosmosDB for logging
 statusLog = StatusLog(
-    COSMOSDB_URL, COSMODB_KEY, COSMOSDB_DATABASE_NAME, COSMOSDB_CONTAINER_NAME
+    COSMOSDB_URL, COSMODB_KEY, COSMOSDB_LOG_DATABASE_NAME, COSMOSDB_LOG_CONTAINER_NAME
+)
+tagsHelper = TagsHelper(
+    COSMOSDB_URL, COSMODB_KEY, COSMOSDB_TAGS_DATABASE_NAME, COSMOSDB_TAGS_CONTAINER_NAME
 )
 
 # Setup RequestLog to allow access to CosmosDB for request logging
@@ -458,9 +465,20 @@ def get_application_title():
         })
     return response
 
+
+@app.route("/getalltags", methods=["GET"])
+def get_all_tags():
+    """Get the status of all tags in the system"""
+    try:
+        results = tagsHelper.get_all_tags()
+    except Exception as ex:
+        logging.exception("Exception in /getalltags")
+        return jsonify({"error": str(ex)}), 500
+    return jsonify(results)
+
 app.before_request(check_authenticated)
 
 if __name__ == "__main__":
     # app.run(debug=DEBUG)
     logging.info("IA WebApp Starting Up...")
-    app.run()
+    app.run(threaded=True)

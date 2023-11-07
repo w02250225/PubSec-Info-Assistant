@@ -211,11 +211,14 @@ module enrichmentApp 'core/host/enrichmentappservice.bicep' = {
       DEQUEUE_MESSAGE_BATCH_SIZE: 1
       AZURE_BLOB_STORAGE_ACCOUNT: storage.outputs.name
       AZURE_BLOB_STORAGE_CONTAINER: containerName
+      AZURE_BLOB_STORAGE_UPLOAD_CONTAINER: uploadContainerName
       AZURE_BLOB_STORAGE_ENDPOINT: storage.outputs.primaryEndpoints.blob
       COSMOSDB_URL: cosmosdb.outputs.CosmosDBEndpointURL
       COSMOSDB_KEY: cosmosdb.outputs.CosmosDBKey
-      COSMOSDB_DATABASE_NAME: cosmosdb.outputs.CosmosDBDatabaseName
-      COSMOSDB_CONTAINER_NAME: cosmosdb.outputs.CosmosDBContainerName
+      COSMOSDB_LOG_DATABASE_NAME: cosmosdb.outputs.CosmosDBLogDatabaseName
+      COSMOSDB_LOG_CONTAINER_NAME: cosmosdb.outputs.CosmosDBLogContainerName
+      COSMOSDB_TAGS_DATABASE_NAME: cosmosdb.outputs.CosmosDBTagsDatabaseName
+      COSMOSDB_TAGS_CONTAINER_NAME: cosmosdb.outputs.CosmosDBTagsContainerName
       MAX_EMBEDDING_REQUEUE_COUNT: 5
       EMBEDDING_REQUEUE_BACKOFF: 60
       AZURE_OPENAI_SERVICE: useExistingAOAIService ? azureOpenAIServiceName : cognitiveServices.outputs.name
@@ -254,6 +257,7 @@ module backend 'core/host/appservice.bicep' = {
       AZURE_BLOB_STORAGE_ACCOUNT: storage.outputs.name
       AZURE_BLOB_STORAGE_ENDPOINT: storage.outputs.primaryEndpoints.blob
       AZURE_BLOB_STORAGE_CONTAINER: containerName
+      AZURE_BLOB_STORAGE_UPLOAD_CONTAINER: uploadContainerName
       AZURE_BLOB_STORAGE_KEY: storage.outputs.key
       AZURE_OPENAI_SERVICE: useExistingAOAIService ? azureOpenAIServiceName : cognitiveServices.outputs.name
       AZURE_OPENAI_RESOURCE_GROUP: useExistingAOAIService ? azureOpenAIResourceGroup : rg.name
@@ -268,10 +272,12 @@ module backend 'core/host/appservice.bicep' = {
       APPINSIGHTS_INSTRUMENTATIONKEY: logging.outputs.applicationInsightsInstrumentationKey
       COSMOSDB_URL: cosmosdb.outputs.CosmosDBEndpointURL
       COSMOSDB_KEY: cosmosdb.outputs.CosmosDBKey
-      COSMOSDB_DATABASE_NAME: cosmosdb.outputs.CosmosDBDatabaseName
-      COSMOSDB_CONTAINER_NAME: cosmosdb.outputs.CosmosDBContainerName
       COSMOSDB_REQUESTLOG_DATABASE_NAME: cosmosrequestsdb.outputs.CosmosDBDatabaseName
       COSMOSDB_REQUESTLOG_CONTAINER_NAME: cosmosrequestsdb.outputs.CosmosDBContainerName
+      COSMOSDB_LOG_DATABASE_NAME: cosmosdb.outputs.CosmosDBLogDatabaseName
+      COSMOSDB_LOG_CONTAINER_NAME: cosmosdb.outputs.CosmosDBLogContainerName
+      COSMOSDB_TAGS_DATABASE_NAME: cosmosdb.outputs.CosmosDBTagsDatabaseName
+      COSMOSDB_TAGS_CONTAINER_NAME: cosmosdb.outputs.CosmosDBTagsContainerName
       QUERY_TERM_LANGUAGE: queryTermLanguage
       AZURE_SUBSCRIPTION_ID: subscriptionId
       IS_GOV_CLOUD_DEPLOYMENT: isGovCloudDeployment
@@ -314,6 +320,7 @@ module cognitiveServices 'core/ai/cognitiveservices.bicep' = if (!useExistingAOA
           name: 'Standard'
           capacity: chatGptDeploymentCapacity
         }
+        raiPolicyName: 'Microsoft.Default'
       }
       {
         name: !empty(azureOpenAIEmbeddingsModelName) ? azureOpenAIEmbeddingsModelName : azureOpenAIEmbeddingsModelName
@@ -326,6 +333,7 @@ module cognitiveServices 'core/ai/cognitiveservices.bicep' = if (!useExistingAOA
           name: 'Standard'
           capacity: embeddingsDeploymentCapacity
         }
+        raiPolicyName: 'Microsoft.Default'
       }
     ]
   }
@@ -520,8 +528,8 @@ module storageMedia 'core/storage/storage-account.bicep' = {
   }
 }
 
-module cosmosdb 'core/db/cosmosdb.bicep' = {
-  name: 'cosmosdb'
+module cosmoslogdb 'core/db/cosmosdb.bicep' = {
+  name: 'cosmoslogdb'
   scope: rg
   params: {
     name: !empty(cosmosdbName) ? cosmosdbName : '${prefix}-${abbrs.cosmosDBAccounts}${randomString}'
@@ -532,6 +540,21 @@ module cosmosdb 'core/db/cosmosdb.bicep' = {
     partitionKeyPath: ['/file_name']
     partitionKeyVersion: 1
   }
+}
+
+module cosmostagdb 'core/db/cosmosdb.bicep' = {
+  name: 'cosmostagdb'
+  scope: rg
+  params: {
+    name: !empty(cosmosdbName) ? cosmosdbName : '${prefix}-${abbrs.cosmosDBAccounts}${randomString}'
+    location: location
+    tags: tags
+    databaseName: 'tagdb'
+    containerName: 'tagcontainer'
+    partitionKeyPath: ['/file_name']
+    partitionKeyVersion: 1
+  }
+  dependsOn: [cosmoslogdb] // Cosmos doesn't like parallel deployments
 }
 
 module cosmosrequestsdb 'core/db/cosmosdb.bicep' =  {
@@ -547,7 +570,7 @@ module cosmosrequestsdb 'core/db/cosmosdb.bicep' =  {
     partitionKeyVersion: 2
     autoscaleMaxThroughput: 2000
   }
-  dependsOn: [cosmosdb] // Cosmos doesn't like parallel deployments
+  dependsOn: [cosmostagdb] // Cosmos doesn't like parallel deployments
 }
 
 // Function App
@@ -571,10 +594,12 @@ module functions 'core/function/function.bicep' = {
     blobStorageAccountLogContainerName: functionLogsContainerName
     formRecognizerEndpoint: formrecognizer.outputs.formRecognizerAccountEndpoint
     formRecognizerApiKey: formrecognizer.outputs.formRecognizerAccountKey
-    CosmosDBEndpointURL: cosmosdb.outputs.CosmosDBEndpointURL
-    CosmosDBKey: cosmosdb.outputs.CosmosDBKey
-    CosmosDBDatabaseName: cosmosdb.outputs.CosmosDBDatabaseName
-    CosmosDBContainerName: cosmosdb.outputs.CosmosDBContainerName
+    CosmosDBEndpointURL: cosmoslogdb.outputs.CosmosDBEndpointURL
+    CosmosDBKey: cosmoslogdb.outputs.CosmosDBKey
+    CosmosDBLogDatabaseName: cosmoslogdb.outputs.CosmosDBDatabaseName
+    CosmosDBLogContainerName: cosmoslogdb.outputs.CosmosDBContainerName
+    CosmosDBTagsDatabaseName: cosmostagdb.outputs.CosmosDBDatabaseName
+    CosmosDBTagsContainerName: cosmostagdb.outputs.CosmosDBContainerName
     chunkTargetSize: chunkTargetSize
     targetPages: targetPages
     formRecognizerApiVersion: formRecognizerApiVersion
@@ -610,7 +635,8 @@ module functions 'core/function/function.bicep' = {
   dependsOn: [
     appServicePlan
     storage
-    cosmosdb
+    cosmoslogdb
+    cosmostagdb
   ]
 }
 
@@ -796,6 +822,7 @@ output AZURE_SEARCH_KEY string = searchServices.outputs.searchServiceKey
 output AZURE_STORAGE_ACCOUNT string = storage.outputs.name
 output AZURE_STORAGE_ACCOUNT_ENDPOINT string = storage.outputs.primaryEndpoints.blob
 output AZURE_STORAGE_CONTAINER string = containerName
+output AZURE_STORAGE_UPLOAD_CONTAINER string = uploadContainerName
 output AZURE_STORAGE_KEY string = storage.outputs.key
 output BACKEND_URI string = backend.outputs.uri
 output BACKEND_NAME string = backend.outputs.name
@@ -806,10 +833,10 @@ output AZURE_OPENAI_SERVICE_KEY string = azureOpenAIServiceKey
 #disable-next-line outputs-should-not-contain-secrets
 output COG_SERVICES_FOR_SEARCH_KEY string = searchServices.outputs.cogServiceKey
 output AZURE_FUNCTION_APP_NAME string = functions.outputs.name
-output AZURE_COSMOSDB_URL string = cosmosdb.outputs.CosmosDBEndpointURL
-output AZURE_COSMOSDB_KEY string = cosmosdb.outputs.CosmosDBKey
-output AZURE_COSMOSDB_DATABASE_NAME string = cosmosdb.outputs.CosmosDBDatabaseName
-output AZURE_COSMOSDB_CONTAINER_NAME string = cosmosdb.outputs.CosmosDBContainerName
+output AZURE_COSMOSDB_LOG_DATABASE_NAME string = cosmoslogdb.outputs.CosmosDBDatabaseName
+output AZURE_COSMOSDB_LOG_CONTAINER_NAME string = cosmoslogdb.outputs.CosmosDBContainerName
+output AZURE_COSMOSDB_TAGS_DATABASE_NAME string = cosmostagdb.outputs.CosmosDBDatabaseName
+output AZURE_COSMOSDB_TAGS_CONTAINER_NAME string = cosmostagdb.outputs.CosmosDBContainerName
 output AZURE_FORM_RECOGNIZER_ENDPOINT string = formrecognizer.outputs.formRecognizerAccountEndpoint
 output AZURE_FORM_RECOGNIZER_KEY string = formrecognizer.outputs.formRecognizerAccountKey
 output AZURE_BLOB_DROP_STORAGE_CONTAINER string = uploadContainerName

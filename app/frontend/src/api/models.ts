@@ -23,6 +23,8 @@ export type AskRequestOverrides = {
     responseLength?: number;
     responseTemp?: number;
     topP?: number;
+    selectedFolders?: string;
+    selectedTags?: string;
 };
 
 export type AskRequest = {
@@ -147,7 +149,7 @@ export type GetWarningBanner = {
     error?: string;
 };
 
-// These keys need to match case with the defined Enum in the 
+// These keys need to match case with the defined Enum in the
 // shared code (functions/shared_code/status_log.py)
 export const enum StatusLogClassification {
     Debug = "Debug",
@@ -155,7 +157,7 @@ export const enum StatusLogClassification {
     Error = "Error"
 }
 
-// These keys need to match case with the defined Enum in the 
+// These keys need to match case with the defined Enum in the
 // shared code (functions/shared_code/status_log.py)
 export const enum StatusLogState {
     Processing = "Processing",
@@ -184,3 +186,8 @@ export type ApplicationTitle = {
     APPLICATION_TITLE: string;
     error?: string;
 };
+
+export type GetTagsResponse = {
+    tags: string;
+    error?: string;
+}

@@ -21,8 +21,8 @@ azure_blob_content_storage_container = os.environ["BLOB_STORAGE_ACCOUNT_OUTPUT_C
 azure_blob_storage_endpoint = os.environ["BLOB_STORAGE_ACCOUNT_ENDPOINT"]
 cosmosdb_url = os.environ["COSMOSDB_URL"]
 cosmosdb_key = os.environ["COSMOSDB_KEY"]
-cosmosdb_database_name = os.environ["COSMOSDB_DATABASE_NAME"]
-cosmosdb_container_name = os.environ["COSMOSDB_CONTAINER_NAME"]
+cosmosdb_log_database_name = os.environ["COSMOSDB_LOG_DATABASE_NAME"]
+cosmosdb_log_container_name = os.environ["COSMOSDB_LOG_CONTAINER_NAME"]
 text_enrichment_queue = os.environ["TEXT_ENRICHMENT_QUEUE"]
 enrichment_key =  os.environ["ENRICHMENT_KEY"]
 enrichment_endpoint_region = os.environ["ENRICHMENT_ENDPOINT_REGION"]
@@ -43,7 +43,9 @@ utilities = Utilities(
     azure_blob_storage_key,
 )
 
-status_log = StatusLog(cosmosdb_url, cosmosdb_key, cosmosdb_database_name, cosmosdb_container_name)
+statusLog = StatusLog(
+    cosmosdb_url, cosmosdb_key, cosmosdb_log_database_name, cosmosdb_log_container_name
+)
 
 def main(msg: func.QueueMessage) -> None:
     '''This function is triggered by a message in the text-enrichment-queue.
@@ -70,7 +72,7 @@ def main(msg: func.QueueMessage) -> None:
             msg.get_body().decode("utf-8"),
         )
         # Receive message from the queue
-        status_log.upsert_document(
+        statusLog.upsert_document(
             blob_path,
             f"{FUNCTION_NAME} - Received message from text-enrichment-queue ",
             StatusClassification.DEBUG,
@@ -91,7 +93,7 @@ def main(msg: func.QueueMessage) -> None:
         #     blob_path_plus_sas = utilities.get_blob_and_sas(azure_blob_content_storage_container + '/' + chunk.name)
         #     response = requests.get(blob_path_plus_sas)
         #     response.raise_for_status()
-        #     chunk_dict = json.loads(response.text)   
+        #     chunk_dict = json.loads(response.text)
         #     if len(chunk_content) + len(chunk_dict["content"]) <= MAX_CHARS_FOR_DETECTION:
         #         chunk_content = chunk_content + " " + chunk_dict["content"]
         #     else:
@@ -108,10 +110,10 @@ def main(msg: func.QueueMessage) -> None:
         # }
         # data = [{"text": chunk_content}]
 
-        # response = requests.post(api_detect_endpoint, headers=headers, json=data)      
+        # response = requests.post(api_detect_endpoint, headers=headers, json=data)
         # if response.status_code == 200:
         #     detected_language = response.json()[0]['language']
-        #     status_log.upsert_document(
+        #     statusLog.upsert_document(
         #         blob_path,
         #         f"{FUNCTION_NAME} - detected language of text is {detected_language}.",
         #         StatusClassification.DEBUG,
@@ -124,7 +126,7 @@ def main(msg: func.QueueMessage) -> None:
 
         # # If the language of the document is not equal to target language then translate the generated chunks
         # if detected_language != target_translation_language:
-        #     status_log.upsert_document(
+        #     statusLog.upsert_document(
         #         blob_path,
         #         f"{FUNCTION_NAME} - Non-target language detected",
         #         StatusClassification.DEBUG,
@@ -139,12 +141,12 @@ def main(msg: func.QueueMessage) -> None:
         #     response = requests.get(blob_path_plus_sas)
         #     response.raise_for_status()
         #     chunk_dict = json.loads(response.text)
-        #     params = {'to': target_translation_language}              
+        #     params = {'to': target_translation_language}
 
         #     # Translate content, title, subtitle, and section if required
         #     fields_to_translate = ["content", "title", "subtitle", "section"]
         #     for field in fields_to_translate:
-        #         translate_and_set(field, chunk_dict, headers, params, message_json, detected_language, target_translation_language, api_translate_endpoint)                
+        #         translate_and_set(field, chunk_dict, headers, params, message_json, detected_language, target_translation_language, api_translate_endpoint)
 
         #     # Get path and file name minus the root container
         #     json_str = json.dumps(chunk_dict, indent=2, ensure_ascii=False)
@@ -157,14 +159,14 @@ def main(msg: func.QueueMessage) -> None:
         message_string = json.dumps(message_json)
         queue_client.send_message(message_string, visibility_timeout = embeddings_queue_backoff)
 
-        status_log.upsert_document(
+        statusLog.upsert_document(
             blob_path,
             f"{FUNCTION_NAME} - Text enrichment is complete",
             StatusClassification.DEBUG,
             State.QUEUED,
         )
 
-        status_log.upsert_document(
+        statusLog.upsert_document(
             blob_path,
             f"{FUNCTION_NAME} - message sent to embeddings queue",
             StatusClassification.DEBUG,
@@ -172,14 +174,14 @@ def main(msg: func.QueueMessage) -> None:
         )
 
     except Exception as error:
-        status_log.upsert_document(
+        statusLog.upsert_document(
             blob_path,
             f"{FUNCTION_NAME} - An error occurred - {str(error)}",
             StatusClassification.ERROR,
             State.ERROR,
         )
-        
-    status_log.save_document(blob_path)
+
+    statusLog.save_document(blob_path)
 
 
 def translate_and_set(field_name, chunk_dict, headers, params, message_json, detected_language, target_translation_language, api_translate_endpoint):
@@ -237,7 +239,7 @@ def requeue(response, message_json):
             )
             message_json_str = json.dumps(message_json)
             queue_client.send_message(message_json_str, visibility_timeout=backoff)
-            status_log.upsert_document(
+            statusLog.upsert_document(
                 blob_path,
                 f"{FUNCTION_NAME} - message resent to enrichment-queue. Visible in {backoff} seconds.",
                 StatusClassification.DEBUG,
@@ -245,10 +247,10 @@ def requeue(response, message_json):
             )
     else:
         # general error occurred
-        status_log.upsert_document(
+        statusLog.upsert_document(
             blob_path,
             f"{FUNCTION_NAME} - Error on language detection - {response.status_code} - {response.reason}",
             StatusClassification.ERROR
             )
 
-    status_log.save_document()
+    statusLog.save_document()

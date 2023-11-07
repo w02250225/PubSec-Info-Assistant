@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 
 import { AskRequest, AskResponse, ChatRequest, BlobClientUrlResponse,
-    AllFilesUploadStatus, GetUploadStatusRequest, GetInfoResponse, ActiveCitation,
-    GetWarningBanner, ExportRequest, StatusLogEntry, StatusLogResponse, ApplicationTitle } from "./models";
+    AllFilesUploadStatus, GetUploadStatusRequest, GetInfoResponse, ActiveCitation, GetWarningBanner,
+    ExportRequest, StatusLogEntry, StatusLogResponse, ApplicationTitle, GetTagsResponse } from "./models";
 
 export async function askApi(options: AskRequest): Promise<AskResponse> {
     const response = await fetch("/ask", {
@@ -62,7 +62,9 @@ export async function chatApi(options: ChatRequest): Promise<AskResponse> {
                 ai_persona: options.overrides?.aiPersona,
                 response_length: options.overrides?.responseLength,
                 response_temp: options.overrides?.responseTemp,
-                top_p: options.overrides?.topP
+                top_p: options.overrides?.topP,
+                selected_folders: options.overrides?.selectedFolders,
+                selected_tags: options.overrides?.selectedTags
             }
         })
     });
@@ -264,4 +266,21 @@ export async function getApplicationTitle(): Promise<ApplicationTitle> {
     }
     console.log(parsedResponse);
     return parsedResponse;
+}
+
+export async function getAllTags(): Promise<GetTagsResponse> {
+    const response = await fetch("/getalltags", {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+
+    const parsedResponse: any = await response.json();
+    if (response.status > 299 || !response.ok) {
+        console.log(response);
+        throw Error(parsedResponse.error || "Unknown error");
+    }
+    var results: GetTagsResponse = {tags: parsedResponse};
+    return results;
 }
