@@ -2,11 +2,12 @@
 # The Python Worker is managed by Azure Functions platform
 # Manually managing azure-functions-worker may cause unexpected issues
 
+
 azure-ai-vision == 0.15.1b1
 azure-core == 1.29.4
 azure-cosmos == 4.5.1
-azure-functions
-azure-search-documents == 11.4.0b6
+azure-functions == 1.17.0
+azure-search-documents == 11.4.0b11
 azure-storage-blob == 12.18.3
 azure-storage-queue == 12.7.3
 azure-ai-formrecognizer == 3.3.1
@@ -16,7 +17,7 @@ mammoth == 1.6.0
 nltk == 3.8.1
 openpyxl == 3.1.2
 pandas == 2.1.0
-azure-ai-vision
+azure-ai-vision == 0.15.1b1
 unstructured[csv,doc,docx,email,html,md,msg,ppt,pptx,text,xlsx,xml] == 0.10.27
 pyoo == 1.4
 tenacity == 8.2.3

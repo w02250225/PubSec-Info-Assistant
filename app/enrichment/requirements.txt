@@ -1,12 +1,12 @@
 azure-core == 1.29.4
 azure-cosmos == 4.5.1
-azure-search-documents == 11.4.0b6
+azure.search.documents==11.4.0b11
 azure-storage-blob == 12.18.3
 azure-storage-queue == 12.7.3
 fastapi == 0.103.2
-fastapi-utils
+fastapi-utils == 0.2.1
 openai == 0.28.1
 opencensus-ext-azure == 1.1.11
-sentence-transformers
+sentence-transformers == 2.2.2
 tenacity == 8.2.3
 uvicorn == 0.23.2
