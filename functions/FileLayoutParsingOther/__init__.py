@@ -30,9 +30,9 @@ pdf_submit_queue = os.environ["PDF_SUBMIT_QUEUE"]
 text_enrichment_queue = os.environ["TEXT_ENRICHMENT_QUEUE"]
 CHUNK_TARGET_SIZE = int(os.environ["CHUNK_TARGET_SIZE"])
 
-NEW_AFTER_N_CHARS = 1500
-COMBINE_UNDER_N_CHARS = 500
-MAX_CHARACTERS = 1500
+NEW_AFTER_N_CHARS = 2048
+COMBINE_UNDER_N_CHARS = 512
+MAX_CHARACTERS = 2048
 
 utilities = Utilities(azure_blob_storage_account, azure_blob_storage_endpoint, azure_blob_drop_storage_container, azure_blob_content_storage_container, azure_blob_storage_key)
 function_name = "FileLayoutParsingOther"
@@ -158,7 +158,7 @@ def main(msg: func.QueueMessage) -> None:
         from unstructured.chunking.title import chunk_by_title
         # chunks = chunk_by_title(elements, multipage_sections=True, new_after_n_chars=NEW_AFTER_N_CHARS, combine_under_n_chars=COMBINE_UNDER_N_CHARS)
         # chunks = chunk_by_title(elements, multipage_sections=True, new_after_n_chars=NEW_AFTER_N_CHARS, combine_under_n_chars=COMBINE_UNDER_N_CHARS, max_characters=MAX_CHARACTERS)
-        chunks = chunk_by_title(elements, multipage_sections=True, new_after_n_chars=NEW_AFTER_N_CHARS, combine_text_under_n_chars=COMBINE_UNDER_N_CHARS)
+        chunks = chunk_by_title(elements, multipage_sections=True, new_after_n_chars=NEW_AFTER_N_CHARS, combine_text_under_n_chars=COMBINE_UNDER_N_CHARS, max_characters=MAX_CHARACTERS)
         statusLog.upsert_document(blob_name, f'{function_name} - chunking complete. {str(len(chunks))} chunks created', StatusClassification.DEBUG)
 
         subtitle_name = ''
