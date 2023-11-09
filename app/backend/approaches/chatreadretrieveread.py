@@ -207,11 +207,11 @@ Always include citations if you reference the source documents. Use square brack
                 search_filter = f"tags/any(t: search.in(t, '{quoted_tags_filter}'))"
 
         # Hybrid Search
-        # r = self.search_client.search(generated_query, vectors=[vector], top=top)
+        # r = self.search_client.search(generated_query, vector_queries =[vector], top=top)
 
         # Pure Vector Search
-        # r=self.search_client.search(search_text=None, vectors=[vector], top=top)
-
+        # r=self.search_client.search(search_text=None, vector_queries =[vector], top=top)
+        
         # vector search with filter
         # r=self.search_client.search(search_text=None, vectors=[vector], filter="processed_datetime le 2023-09-18T04:06:29.675Z" , top=top)
         # r=self.search_client.search(search_text=None, vectors=[vector], filter="search.ismatch('upload/ospolicydocs/China, climate change and the energy transition.pdf', 'file_name')", top=top)
