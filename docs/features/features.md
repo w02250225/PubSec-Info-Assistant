@@ -29,11 +29,11 @@ For more details on how we process each document type click on on the document t
 
 We also log the status of the pre-processing in Azure Cosmos DB. View our [Status Logging](../../functions/shared_code/status_log.md) page for more details.
 
-Additionally, there are many configuration values that can be altered to effect the performance and behaviors of the chunking patterns. More details on the deployment configurations can be found in our [Function Flow documentation](../functions_flow.md)
+Additionally, there are many configuration values that can be altered to affect the performance and behaviors of the chunking patterns. More details on the deployment configurations can be found in our [Function Flow documentation](../functions_flow.md)
 
 ## User Experience
 
-The end user leverages the web interface as the primary method to engage with the IA Accelerator, and the Azure OpenAI service. The user interface is very similar to that of the OpenAI ChatGPT interface, though it provides different and additional functionality which is outlined below.
+The end user leverages the web interface as the primary method to engage with the Information Assistant (IA) Accelerator, and the Azure OpenAI service. The user interface is very similar to that of the OpenAI ChatGPT interface, though it provides different and additional functionality which is outlined below.
 
 ### Having a conversation with your data
 
@@ -79,7 +79,7 @@ You can upload documents in the [supported formats listed above](#document-pre-p
 
 #### View upload status
 
-You can view the status up files that have been uploaded to the system through the user interface. To do so:
+You can view the status of files that have been uploaded to the system through the user interface. To do so:
 
 > 1. Click on the Manage Content link in the top of the interface
 > ![Manage Content](../images/manage-content-interface.png)

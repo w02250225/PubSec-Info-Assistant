@@ -24,7 +24,7 @@ Technical overview of RAG: [Retrieval Augmented Generation using Azure Machine L
 
 **Dynamic Prompts:** Dynamic prompt context based on the selected GPT model and users settings.
 
-**Built-in Chain of Thought (COT):** COT is integrated into our prompts to address fabrications that may arise with large language models (LLM). COT encourages the LLM to follow a set of instructions, explain its reasoning, and enhances the reliability of responses.
+**Built-in Chain of Thought (COT):** COT is integrated into our prompts to address fabrications that may arise with Large Language Models (LLM). COT encourages the LLM to follow a set of instructions, explain its reasoning, and enhances the reliability of responses.
 
 **Few-Shot Prompting:** We employ few-shot prompting in conjunction with COT to further mitigate fabrications and improve response accuracy.
 
@@ -36,7 +36,7 @@ Go here for more information on [Prompt engineering techniques](https://learn.mi
 
 * content extraction from text-based documents
 * creating a standard JSON representation of all a documents text-based content
-* chunking and saving metadata into manageable sized to be used in the RAG pattern
+* chunking and saving metadata into a manageable size to be used in the RAG pattern
 
 Additional information on this process can be found [here](./docs/functions_flow.md)
 
@@ -142,7 +142,7 @@ gpt-4-32k | current version
 
 ## Deployment Configuration
 
-The deployment process for the IA Accelerator, uses a concept of **Developing inside a Container** to containerize all the necessary pre-requisite component without requiring them to be installed on the local machine. The environment you will work in will be created using a development container, or dev container hosted on a virtual machine using GitHub Codespaces.
+The deployment process for the IA Accelerator, uses a concept of **Developing inside a Container** to containerize all the necessary prerequisite components without requiring them to be installed on the local machine. The environment you will work in will be created using a development container, or dev container hosted on a virtual machine using GitHub Codespaces.
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/microsoft/PubSec-Info-Assistant)
 
@@ -164,7 +164,7 @@ Once you have completed the Sizing Estimator, please move on to the Deployment s
 
 ## Deployment
 
-The following checklist will guide you through configuring the IA Accelerator in your azure subscription. Please follow the steps in the order they are provided as values from one step may be used in subsequent steps.
+The following checklist will guide you through configuring the IA Accelerator in your Azure subscription. Please follow the steps in the order they are provided as values from one step may be used in subsequent steps.
 
 >1. Configure your deployment settings
 >       * [Configuring your Development Environment](./docs/development_environment.md)
