@@ -21,6 +21,9 @@ build-containers: extract-env
 	
 build-webapp: ## Build WebApp code only
 	@./scripts/build-webapp.sh
+	
+build-functions: ## Build Functions code only
+	@./scripts/build-functions.sh
 
 infrastructure: check-subscription ## Deploy infrastructure
 	@./scripts/inf-create.sh
