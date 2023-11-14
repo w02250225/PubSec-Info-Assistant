@@ -463,46 +463,38 @@ class Utilities:
         return chunk_count
     
     def chunk_table_with_headers(self, table_html, chunk_target_size):
-        # Parse the table HTML with BeautifulSoup
         soup = BeautifulSoup(table_html, 'html.parser')
-        
-        # Find the table header and body
+
+        # Check for and extract the thead and tbody, or default to entire table
         thead = soup.find('thead')
-        tbody = soup.find('tbody')
-        
-        # If the table does not have a thead or tbody, raise an exception for now
-        if thead is None or tbody is None:
-            raise ValueError("Table does not have the proper thead or tbody tags")
+        tbody = soup.find('tbody') or soup.find('table')
+        rows = soup.find_all('tr') if not tbody else tbody.find_all('tr')
 
-        # Convert the header to a string once, since it will be reused
-        header_html = f"<table>{minify_html.minify(str(thead))}"
-
-        # Split the body into rows
-        rows = tbody.find_all('tr')
+        header_html = f"<table>{minify_html.minify(str(thead))}" if thead else "<table>"
         
-        # Initialize variables
-        current_chunk = header_html  # Start with the header
+        # Initialize chunks list and current_chunk with the header
+        current_chunk = header_html
         chunks = []
-        
-        for row in rows:
-            # Calculate the token size of the current row
-            row_html = minify_html.minify(str(row))
-            row_size = self.token_count(row_html)
 
-            # If adding this row to the current chunk exceeds the target size,
-            # start a new chunk
-            if self.token_count(current_chunk) + row_size > chunk_target_size:
-                # Close the current table and start a new one
+        def add_current_chunk():
+            nonlocal current_chunk
+            # Close the table tag for the current chunk and add it to the chunks list
+            if current_chunk.strip() and not current_chunk.endswith("<table>"):
                 current_chunk += '</table>'
                 chunks.append(current_chunk)
-                current_chunk = header_html  # Start with a new header
+                # Start a new chunk with header if it exists
+                current_chunk = header_html
+
+        for row in rows:
+            # If adding this row to the current chunk exceeds the target size, start a new chunk
+            row_html = minify_html.minify(str(row))
+            if self.token_count(current_chunk + row_html) > chunk_target_size:
+                add_current_chunk()
 
             # Add the current row to the chunk
             current_chunk += row_html
 
         # Add the final chunk if there's any content left
-        if current_chunk:
-            current_chunk += '</table>'
-            chunks.append(current_chunk)
-            
+        add_current_chunk()
+        
         return chunks
