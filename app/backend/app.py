@@ -267,9 +267,11 @@ def chat():
             return jsonify({"error": "unknown approach"}), 400
         r = impl.run(request.json["history"],
                      request.json.get("overrides") or {})
+        
+        # Check if there was an error
+        if r.get("error_message"):
+            raise ValueError(r["error_message"]) 
 
-        # return jsonify(r)
-        # To fix citation bug,below code is added.aparmar
         response = jsonify(
             {
                 "data_points": r["data_points"],

@@ -134,239 +134,225 @@ Always include citations if you reference the source documents. Use square brack
 
         query_prompt=self.query_prompt_template.format(query_term_language=self.query_term_language)
 
+        generated_query = ""
+        data_points = []
+        answer = ""
+        thoughts = ""
+        citation_lookup = {}
+        completion_tokens = 0
+        prompt_tokens = 0
+        total_tokens = 0
+
+        try:
         # STEP 1: Generate an optimized keyword search query based on the chat history and the last question
-        messages = self.get_messages_from_history(
-            query_prompt,
-            self.model_name,
-            history,
-            user_q,
-            self.query_prompt_few_shots,
-            self.chatgpt_token_limit - len(user_q)
-            )
-
-        chat_completion = openai.ChatCompletion.create(
-
-            deployment_id=self.chatgpt_deployment,
-            model=self.model_name,
-            messages=messages,
-            temperature=0.0,
-            max_tokens=32,
-            n=1)
-
-        generated_query = chat_completion.choices[0].message.content
-
-        #if we fail to generate a query, return the last user question
-        if generated_query.strip() == "0":
-            generated_query = history[-1]["user"]
-
-        # STEP 2: Retrieve relevant documents from the search index with the optimized query term
-        if (not self.is_gov_cloud_deployment and overrides.get("semantic_ranker")):
-            raw_search_results = self.search_client.search(
-                generated_query,
-                filter=category_filter,
-                query_type=QueryType.SEMANTIC,
-                query_language="en-us",
-                query_speller="lexicon",
-                semantic_configuration_name="default",
-                top=top,
-                query_caption="extractive|highlight-false"
-                if use_semantic_captions
-                else None,
-            )
-        else:
-            raw_search_results = self.search_client.search(
-                generated_query, filter=category_filter, top=top
-            )
-
-        citation_lookup = {}  # dict of "FileX" moniker to the actual file name
-        results = []  # list of results to be used in the prompt
-        data_points = []  # list of data points to be used in the response
-
-        for idx, doc in enumerate(
-            raw_search_results
-        ):  # for each document in the search results
-            if use_semantic_captions:
-                # if using semantic captions, use the captions instead of the content
-                # include the "FileX" moniker in the prompt, and the actual file name in the response
-                results.append(
-                    f"File{idx} "
-                    + "| "
-                    + nonewlines(" . ".join([c.text for c in doc["@search.captions"]]))
+            messages = self.get_messages_from_history(
+                query_prompt,
+                self.model_name,
+                history,
+                user_q,
+                self.query_prompt_few_shots,
+                self.chatgpt_token_limit - len(user_q)
                 )
-                data_points.append(
-                    "/".join(doc[self.source_page_field].split("/")[4:])
-                    + "| "
-                    + nonewlines(" . ".join([c.text for c in doc["@search.captions"]]))
+
+            chat_completion = openai.ChatCompletion.create(
+
+                deployment_id=self.chatgpt_deployment,
+                model=self.model_name,
+                messages=messages,
+                temperature=0.0,
+                max_tokens=32,
+                n=1)
+
+            generated_query = chat_completion.choices[0].message.content
+
+            #if we fail to generate a query, return the last user question
+            if generated_query.strip() == "0":
+                generated_query = history[-1]["user"]
+
+            # STEP 2: Retrieve relevant documents from the search index with the optimized query term
+            if (not self.is_gov_cloud_deployment and overrides.get("semantic_ranker")):
+                raw_search_results = self.search_client.search(
+                    generated_query,
+                    filter=category_filter,
+                    query_type=QueryType.SEMANTIC,
+                    query_language="en-us",
+                    query_speller="lexicon",
+                    semantic_configuration_name="default",
+                    top=top,
+                    query_caption="extractive|highlight-false"
+                    if use_semantic_captions
+                    else None,
                 )
             else:
-                # if not using semantic captions, use the content instead of the captions
-                # include the "FileX" moniker in the prompt, and the actual file name in the response
-                results.append(
-                    f"File{idx} " + "| " + nonewlines(doc[self.content_field])
+                raw_search_results = self.search_client.search(
+                    generated_query, filter=category_filter, top=top
                 )
-                data_points.append(
-                    "/".join(
-                        urllib.parse.unquote(doc[self.source_page_field]).split("/")[4:]
+
+            citation_lookup = {}  # dict of "FileX" moniker to the actual file name
+            results = []  # list of results to be used in the prompt
+            data_points = []  # list of data points to be used in the response
+
+            for idx, doc in enumerate(
+                raw_search_results
+            ):  # for each document in the search results
+                if use_semantic_captions:
+                    # if using semantic captions, use the captions instead of the content
+                    # include the "FileX" moniker in the prompt, and the actual file name in the response
+                    results.append(
+                        f"File{idx} "
+                        + "| "
+                        + nonewlines(" . ".join([c.text for c in doc["@search.captions"]]))
                     )
-                    + "| "
-                    + nonewlines(doc[self.content_field])
+                    data_points.append(
+                        "/".join(doc[self.source_page_field].split("/")[4:])
+                        + "| "
+                        + nonewlines(" . ".join([c.text for c in doc["@search.captions"]]))
+                    )
+                else:
+                    # if not using semantic captions, use the content instead of the captions
+                    # include the "FileX" moniker in the prompt, and the actual file name in the response
+                    results.append(
+                        f"File{idx} " + "| " + nonewlines(doc[self.content_field])
+                    )
+                    data_points.append(
+                        "/".join(
+                            urllib.parse.unquote(doc[self.source_page_field]).split("/")[4:]
+                        )
+                        + "| "
+                        + nonewlines(doc[self.content_field])
+                    )
+                    # uncomment to debug size of each search result content_field
+                    # print(f"File{idx}: ", self.num_tokens_from_string(f"File{idx} " + "| " + nonewlines(doc[self.content_field]), "cl100k_base"))
+                # add the "FileX" moniker and full file name to the citation lookup
+
+                citation_lookup[f"File{idx}"] = {
+                    "citation": urllib.parse.unquote(doc[self.source_page_field]),
+                    "source_path": self.get_source_file_name(doc[self.content_field]),
+                    "page_number": self.get_first_page_num_for_chunk(
+                        doc[self.content_field]
+                    ),
+                }
+
+            # create a single string of all the results to be used in the prompt
+            results_text = "".join(results)
+            if results_text == "":
+                content = "\n NONE"
+            else:
+                content = "\n " + results_text
+
+            # STEP 3: Generate the prompt to be sent to the GPT model
+            follow_up_questions_prompt = (
+                self.follow_up_questions_prompt_content
+                if overrides.get("suggest_followup_questions")
+                else ""
+            )
+
+            # Allow client to replace the entire prompt, or to inject into the existing prompt using >>>
+            prompt_override = overrides.get("prompt_template")
+
+            # Use default prompt
+            if prompt_override is None:
+                system_message = self.system_message_chat_conversation.format(
+                    injected_prompt="",
+                    follow_up_questions_prompt=follow_up_questions_prompt,
+                    response_length_prompt=self.get_response_length_prompt_text(
+                        response_length
+                    ),
+                    userPersona=user_persona,
+                    systemPersona=system_persona,
                 )
-                # uncomment to debug size of each search result content_field
-                # print(f"File{idx}: ", self.num_tokens_from_string(f"File{idx} " + "| " + nonewlines(doc[self.content_field]), "cl100k_base"))
-            # add the "FileX" moniker and full file name to the citation lookup
+            # Use default prompt with injected prompt
+            elif prompt_override.startswith(">>>"):
+                system_message = self.system_message_chat_conversation.format(
+                    injected_prompt=prompt_override[3:] + "\n ",
+                    follow_up_questions_prompt=follow_up_questions_prompt,
+                    response_length_prompt=self.get_response_length_prompt_text(
+                        response_length
+                    ),
+                    userPersona=user_persona,
+                    systemPersona=system_persona,
+                )
+            # Overwrite prompt completely
+            else:
+                system_message = self.system_message_override.format(
+                    injected_prompt=prompt_override,
+                    follow_up_questions_prompt=follow_up_questions_prompt,
+                    response_length_prompt=self.get_response_length_prompt_text(
+                        response_length
+                    ),
+                    userPersona=user_persona,
+                    systemPersona=system_persona,
+                )
 
-            citation_lookup[f"File{idx}"] = {
-                "citation": urllib.parse.unquote(doc[self.source_page_field]),
-                "source_path": self.get_source_file_name(doc[self.content_field]),
-                "page_number": self.get_first_page_num_for_chunk(
-                    doc[self.content_field]
-                ),
+            # STEP 3: Generate a contextual and content-specific answer using the search results and chat history.
+            #Added conditional block to use different system messages for different models.
+            if self.model_name.startswith("gpt-35-turbo"):
+                messages = self.get_messages_from_history(
+                    system_message,
+                    self.model_name,
+                    history,
+                    history[-1]["user"] + "Sources:\n" + content + "\n\n",
+                    self.response_prompt_few_shots,
+                    max_tokens=self.chatgpt_token_limit - 500
+                )
+
+                chat_completion = openai.ChatCompletion.create(
+                deployment_id=self.chatgpt_deployment,
+                model=self.model_name,
+                messages=messages,
+                temperature=float(overrides.get("response_temp")) or 0.6,
+                top_p=float(overrides.get("top_p")) or 1.0,
+                n=1
+            )
+
+            elif self.model_name.startswith("gpt-4"):
+                messages = self.get_messages_from_history(
+                    "Sources:\n" + content + "\n\n" + system_message,
+                    # system_message + "\n\nSources:\n" + content,
+                    self.model_name,
+                    history,
+                    history[-1]["user"],
+                    self.response_prompt_few_shots,
+                    max_tokens=self.chatgpt_token_limit
+                )
+
+                chat_completion = openai.ChatCompletion.create(
+                deployment_id=self.chatgpt_deployment,
+                model=self.model_name,
+                messages=messages,
+                temperature=float(overrides.get("response_temp")) or 0.6,
+                top_p=float(overrides.get("top_p")) or 1.0,
+                max_tokens=response_length,
+                n=1
+            )
+                
+            msg_to_display = '\n\n'.join([str(message) for message in messages])
+            answer = urllib.parse.unquote(chat_completion.choices[0].message.content)
+            thoughts = f"Searched for:<br>{generated_query}<br><br>Conversations:<br>" + msg_to_display.replace('\n', '<br>')
+            completion_tokens = chat_completion.usage.completion_tokens
+            prompt_tokens = chat_completion.usage.prompt_tokens
+            total_tokens = chat_completion.usage.total_tokens
+
+        except Exception as error:
+            return {
+            "error_message": str(error),
+            "generated_query" : generated_query if generated_query else "",
+            "data_points": data_points if data_points else [],
+            "answer": answer if answer else "",
+            "thoughts":  thoughts if thoughts else "",
+            "citation_lookup": citation_lookup if citation_lookup else {},
+            "token_usage": {
+                "completion_tokens" : completion_tokens,
+                "prompt_tokens" : prompt_tokens,
+                "total_tokens" : total_tokens
             }
-
-        # create a single string of all the results to be used in the prompt
-        results_text = "".join(results)
-        if results_text == "":
-            content = "\n NONE"
-        else:
-            content = "\n " + results_text
-
-        # STEP 3: Generate the prompt to be sent to the GPT model
-        follow_up_questions_prompt = (
-            self.follow_up_questions_prompt_content
-            if overrides.get("suggest_followup_questions")
-            else ""
-        )
-
-        # Allow client to replace the entire prompt, or to inject into the existing prompt using >>>
-        prompt_override = overrides.get("prompt_template")
-
-        # Use default prompt
-        if prompt_override is None:
-            system_message = self.system_message_chat_conversation.format(
-                injected_prompt="",
-                follow_up_questions_prompt=follow_up_questions_prompt,
-                response_length_prompt=self.get_response_length_prompt_text(
-                    response_length
-                ),
-                userPersona=user_persona,
-                systemPersona=system_persona,
-            )
-        # Use default prompt with injected prompt
-        elif prompt_override.startswith(">>>"):
-            system_message = self.system_message_chat_conversation.format(
-                injected_prompt=prompt_override[3:] + "\n ",
-                follow_up_questions_prompt=follow_up_questions_prompt,
-                response_length_prompt=self.get_response_length_prompt_text(
-                    response_length
-                ),
-                userPersona=user_persona,
-                systemPersona=system_persona,
-            )
-        # Overwrite prompt completely
-        else:
-            system_message = self.system_message_override.format(
-                injected_prompt=prompt_override,
-                follow_up_questions_prompt=follow_up_questions_prompt,
-                response_length_prompt=self.get_response_length_prompt_text(
-                    response_length
-                ),
-                userPersona=user_persona,
-                systemPersona=system_persona,
-            )
-
-        # STEP 3: Generate a contextual and content-specific answer using the search results and chat history.
-        #Added conditional block to use different system messages for different models.
-        if self.model_name.startswith("gpt-35-turbo"):
-            messages = self.get_messages_from_history(
-                system_message,
-                self.model_name,
-                history,
-                history[-1]["user"] + "Sources:\n" + content + "\n\n",
-                self.response_prompt_few_shots,
-                max_tokens=self.chatgpt_token_limit - 500
-            )
-
-            #Uncomment to debug token usage.
-            #print(messages)
-            #message_string = ""
-            #for message in messages:
-            #    # enumerate the messages and add the role and content elements of the dictoinary to the message_string
-            #    message_string += f"{message['role']}: {message['content']}\n"
-            #print("Content Tokens: ", self.num_tokens_from_string("Sources:\n" + content + "\n\n", "cl100k_base"))
-            #print("System Message Tokens: ", self.num_tokens_from_string(system_message, "cl100k_base"))
-            #print("Few Shot Tokens: ", self.num_tokens_from_string(self.response_prompt_few_shots[0]['content'], "cl100k_base"))
-            #print("Message Tokens: ", self.num_tokens_from_string(message_string, "cl100k_base"))
-
-
-            chat_completion = openai.ChatCompletion.create(
-            deployment_id=self.chatgpt_deployment,
-            model=self.model_name,
-            messages=messages,
-            temperature=float(overrides.get("response_temp")) or 0.6,
-            top_p=float(overrides.get("top_p")) or 1.0,
-            n=1
-        )
-
-        elif self.model_name.startswith("gpt-4"):
-            messages = self.get_messages_from_history(
-                "Sources:\n" + content + "\n\n" + system_message,
-                # system_message + "\n\nSources:\n" + content,
-                self.model_name,
-                history,
-                history[-1]["user"],
-                self.response_prompt_few_shots,
-                max_tokens=self.chatgpt_token_limit
-            )
-
-            #Uncomment to debug token usage.
-            #print(messages)
-            #message_string = ""
-            #for message in messages:
-            #    # enumerate the messages and add the role and content elements of the dictoinary to the message_string
-            #    message_string += f"{message['role']}: {message['content']}\n"
-            #print("Content Tokens: ", self.num_tokens_from_string("Sources:\n" + content + "\n\n", "cl100k_base"))
-            #print("System Message Tokens: ", self.num_tokens_from_string(system_message, "cl100k_base"))
-            #print("Few Shot Tokens: ", self.num_tokens_from_string(self.response_prompt_few_shots[0]['content'], "cl100k_base"))
-            #print("Message Tokens: ", self.num_tokens_from_string(message_string, "cl100k_base"))
-
-            chat_completion = openai.ChatCompletion.create(
-            deployment_id=self.chatgpt_deployment,
-            model=self.model_name,
-            messages=messages,
-            temperature=float(overrides.get("response_temp")) or 0.6,
-            top_p=float(overrides.get("top_p")) or 1.0,
-            max_tokens=response_length,
-            n=1
-
-        )
-
-        # chat_completion = openai.ChatCompletion.create(
-        #     deployment_id=self.chatgpt_deployment,
-        #     model=self.model_name,
-        #     messages=messages,
-        #     temperature=float(overrides.get("response_temp")) or 0.6,
-        #     max_tokens=1024,
-        #     n=1
-
-        # )
-
-        #Aparmar.Token Debugging Code. Uncomment to debug token usage.
-        # generated_response_message = chat_completion.choices[0].message
-        # # Count the tokens in the generated response message
-        # token_count = num_tokens_from_messages(generated_response_message, 'gpt-4')
-        # print("Generated Response Tokens:", token_count)
-
-        msg_to_display = '\n\n'.join([str(message) for message in messages])
-
-        completion_tokens = chat_completion.usage.completion_tokens
-        prompt_tokens = chat_completion.usage.prompt_tokens
-        total_tokens = chat_completion.usage.total_tokens
+        }
 
         return {
             "generated_query" : generated_query,
             "data_points": data_points,
-            "answer": f"{urllib.parse.unquote(chat_completion.choices[0].message.content)}",
-            "thoughts": f"Searched for:<br>{generated_query}<br><br>Conversations:<br>" + msg_to_display.replace('\n', '<br>'),
+            "answer": answer,
+            "thoughts": thoughts,
             "citation_lookup": citation_lookup,
             "token_usage": {
                 "completion_tokens" : completion_tokens,
@@ -461,14 +447,12 @@ Always include citations if you reference the source documents. Use square brack
         Returns:
             The first page number.
         """
-        try:
-            page_num = str(json.loads(content)["pages"][0])
-            if page_num is None:
-                return "0"
-            return page_num
-        except Exception as error:
-            logging.exception("Unable to parse first page num: " + str(error) + "")
+        content_dict = json.loads(content)
+        pages = content_dict.get("pages", [])
+        if not pages:  
             return "0"
+        page_num = pages[0]
+        return str(page_num) if page_num is not None else "0"
 
     def num_tokens_from_string(self, string: str, encoding_name: str) -> int:
         """ Function to return the number of tokens in a text string"""
