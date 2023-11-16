@@ -2,8 +2,10 @@
 // Licensed under the MIT license.
 
 import { useRef, useState, useEffect } from "react";
-import { Checkbox, Panel, DefaultButton, TextField, SpinButton } from "@fluentui/react";
 import Coeus from "../../assets/coeus.png";
+import { Checkbox, Panel, DefaultButton, TextField, SpinButton, Separator} from "@fluentui/react";
+import { SparkleFilled, ClockFilled, TargetArrowFilled, OptionsFilled, SearchInfoFilled, PersonStarFilled, TextBulletListSquareSparkleFilled } from "@fluentui/react-icons";
+import { ITag } from '@fluentui/react/lib/Pickers';
 
 import styles from "./Chat.module.css";
 import rlbgstyles from "../../components/ResponseLengthButtonGroup/ResponseLengthButtonGroup.module.css";
@@ -23,6 +25,8 @@ import { Tooltips } from "../../components/Tooltips"
 import { InfoContent } from "../../components/InfoContent/InfoContent";
 import { PromptOverride } from "../../components/PromptOverride";
 import { TopPSlider } from "../../components/TopPSlider";
+import { FolderPicker } from "../../components/FolderPicker";
+import { TagPickerInline } from "../../components/TagPicker";
 
 const Chat = () => {
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
@@ -40,7 +44,7 @@ const Chat = () => {
     // It must match a valid value of one of the buttons in the ResponseLengthButtonGroup.tsx file.
     // If you update the default value here, you must also update the default value in the onResponseLengthChange method.
     const [responseLength, setResponseLength] = useState<number>(2048);
-    // Setting responseTemp to 0.7 by default, this will effect the default display of the ResponseTempButtonGroup below.
+    // Setting responseTemp to 0.4 by default, this will effect the default display of the ResponseTempButtonGroup below.
     // It must match a valid value of one of the buttons in the ResponseTempButtonGroup.tsx file.
     // If you update the default value here, you must also update the default value in the onResponseTempChange method.
     const [responseTemp, setResponseTemp] = useState<number>(0.4);
@@ -57,6 +61,8 @@ const Chat = () => {
     const [activeCitationSourceFile, setActiveCitationSourceFile] = useState<string>();
     const [activeCitationSourceFilePageNumber, setActiveCitationSourceFilePageNumber] = useState<string>();
     const [activeAnalysisPanelTab, setActiveAnalysisPanelTab] = useState<AnalysisPanelTabs | undefined>(undefined);
+    const [selectedFolders, setSelectedFolders] = useState<string[]>([]);
+    const [selectedTags, setSelectedTags] = useState<ITag[]>([]);
 
     const [selectedAnswer, setSelectedAnswer] = useState<number>(0);
     const [answers, setAnswers] = useState<[user: string, response: AskResponse][]>([]);
@@ -86,7 +92,9 @@ const Chat = () => {
                     aiPersona: aiPersona,
                     responseLength: responseLength,
                     responseTemp: responseTemp,
-                    topP: topP
+                    topP: topP,
+                    selectedFolders: selectedFolders.includes("selectAll") ? "All" : selectedFolders.length == 0 ? "All" : selectedFolders.join(","),
+                    selectedTags: selectedTags.map(tag => tag.name).join(",")
                 }
             };
             const result = await chatApi(request);
@@ -193,6 +201,14 @@ const Chat = () => {
 
         setSelectedAnswer(index);
     };
+
+    const onSelectedKeyChanged = (selectedFolders: string[]) => {
+        setSelectedFolders(selectedFolders)
+    };
+
+    const onSelectedTagsChange = (selectedTags: ITag[]) => {
+        setSelectedTags(selectedTags)
+    }
 
     return (
         <div className={styles.container}>
@@ -308,6 +324,9 @@ const Chat = () => {
                         <ResponseTempSlider className={styles.chatSettingsSeparator} onChange={setResponseTemp} value={responseTemp}/>
                         <TopPSlider className={styles.chatSettingsSeparator} onChange={setTopP} value={topP} />
                         <PromptOverride className={styles.chatSettingsSeparator} defaultValue={promptTemplate} onChange={onPromptTemplateChange}/>
+                        <Separator className={styles.chatSettingsSeparator}>Filter Search Results by</Separator>
+                        <FolderPicker allowFolderCreation={false} onSelectedKeyChange={onSelectedKeyChanged} preSelectedKeys={selectedFolders}/>
+                        <TagPickerInline allowNewTags={false} onSelectedTagsChange={onSelectedTagsChange} preSelectedTags={selectedTags}/>
             </Panel>
 
             <Panel
@@ -319,7 +338,9 @@ const Chat = () => {
                 closeButtonAriaLabel="Close"
                 onRenderFooterContent={() => <DefaultButton onClick={() => setIsInfoPanelOpen(false)}>Close</DefaultButton>}
                 isFooterAtBottom={true}>
-                    <InfoContent className={styles.chatSettingsSeparator}/>
+                <div className={styles.resultspanel}>
+                    <InfoContent/>
+                </div>
             </Panel>
             <Tooltips />
         </div>

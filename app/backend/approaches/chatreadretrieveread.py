@@ -1,3 +1,7 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+import re
 import json
 import logging
 import urllib.parse
@@ -7,6 +11,7 @@ from typing import Any, Sequence
 import openai
 from approaches.approach import Approach
 from azure.search.documents import SearchClient
+from azure.search.documents.models import RawVectorQuery
 from azure.search.documents.models import QueryType
 from azure.storage.blob import (
     AccountSasPermissions,
@@ -18,7 +23,7 @@ from text import nonewlines
 import tiktoken
 from core.messagebuilder import MessageBuilder
 from core.modelhelper import get_token_limit
-from core.modelhelper import num_tokens_from_messages
+import requests
 
 # Simple retrieve-then-read implementation, using the Cognitive Search and
 # OpenAI APIs directly. It first retrieves top documents from search,
@@ -92,30 +97,48 @@ Always include citations if you reference the source documents. Use square brack
     {'role': ASSISTANT, 'content': 'Several steps are being taken to promote energy conservation including reducing energy consumption, increasing energy efficiency, and increasing the use of renewable energy sources.Citations[info1.json]'}
     ]
 
+    # # Define a class variable for the base URL
+    # EMBEDDING_SERVICE_BASE_URL = 'https://infoasst-cr-{}.azurewebsites.net'
+
     def __init__(
         self,
         search_client: SearchClient,
         oai_service_name: str,
         oai_service_key: str,
         chatgpt_deployment: str,
-        source_page_field: str,
+        source_file_field: str,
         content_field: str,
+        page_number_field: str,
+        chunk_file_field: str,
+        content_storage_container: str,
         blob_client: BlobServiceClient,
         query_term_language: str,
         model_name: str,
         model_version: str,
-        is_gov_cloud_deployment: str
+        is_gov_cloud_deployment: str,
+        TARGET_EMBEDDING_MODEL: str,
+        ENRICHMENT_APPSERVICE_NAME: str
     ):
         self.search_client = search_client
         self.chatgpt_deployment = chatgpt_deployment
         self.model_name = model_name
         self.model_version = model_version
-        self.source_page_field = source_page_field
+        self.source_file_field = source_file_field
         self.content_field = content_field
+        self.page_number_field = page_number_field
+        self.chunk_file_field = chunk_file_field
+        self.content_storage_container = content_storage_container
         self.blob_client = blob_client
         self.query_term_language = query_term_language
         self.chatgpt_token_limit = get_token_limit(model_name)
         self.is_gov_cloud_deployment = is_gov_cloud_deployment
+        #escape target embeddiong model name
+        self.escaped_target_model = re.sub(r'[^a-zA-Z0-9_\-.]', '_', TARGET_EMBEDDING_MODEL)
+
+        if is_gov_cloud_deployment:
+            self.embedding_service_url = f'https://{ENRICHMENT_APPSERVICE_NAME}.azurewebsites.us'
+        else:
+            self.embedding_service_url = f'https://{ENRICHMENT_APPSERVICE_NAME}.azurewebsites.net'
 
         openai.api_base = 'https://' + oai_service_name + '.openai.azure.com/'
         openai.api_type = 'azure'
@@ -124,11 +147,11 @@ Always include citations if you reference the source documents. Use square brack
     def run(self, history: Sequence[dict[str, str]], overrides: dict[str, Any]) -> Any:
         use_semantic_captions = True if overrides.get("semantic_captions") else False
         top = overrides.get("top") or 3
-        exclude_category = overrides.get("exclude_category") or None
-        category_filter = "category ne '{}'".format(exclude_category.replace("'", "''")) if exclude_category else None
         user_persona = overrides.get("user_persona", "")
         system_persona = overrides.get("system_persona", "")
         response_length = int(overrides.get("response_length") or 1024)
+        folder_filter = overrides.get("selected_folders", "")
+        tags_filter = overrides.get("selected_tags", "")
 
         user_q = 'Generate search query for: ' + history[-1]["user"]
 
@@ -155,7 +178,6 @@ Always include citations if you reference the source documents. Use square brack
                 )
 
             chat_completion = openai.ChatCompletion.create(
-
                 deployment_id=self.chatgpt_deployment,
                 model=self.model_name,
                 messages=messages,
@@ -169,32 +191,63 @@ Always include citations if you reference the source documents. Use square brack
             if generated_query.strip() == "0":
                 generated_query = history[-1]["user"]
 
-            # STEP 2: Retrieve relevant documents from the search index with the optimized query term
+            # Generate embedding using REST API
+            url = f'{self.embedding_service_url}/models/{self.escaped_target_model}/embed'
+            data = [f'"{generated_query}"']
+            headers = {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                }
+
+            response = requests.post(url, json=data,headers=headers,timeout=60)
+            if response.status_code == 200:
+                response_data = response.json()
+                embedded_query_vector =response_data.get('data')
+            else:
+                logging.error(f"Error generating embedding:: {response.status_code}")
+                raise Exception('Error generating embedding:', response.status_code)
+
+            #vector set up for pure vector search & Hybrid search & Hybrid semantic
+            vector = RawVectorQuery(vector=embedded_query_vector, k=top, fields="contentVector")
+
+            #Create a filter for the search query
+            if (folder_filter != "") & (folder_filter != "All"):
+                search_filter = f"search.in(folder, '{folder_filter}')"
+            else:
+                search_filter = None
+            if tags_filter != "" :
+                quoted_tags_filter = tags_filter.replace(",","','")
+                if search_filter is not None:
+                    search_filter = search_filter + f" and tags/any(t: search.in(t, '{quoted_tags_filter}'))"
+                else:
+                    search_filter = f"tags/any(t: search.in(t, '{quoted_tags_filter}'))"
+        
             if (not self.is_gov_cloud_deployment and overrides.get("semantic_ranker")):
-                raw_search_results = self.search_client.search(
-                    generated_query,
-                    filter=category_filter,
-                    query_type=QueryType.SEMANTIC,
-                    query_language="en-us",
-                    query_speller="lexicon",
-                    semantic_configuration_name="default",
-                    top=top,
-                    query_caption="extractive|highlight-false"
-                    if use_semantic_captions
-                    else None,
+                r = self.search_client.search(
+                        generated_query,
+                        query_type=QueryType.SEMANTIC,
+                        query_language="en-us",
+                        query_speller="lexicon",
+                        semantic_configuration_name="default",
+                        top=top,
+                        query_caption="extractive|highlight-false"
+                        if use_semantic_captions else None,
+                        vector_queries =[vector],
+                        filter=search_filter
                 )
             else:
-                raw_search_results = self.search_client.search(
-                    generated_query, filter=category_filter, top=top
+                r = self.search_client.search(
+                        generated_query,
+                        top=top,
+                        vector_queries =[vector], 
+                        filter=search_filter
                 )
 
-            citation_lookup = {}  # dict of "FileX" moniker to the actual file name
-            results = []  # list of results to be used in the prompt
-            data_points = []  # list of data points to be used in the response
+                citation_lookup = {}  # dict of "FileX" moniker to the actual file name
+                results = []  # list of results to be used in the prompt
+                data_points = []  # list of data points to be used in the response
 
-            for idx, doc in enumerate(
-                raw_search_results
-            ):  # for each document in the search results
+            for idx, doc in enumerate(r):  # for each document in the search results
                 if use_semantic_captions:
                     # if using semantic captions, use the captions instead of the content
                     # include the "FileX" moniker in the prompt, and the actual file name in the response
@@ -226,95 +279,93 @@ Always include citations if you reference the source documents. Use square brack
                 # add the "FileX" moniker and full file name to the citation lookup
 
                 citation_lookup[f"File{idx}"] = {
-                    "citation": urllib.parse.unquote(doc[self.source_page_field]),
-                    "source_path": self.get_source_file_name(doc[self.content_field]),
-                    "page_number": self.get_first_page_num_for_chunk(
-                        doc[self.content_field]
-                    ),
+                    "citation": urllib.parse.unquote("https://" + doc[self.source_file_field].split("/")[2] + f"/{self.content_storage_container}/" + doc[self.chunk_file_field]),
+                    "source_path": self.get_source_file_with_sas(doc[self.source_file_field]),
+                    "page_number": str(doc[self.page_number_field][0]) or "0",
                 }
 
-            # create a single string of all the results to be used in the prompt
-            results_text = "".join(results)
-            if results_text == "":
-                content = "\n NONE"
-            else:
-                content = "\n " + results_text
+                # create a single string of all the results to be used in the prompt
+                results_text = "".join(results)
+                if results_text == "":
+                    content = "\n NONE"
+                else:
+                    content = "\n " + results_text
 
-            # STEP 3: Generate the prompt to be sent to the GPT model
-            follow_up_questions_prompt = (
-                self.follow_up_questions_prompt_content
-                if overrides.get("suggest_followup_questions")
-                else ""
-            )
-
-            # Allow client to replace the entire prompt, or to inject into the existing prompt using >>>
-            prompt_override = overrides.get("prompt_template")
-
-            # Use default prompt
-            if prompt_override is None:
-                system_message = self.system_message_chat_conversation.format(
-                    injected_prompt="",
-                    follow_up_questions_prompt=follow_up_questions_prompt,
-                    response_length_prompt=self.get_response_length_prompt_text(
-                        response_length
-                    ),
-                    userPersona=user_persona,
-                    systemPersona=system_persona,
-                )
-            # Use default prompt with injected prompt
-            elif prompt_override.startswith(">>>"):
-                system_message = self.system_message_chat_conversation.format(
-                    injected_prompt=prompt_override[3:] + "\n ",
-                    follow_up_questions_prompt=follow_up_questions_prompt,
-                    response_length_prompt=self.get_response_length_prompt_text(
-                        response_length
-                    ),
-                    userPersona=user_persona,
-                    systemPersona=system_persona,
-                )
-            # Overwrite prompt completely
-            else:
-                system_message = self.system_message_override.format(
-                    injected_prompt=prompt_override,
-                    follow_up_questions_prompt=follow_up_questions_prompt,
-                    response_length_prompt=self.get_response_length_prompt_text(
-                        response_length
-                    ),
-                    userPersona=user_persona,
-                    systemPersona=system_persona,
+                # STEP 3: Generate the prompt to be sent to the GPT model
+                follow_up_questions_prompt = (
+                    self.follow_up_questions_prompt_content
+                    if overrides.get("suggest_followup_questions")
+                    else ""
                 )
 
-            # STEP 3: Generate a contextual and content-specific answer using the search results and chat history.
-            #Added conditional block to use different system messages for different models.
-            if self.model_name.startswith("gpt-35-turbo"):
-                messages = self.get_messages_from_history(
-                    system_message,
-                    self.model_name,
-                    history,
-                    history[-1]["user"] + "Sources:\n" + content + "\n\n",
-                    self.response_prompt_few_shots,
-                    max_tokens=self.chatgpt_token_limit - 500
+                # Allow client to replace the entire prompt, or to inject into the existing prompt using >>>
+                prompt_override = overrides.get("prompt_template")
+
+                # Use default prompt
+                if prompt_override is None:
+                    system_message = self.system_message_chat_conversation.format(
+                        injected_prompt="",
+                        follow_up_questions_prompt=follow_up_questions_prompt,
+                        response_length_prompt=self.get_response_length_prompt_text(
+                            response_length
+                        ),
+                        userPersona=user_persona,
+                        systemPersona=system_persona,
+                    )
+                # Use default prompt with injected prompt
+                elif prompt_override.startswith(">>>"):
+                    system_message = self.system_message_chat_conversation.format(
+                        injected_prompt=prompt_override[3:] + "\n ",
+                        follow_up_questions_prompt=follow_up_questions_prompt,
+                        response_length_prompt=self.get_response_length_prompt_text(
+                            response_length
+                        ),
+                        userPersona=user_persona,
+                        systemPersona=system_persona,
+                    )
+                # Overwrite prompt completely
+                else:
+                    system_message = self.system_message_override.format(
+                        injected_prompt=prompt_override,
+                        follow_up_questions_prompt=follow_up_questions_prompt,
+                        response_length_prompt=self.get_response_length_prompt_text(
+                            response_length
+                        ),
+                        userPersona=user_persona,
+                        systemPersona=system_persona,
+                    )
+
+                # STEP 3: Generate a contextual and content-specific answer using the search results and chat history.
+                #Added conditional block to use different system messages for different models.
+                if self.model_name.startswith("gpt-35-turbo"):
+                    messages = self.get_messages_from_history(
+                        system_message,
+                        self.model_name,
+                        history,
+                        history[-1]["user"] + "Sources:\n" + content + "\n\n",
+                        self.response_prompt_few_shots,
+                        max_tokens=self.chatgpt_token_limit - 500
+                    )
+
+                    chat_completion = openai.ChatCompletion.create(
+                    deployment_id=self.chatgpt_deployment,
+                    model=self.model_name,
+                    messages=messages,
+                    temperature=float(overrides.get("response_temp")) or 0.6,
+                    top_p=float(overrides.get("top_p")) or 1.0,
+                    n=1
                 )
 
-                chat_completion = openai.ChatCompletion.create(
-                deployment_id=self.chatgpt_deployment,
-                model=self.model_name,
-                messages=messages,
-                temperature=float(overrides.get("response_temp")) or 0.6,
-                top_p=float(overrides.get("top_p")) or 1.0,
-                n=1
-            )
-
-            elif self.model_name.startswith("gpt-4"):
-                messages = self.get_messages_from_history(
-                    "Sources:\n" + content + "\n\n" + system_message,
-                    # system_message + "\n\nSources:\n" + content,
-                    self.model_name,
-                    history,
-                    history[-1]["user"],
-                    self.response_prompt_few_shots,
-                    max_tokens=self.chatgpt_token_limit
-                )
+                elif self.model_name.startswith("gpt-4"):
+                    messages = self.get_messages_from_history(
+                        "Sources:\n" + content + "\n\n" + system_message,
+                        # system_message + "\n\nSources:\n" + content,
+                        self.model_name,
+                        history,
+                        history[-1]["user"],
+                        self.response_prompt_few_shots,
+                        max_tokens=self.chatgpt_token_limit
+                    )
 
                 chat_completion = openai.ChatCompletion.create(
                 deployment_id=self.chatgpt_deployment,
@@ -324,11 +375,11 @@ Always include citations if you reference the source documents. Use square brack
                 top_p=float(overrides.get("top_p")) or 1.0,
                 max_tokens=response_length,
                 n=1
+
             )
-                
+
             msg_to_display = '\n\n'.join([str(message) for message in messages])
-            answer = urllib.parse.unquote(chat_completion.choices[0].message.content)
-            thoughts = f"Searched for:<br>{generated_query}<br><br>Conversations:<br>" + msg_to_display.replace('\n', '<br>')
+
             completion_tokens = chat_completion.usage.completion_tokens
             prompt_tokens = chat_completion.usage.prompt_tokens
             total_tokens = chat_completion.usage.total_tokens
@@ -396,6 +447,7 @@ Always include citations if you reference the source documents. Use square brack
 
     #Get the prompt text for the response length
     def get_response_length_prompt_text(self, response_length: int):
+        """ Function to return the response length prompt text"""
         levels = {
             1024: "succinct",
             2048: "standard",
@@ -404,37 +456,34 @@ Always include citations if you reference the source documents. Use square brack
         level = levels[response_length]
         return f"Please provide a {level} answer. This means that your answer should be no more than {response_length} tokens long."
 
-    def get_source_file_name(self, content: str) -> str:
-        """
-        Parse the search document content for "file_name" attribute and generate a SAS token for it.
+    def num_tokens_from_string(self, string: str, encoding_name: str) -> int:
+        """ Function to return the number of tokens in a text string"""
+        encoding = tiktoken.get_encoding(encoding_name)
+        num_tokens = len(encoding.encode(string))
+        return num_tokens
 
-        Args:
-            content: The search document content (JSON string)
-
-        Returns:
-            The source file name with SAS token.
-        """
+    def get_source_file_with_sas(self, source_file: str) -> str:
+        """ Function to return the source file with a SAS token"""
         try:
-            source_path = urllib.parse.unquote(json.loads(content)["file_name"])
             sas_token = generate_account_sas(
                 self.blob_client.account_name,
                 self.blob_client.credential.account_key,
                 resource_types=ResourceTypes(object=True, service=True, container=True),
                 permission=AccountSasPermissions(
                     read=True,
-                    write=True,
+                    write=False,
                     list=True,
                     delete=False,
-                    add=True,
-                    create=True,
-                    update=True,
+                    add=False,
+                    create=False,
+                    update=False,
                     process=False,
                 ),
                 expiry=datetime.utcnow() + timedelta(hours=1),
             )
-            return self.blob_client.url + source_path + "?" + sas_token
+            return source_file + "?" + sas_token
         except Exception as error:
-            logging.exception("Unable to parse source file name: " + str(error) + "")
+            logging.error(f"Unable to parse source file name: {str(error)}")
             return ""
 
     def get_first_page_num_for_chunk(self, content: str) -> str:
@@ -447,12 +496,14 @@ Always include citations if you reference the source documents. Use square brack
         Returns:
             The first page number.
         """
-        content_dict = json.loads(content)
-        pages = content_dict.get("pages", [])
-        if not pages:  
+        try:
+            page_num = str(json.loads(content)["pages"][0])
+            if page_num is None:
+                return "0"
+            return page_num
+        except Exception as error:
+            logging.exception("Unable to parse first page num: " + str(error) + "")
             return "0"
-        page_num = pages[0]
-        return str(page_num) if page_num is not None else "0"
 
     def num_tokens_from_string(self, string: str, encoding_name: str) -> int:
         """ Function to return the number of tokens in a text string"""

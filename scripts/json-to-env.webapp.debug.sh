@@ -32,6 +32,10 @@ jq -r  '
             "env_var": "AZURE_BLOB_STORAGE_CONTAINER"
         },
         {
+            "path": "azurE_STORAGE_UPLOAD_CONTAINER",
+            "env_var": "AZURE_BLOB_STORAGE_UPLOAD_CONTAINER"
+        },
+        {
             "path": "azurE_OPENAI_SERVICE",
             "env_var": "AZURE_OPENAI_SERVICE"
         },
@@ -60,8 +64,8 @@ jq -r  '
             "env_var": "AZURE_OPENAI_CHATGPT_DEPLOYMENT"
         },
         {
-            "path": "azurE_OPENAI_EMBEDDING_MODEL",
-            "env_var": "AZURE_OPENAI_EMBEDDING_MODEL"
+            "path": "azurE_OPENAI_EMBEDDING_DEPLOYMENT_NAME",
+            "env_var": "AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME"
         },        
         {
             "path": "azurE_OPENAI_SERVICE_KEY",
@@ -76,18 +80,6 @@ jq -r  '
             "env_var": "AZURE_SEARCH_SERVICE_KEY"
         },
         {
-            "path": "nonpdfsubmitqueue",
-            "env_var": "NON_PDF_SUBMIT_QUEUE"
-        },
-        {
-            "path": "pdfpollingqueue",
-            "env_var": "PDF_POLLING_QUEUE"
-        },
-        {
-            "path": "pdfsubmitqueue",
-            "env_var": "PDF_SUBMIT_QUEUE"
-        },
-        {
             "path": "bloB_CONNECTION_STRING",
             "env_var": "BLOB_CONNECTION_STRING"
         },
@@ -100,12 +92,20 @@ jq -r  '
             "env_var": "COSMOSDB_KEY"
         },
         {
-            "path": "azurE_COSMOSDB_DATABASE_NAME",
-            "env_var": "COSMOSDB_DATABASE_NAME"
+            "path": "azurE_COSMOSDB_LOG_DATABASE_NAME",
+            "env_var": "COSMOSDB_LOG_DATABASE_NAME"
         },
         {
-            "path": "azurE_COSMOSDB_CONTAINER_NAME",
-            "env_var": "COSMOSDB_CONTAINER_NAME"
+            "path": "azurE_COSMOSDB_LOG_CONTAINER_NAME",
+            "env_var": "COSMOSDB_LOG_CONTAINER_NAME"
+        },
+        {
+            "path": "azurE_COSMOSDB_TAGS_DATABASE_NAME",
+            "env_var": "COSMOSDB_TAGS_DATABASE_NAME"
+        },
+        {
+            "path": "azurE_COSMOSDB_TAGS_CONTAINER_NAME",
+            "env_var": "COSMOSDB_TAGS_CONTAINER_NAME"
         },
         {
             "path": "azurE_CLIENT_ID",
@@ -124,16 +124,40 @@ jq -r  '
             "env_var": "AZURE_SUBSCRIPTION_ID"
         },
         {
-            "path": "embeddingsqueue",
-            "env_var": "EMBEDDINGS_QUEUE"
-        },
-        {
-            "path": "azurE_BLOB_DROP_STORAGE_CONTAINER",
-            "env_var": "BLOB_STORAGE_ACCOUNT_UPLOAD_CONTAINER_NAME"
-        },
-        {
             "path": "azurE_STORAGE_CONTAINER",
             "env_var": "BLOB_STORAGE_ACCOUNT_OUTPUT_CONTAINER_NAME"
+        },
+        {
+            "path": "bloB_STORAGE_ACCOUNT_ENDPOINT",
+            "env_var": "AZURE_BLOB_STORAGE_ENDPOINT"
+        },
+        {
+            "path": "targeT_EMBEDDINGS_MODEL",
+            "env_var": "TARGET_EMBEDDINGS_MODEL"
+        },
+        {
+            "path": "embeddinG_VECTOR_SIZE",
+            "env_var": "EMBEDDING_VECTOR_SIZE"
+        },
+        {
+            "path": "iS_USGOV_DEPLOYMENT",
+            "env_var": "IS_GOV_CLOUD_DEPLOYMENT"
+        },
+        {
+            "path": "azurE_OPENAI_EMBEDDING_DEPLOYMENT_NAME",
+            "env_var": "AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME"
+        },
+        {
+            "path": "embeddinG_DEPLOYMENT_NAME",
+            "env_var": "EMBEDDING_DEPLOYMENT_NAME"
+        },
+        {
+            "path": "usE_AZURE_OPENAI_EMBEDDINGS",
+            "env_var": "USE_AZURE_OPENAI_EMBEDDINGS"
+        },
+        {
+            "path": "enrichmenT_APPSERVICE_NAME",
+            "env_var": "ENRICHMENT_APPSERVICE_NAME"
         }
     ]
         as $env_vars_to_extract
@@ -154,3 +178,9 @@ jq -r  '
     |
     .[]
     ' | sed "s/\"/'/g" # replace double quote with single quote to handle special chars
+
+    echo "EMBEDDINGS_QUEUE='embeddings-queue'"
+    echo "DEQUEUE_MESSAGE_BATCH_SIZE=1"
+    echo "MAX_EMBEDDING_REQUEUE_COUNT=5"
+    echo "EMBEDDING_REQUEUE_BACKOFF=60"
+    echo "CHAT_WARNING_BANNER_TEXT='$CHAT_WARNING_BANNER_TEXT'"

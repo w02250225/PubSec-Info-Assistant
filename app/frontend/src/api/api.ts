@@ -1,7 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { AskRequest, AskResponse, ChatRequest, BlobClientUrlResponse, AllFilesUploadStatus, GetUploadStatusRequest, GetInfoResponse, ActiveCitation, GetWarningBanner, ExportRequest } from "./models";
+import { AskRequest, AskResponse, ChatRequest, BlobClientUrlResponse,
+    AllFilesUploadStatus, GetUploadStatusRequest, GetInfoResponse, ActiveCitation, GetWarningBanner,
+    ExportRequest, StatusLogEntry, StatusLogResponse, ApplicationTitle, GetTagsResponse } from "./models";
 
 export async function askApi(options: AskRequest): Promise<AskResponse> {
     const response = await fetch("/ask", {
@@ -60,7 +62,9 @@ export async function chatApi(options: ChatRequest): Promise<AskResponse> {
                 ai_persona: options.overrides?.aiPersona,
                 response_length: options.overrides?.responseLength,
                 response_temp: options.overrides?.responseTemp,
-                top_p: options.overrides?.topP
+                top_p: options.overrides?.topP,
+                selected_folders: options.overrides?.selectedFolders,
+                selected_tags: options.overrides?.selectedTags
             }
         })
     });
@@ -175,6 +179,29 @@ export async function getAllUploadStatus(options: GetUploadStatusRequest): Promi
     return results;
 }
 
+export async function logStatus(status_log_entry: StatusLogEntry): Promise<StatusLogResponse> {
+    var response = await fetch("/logstatus", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            "path": status_log_entry.path,
+            "status": status_log_entry.status,
+            "status_classification": status_log_entry.status_classification,
+            "state": status_log_entry.state
+        })
+    });
+
+    var parsedResponse: StatusLogResponse = await response.json();
+    if (response.status > 299 || !response.ok) {
+        throw Error(parsedResponse.error || "Unknown error");
+    }
+
+    var results: StatusLogResponse = { status: parsedResponse.status };
+    return results;
+}
+
 export async function getInfoData(): Promise<GetInfoResponse> {
     const response = await fetch("/getInfoData", {
         method: "GET",
@@ -221,4 +248,39 @@ export async function getCitationObj(citation: string): Promise<ActiveCitation> 
         throw Error(parsedResponse.error || "Unknown error");
     }
     return parsedResponse;
+}
+
+export async function getApplicationTitle(): Promise<ApplicationTitle> {
+    console.log("fetch Application Titless");
+    const response = await fetch("/getApplicationTitle", {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+
+    const parsedResponse: ApplicationTitle = await response.json();
+    if (response.status > 299 || !response.ok) {
+        console.log(response);
+        throw Error(parsedResponse.error || "Unknown error");
+    }
+    console.log(parsedResponse);
+    return parsedResponse;
+}
+
+export async function getAllTags(): Promise<GetTagsResponse> {
+    const response = await fetch("/getalltags", {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+
+    const parsedResponse: any = await response.json();
+    if (response.status > 299 || !response.ok) {
+        console.log(response);
+        throw Error(parsedResponse.error || "Unknown error");
+    }
+    var results: GetTagsResponse = {tags: parsedResponse};
+    return results;
 }

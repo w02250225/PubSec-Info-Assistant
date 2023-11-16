@@ -2,16 +2,14 @@
 # Licensed under the MIT license.
 
 import logging
-import os
 import json
 import html
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from azure.storage.blob import generate_blob_sas, BlobSasPermissions, BlobServiceClient
+from azure.storage.blob import BlobServiceClient
+from shared_code.utilities_helper import UtilitiesHelper
 from nltk.tokenize import sent_tokenize
 import tiktoken
-import minify_html
-from bs4 import BeautifulSoup
 import nltk
 nltk.download('punkt')
 
@@ -41,6 +39,12 @@ class ContentType(Enum):
     TABLE_CHAR              = 11
     TABLE_END               = 12
 
+class MediaType:
+    """ Helper class for standard media values"""
+    TEXT = "text"
+    IMAGE = "image"
+    MEDIA = "media"    
+
 class Utilities:
     """ Class to hold utility functions """
     def __init__(self,
@@ -55,6 +59,9 @@ class Utilities:
         self.azure_blob_drop_storage_container = azure_blob_drop_storage_container
         self.azure_blob_content_storage_container = azure_blob_content_storage_container
         self.azure_blob_storage_key = azure_blob_storage_key
+        self.utilities_helper = UtilitiesHelper(azure_blob_storage_account,
+                                                azure_blob_storage_endpoint,
+                                                azure_blob_storage_key)
 
     def write_blob(self, output_container, content, output_filename, folder_set=""):
         """ Function to write a generic blob """
@@ -76,14 +83,11 @@ class Utilities:
 
     def get_filename_and_extension(self, path):
         """ Function to return the file name & type"""
-        # Split the path into base and extension
-        base_name = os.path.basename(path)
-        segments = path.split("/")
-        directory = "/".join(segments[1:-1]) + "/"
-        if directory == "/":
-            directory = ""
-        file_name, file_extension = os.path.splitext(base_name)
-        return file_name, file_extension, directory
+        return self.utilities_helper.get_filename_and_extension(path)
+    
+    def  get_blob_and_sas(self, blob_path):
+        """ Function to retrieve the uri and sas token for a given blob in azure storage"""
+        return self.utilities_helper.get_blob_and_sas(blob_path)
 
     def table_to_html(self, table):
         """ Function to take an output FR table json structure and convert to HTML """
@@ -109,32 +113,7 @@ class Utilities:
         table_html += "</table>"
         return table_html
 
-    def  get_blob_and_sas(self, blob_path):
-        """ Function to retrieve the uri and sas token for a given blob in azure storage"""
-
-        # Get path and file name minus the root container
-        separator = "/"
-        file_path_w_name_no_cont = separator.join(
-            blob_path.split(separator)[1:])
-        
-        container_name = separator.join(
-            blob_path.split(separator)[0:1])
-
-        # Gen SAS token
-        sas_token = generate_blob_sas(
-            account_name=self.azure_blob_storage_account,
-            container_name=container_name,
-            blob_name=file_path_w_name_no_cont,
-            account_key=self.azure_blob_storage_key,
-            permission=BlobSasPermissions(read=True),
-            expiry=datetime.utcnow() + timedelta(hours=1)
-        )
-        source_blob_path = f'{self.azure_blob_storage_endpoint}{blob_path}?{sas_token}'
-        source_blob_path = source_blob_path.replace(" ", "%20")
-        logging.info("Path and SAS token for file in azure storage are now generated \n")
-        return source_blob_path
-
-    def build_document_map_pdf(self, myblob_name, myblob_uri, result, azure_blob_log_storage_container):
+    def build_document_map_pdf(self, myblob_name, myblob_uri, result, azure_blob_log_storage_container, enable_dev_code):
         """ Function to build a json structure representing the paragraphs in a document, 
         including metadata such as section heading, title, page number, etc.
         We construct this map from the Content key/value output of FR, because the paragraphs 
@@ -191,27 +170,24 @@ class Utilities:
                         document_map['content_type'][i] = ContentType.SECTIONHEADING_CHAR
                     document_map['content_type'][end_char] = ContentType.SECTIONHEADING_END
 
+        # store page number metadata by paragraph object
+        page_number_by_paragraph = {}
+        for _, paragraph in enumerate(result["paragraphs"]):
+            start_char = paragraph["spans"][0]["offset"]
+            page_number_by_paragraph[start_char] = paragraph["boundingRegions"][0]["pageNumber"]
+
         # iterate through the content_type and build the document paragraph catalog of content
         # tagging paragraphs with title and section
         main_title = ''
         current_title = ''
         current_section = ''
-        current_paragraph_index = 0
         start_position = 0
         page_number = 0
         for index, item in enumerate(document_map['content_type']):
 
-            # identify the current paragraph being referenced for use in
-            # enriching the document_map metadata
-            if current_paragraph_index <= len(result["paragraphs"])-1:
-                # Check if we have crossed into the next paragraph
-                # note that sometimes FR returns paragraphs out of sequence (based on the offset position), hence we
-                # also indicate a new paragraph of we see this behaviour
-                if index == result["paragraphs"][current_paragraph_index]["spans"][0]["offset"] or (result["paragraphs"][current_paragraph_index-1]["spans"][0]["offset"] > result["paragraphs"][current_paragraph_index]["spans"][0]["offset"]):
-                    # we have reached a new paragraph, so collect its metadata
-                    page_number = result["paragraphs"][current_paragraph_index]["boundingRegions"][0]["pageNumber"]
-                    current_paragraph_index += 1
-            
+            # collect page number metadata
+            page_number = page_number_by_paragraph.get(index, page_number)
+
             match item:
                 case ContentType.TITLE_START | ContentType.SECTIONHEADING_START | ContentType.TEXT_START | ContentType.TABLE_START:
                     start_position = index
@@ -250,102 +226,18 @@ class Utilities:
         del document_map['content_type']
         del document_map['table_index']
 
-        # Output document map to log container
-        json_str = json.dumps(document_map, indent=2)
-        file_name, file_extension, file_directory  = self.get_filename_and_extension(myblob_name)
-        output_filename =  file_name + "_Document_Map" + file_extension + ".json"
-        self.write_blob(azure_blob_log_storage_container, json_str, output_filename, file_directory)
+        if enable_dev_code:
+            # Output document map to log container
+            json_str = json.dumps(document_map, indent=2)
+            file_name, file_extension, file_directory  = self.get_filename_and_extension(myblob_name)
+            output_filename =  file_name + "_Document_Map" + file_extension + ".json"
+            self.write_blob(azure_blob_log_storage_container, json_str, output_filename, file_directory)
 
-        # Output FR result to log container
-        json_str = json.dumps(result, indent=2)
-        output_filename =  file_name + '_FR_Result' + file_extension + ".json"
-        self.write_blob(azure_blob_log_storage_container, json_str, output_filename, file_directory)
+            # Output FR result to log container
+            json_str = json.dumps(result, indent=2)
+            output_filename =  file_name + '_FR_Result' + file_extension + ".json"
+            self.write_blob(azure_blob_log_storage_container, json_str, output_filename, file_directory)
 
-        return document_map
-
-    def build_document_map_html(self, myblob_name, myblob_uri, html_data, azure_blob_log_storage_container):
-        """ Function to build a json structure representing the paragraphs in a document,
-            including metadata such as section heading, title, page number, 
-            real word percentage etc."""
-
-        logging.info("Constructing the JSON structure of the document\n")
-
-        file_name, file_extension, file_directory  = self.get_filename_and_extension(myblob_name)
-
-        soup = BeautifulSoup(html_data, 'lxml')
-
-        # Remove CSS from XLSX
-        if file_extension in ['.xlsx']:
-            for tag in soup():
-                for attribute in ["id", "class", "style"]:
-                    del tag[attribute]
-
-        document_map = {
-            'file_name': myblob_name,
-            'file_uri': myblob_uri,
-            'content': soup.text,
-            "structure": []
-        }
-
-        title = soup.title.string if soup.title else file_name
-        subtitle = ''
-        section = ''
-        page_number = 1
-        tags = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'table'])
-        
-        if not tags:
-            document_map["structure"].append({
-                "type": "text",
-                "text": soup.get_text(strip=True),
-                "title": title,
-                "subtitle": subtitle,
-                "section": section,
-                "page_number": page_number
-                })
-        else:
-            for tag in tags:
-                if tag.name in ['h3', 'h4', 'h5', 'h6']:
-                    section = tag.get_text(strip=True)
-                elif tag.name == 'h2':
-                    subtitle = tag.get_text(strip=True)
-                elif tag.name == 'h1':
-                    title = tag.get_text(strip=True)
-                elif tag.name == 'p' and tag.get_text(strip=True):
-                    document_map["structure"].append({
-                        "type": "text", 
-                        "text": tag.get_text(strip=True),
-                        "title": title,
-                        "subtitle": subtitle,
-                        "section": section,
-                        "page_number": page_number
-                        })
-                elif tag.name == 'table' and tag.get_text(strip=True):
-                    document_map["structure"].append({
-                        "type": "table", 
-                        "text": str(tag),
-                        "title": title,
-                        "subtitle": subtitle,
-                        "section": section,
-                        "page_number": page_number
-                        })
-                    page_number += 1
-                elif tag.get_text(strip=True):
-                    document_map["structure"].append({
-                        "type": "text", 
-                        "text": tag.get_text(strip=True),
-                        "title": title,
-                        "subtitle": subtitle,
-                        "section": section,
-                        "page_number": page_number
-                        })
-
-
-        # Output document map to log container
-        json_str = json.dumps(document_map, indent=2)
-        output_filename =  file_name + "_Document_Map" + file_extension + ".json"
-        self.write_blob(azure_blob_log_storage_container, json_str, output_filename, file_directory)
-
-        logging.info("Constructing the JSON structure of the document complete\n")
         return document_map
 
     def num_tokens_from_string(self, string: str, encoding_name: str) -> int:
@@ -362,14 +254,16 @@ class Utilities:
         token_count = self.num_tokens_from_string(input_text, encoding)
         return token_count
 
-    def write_chunk(self, myblob_name, myblob_uri, file_number, chunk_size, chunk_text, page_list, section_name, title_name, subtitle_name):
+    def write_chunk(self, myblob_name, myblob_uri, file_number, chunk_size, chunk_text, page_list, 
+                    section_name, title_name, subtitle_name, file_class):
         """ Function to write a json chunk to blob"""
         chunk_output = {
             'file_name': myblob_name,
             'file_uri': myblob_uri,
+            'file_class': file_class,
             'processed_datetime': datetime.now().isoformat(),
             'title': title_name,
-            'subtitle_name': subtitle_name,
+            'subtitle': subtitle_name,
             'section': section_name,
             'pages': page_list,
             'token_count': chunk_size,
@@ -377,17 +271,20 @@ class Utilities:
         }
         # Get path and file name minus the root container
         file_name, file_extension, file_directory = self.get_filename_and_extension(myblob_name)
-        # Get the folders to use when creating the new files
-        folder_set = file_directory + file_name + file_extension + "/"
         blob_service_client = BlobServiceClient(
             self.azure_blob_storage_endpoint,
             self.azure_blob_storage_key)
         json_str = json.dumps(chunk_output, indent=2, ensure_ascii=False)
-        output_filename = file_name + f'-{file_number}' + '.json'
         block_blob_client = blob_service_client.get_blob_client(
             container=self.azure_blob_content_storage_container,
-            blob=f'{folder_set}{output_filename}')
+            blob=self.build_chunk_filepath(file_directory, file_name, file_extension, file_number))
         block_blob_client.upload_blob(json_str, overwrite=True)
+
+    def build_chunk_filepath (self, file_directory, file_name, file_extension, file_number):
+        """ Get the folders and filename to use when creating the new file chunks """
+        folder_set = file_directory + file_name + file_extension + "/"
+        output_filename = file_name + f'-{file_number}' + '.json'
+        return f'{folder_set}{output_filename}'
 
     def build_chunks(self, document_map, myblob_name, myblob_uri, chunk_target_size):
         """ Function to build chunk outputs based on the document map """
@@ -402,20 +299,8 @@ class Utilities:
         page_list = []
         chunk_count = 0
 
-        def finalize_chunk():
-            nonlocal chunk_text, chunk_count, chunk_size, file_number, page_list, page_number
-            if chunk_text:  # Only write out if there is text to write
-                self.write_chunk(myblob_name, myblob_uri, file_number,
-                                 chunk_size, chunk_text, page_list,
-                                 previous_section_name, previous_title_name, previous_subtitle_name)
-                chunk_count += 1
-                file_number += 1  # Increment the file/chunk number
-            # Reset the chunk variables
-            chunk_text = ''
-            chunk_size = 0
-            page_list = []
-            page_number = 0  # Reset the page_number for the new chunk
-
+        # iterate over the paragraphs and build a chuck based on a section
+        # and/or title of the document
         for index, paragraph_element in enumerate(document_map['structure']):
             paragraph_size = self.token_count(paragraph_element["text"])
             paragraph_text = paragraph_element["text"]
@@ -423,78 +308,85 @@ class Utilities:
             title_name = paragraph_element["title"]
             subtitle_name = paragraph_element["subtitle"]
 
-            # Handle table paragraphs separately
-            if paragraph_element["type"] == "table":
-                # Check if the table needs to be split into multiple chunks
-                if paragraph_size > chunk_target_size:
-                    # Split the table into chunks with headers
-                    table_chunks = self.chunk_table_with_headers(paragraph_text, chunk_target_size)
-                    for table_chunk in table_chunks:
-                        finalize_chunk()  # Finalize the previous chunk before starting a new one
-                        chunk_text = minify_html.minify(table_chunk)  # Set the current chunk to the table chunk
-                        chunk_size = self.token_count(chunk_text)  # Update the chunk size
-                        finalize_chunk()  # Finalize the current table chunk
-                    continue  # Skip to the next paragraph element
+            #if the collected tokens in the current in-memory chunk + the next paragraph
+            # will be larger than the allowed chunk size prepare to write out the total chunk
+            if (chunk_size + paragraph_size >= chunk_target_size) or section_name != previous_section_name or title_name != previous_title_name or subtitle_name != previous_subtitle_name:
+                # If the current paragraph just by itself is larger than CHUNK_TARGET_SIZE,
+                # then we need to split this up and treat each slice as a new in-memory chunk
+                # that fall under the max size and ensure the first chunk,
+                # which will be added to the current
+                if paragraph_size >= chunk_target_size:
+                    # start by keeping the existing in-memory chunk in front of the large paragraph
+                    # and begin to process it on sentence boundaries to break it down into
+                    # sub-chunks that are below the CHUNK_TARGET_SIZE
+                    sentences = sent_tokenize(chunk_text + paragraph_text)
+                    chunks = []
+                    chunk = ""
+                    for sentence in sentences:
+                        temp_chunk = chunk + " " + sentence if chunk else sentence
+                        if self.token_count(temp_chunk) <= chunk_target_size:
+                            chunk = temp_chunk
+                        else:
+                            chunks.append(chunk)
+                            chunk = sentence
+                    if chunk:
+                        chunks.append(chunk)
 
-            # Check if a new chunk should be started
-            if (chunk_size + paragraph_size >= chunk_target_size) or \
-               (section_name != previous_section_name) or \
-               (title_name != previous_title_name) or \
-               (subtitle_name != previous_subtitle_name):
-                finalize_chunk()
+                    # Now write out each chunk, apart from the last, as this will be less than or
+                    # equal to CHUNK_TARGET_SIZE the last chunk will be processed like
+                    # a regular paragraph
+                    for i, chunk_text_p in enumerate(chunks):
+                        if i < len(chunks) - 1:
+                            # Process all but the last chunk in this large para
+                            self.write_chunk(myblob_name, myblob_uri,
+                                             f"{file_number}.{i}",
+                                             self.token_count(chunk_text_p),
+                                             chunk_text_p, page_list,
+                                             previous_section_name, previous_title_name, previous_subtitle_name, 
+                                             MediaType.TEXT)
+                            chunk_count += 1
+                        else:
+                            # Reset the paragraph token count to just the tokens left in the last
+                            # chunk and leave the remaining text from the large paragraph to be
+                            # combined with the next in the outer loop
+                            paragraph_size = self.token_count(chunk_text_p)
+                            paragraph_text = chunk_text_p
+                            chunk_text = ''
+                else:
+                    # if this para is not large by itself but will put us over the max token count
+                    # or it is a new section, then write out the chunk text we have to this point
+                    self.write_chunk(myblob_name, myblob_uri, file_number,
+                                     chunk_size, chunk_text, page_list,
+                                     previous_section_name, previous_title_name, previous_subtitle_name,
+                                     MediaType.TEXT)
+                    chunk_count += 1
 
-            # Add paragraph to the chunk
-            chunk_text += "\n" + paragraph_text
-            chunk_size += paragraph_size
+                    # reset chunk specific variables
+                    file_number += 1
+                    page_list = []
+                    chunk_text = ''
+                    chunk_size = 0
+                    page_number = 0
+
             if page_number != paragraph_element["page_number"]:
+                # increment page number if necessary
                 page_list.append(paragraph_element["page_number"])
                 page_number = paragraph_element["page_number"]
 
-            # Update previous section, title, and subtitle
+            # add paragraph to the chunk
+            chunk_size = chunk_size + paragraph_size
+            chunk_text = chunk_text + "\n" + paragraph_text
+
+            # If this is the last paragraph then write the chunk
+            if index == len(document_map['structure'])-1:
+                self.write_chunk(myblob_name, myblob_uri, file_number, chunk_size,
+                                 chunk_text, page_list, section_name, title_name, previous_subtitle_name,
+                                 MediaType.TEXT)
+                chunk_count += 1
+
             previous_section_name = section_name
             previous_title_name = title_name
             previous_subtitle_name = subtitle_name
 
-            # Finalize the last chunk after the loop
-            if index == len(document_map['structure']) - 1:
-                finalize_chunk()
-
-        logging.info("Chunking is complete")
+        logging.info("Chunking is complete \n")
         return chunk_count
-    
-    def chunk_table_with_headers(self, table_html, chunk_target_size):
-        soup = BeautifulSoup(table_html, 'html.parser')
-
-        # Check for and extract the thead and tbody, or default to entire table
-        thead = soup.find('thead')
-        tbody = soup.find('tbody') or soup.find('table')
-        rows = soup.find_all('tr') if not tbody else tbody.find_all('tr')
-
-        header_html = f"<table>{minify_html.minify(str(thead))}" if thead else "<table>"
-        
-        # Initialize chunks list and current_chunk with the header
-        current_chunk = header_html
-        chunks = []
-
-        def add_current_chunk():
-            nonlocal current_chunk
-            # Close the table tag for the current chunk and add it to the chunks list
-            if current_chunk.strip() and not current_chunk.endswith("<table>"):
-                current_chunk += '</table>'
-                chunks.append(current_chunk)
-                # Start a new chunk with header if it exists
-                current_chunk = header_html
-
-        for row in rows:
-            # If adding this row to the current chunk exceeds the target size, start a new chunk
-            row_html = minify_html.minify(str(row))
-            if self.token_count(current_chunk + row_html) > chunk_target_size:
-                add_current_chunk()
-
-            # Add the current row to the chunk
-            current_chunk += row_html
-
-        # Add the final chunk if there's any content left
-        add_current_chunk()
-        
-        return chunks

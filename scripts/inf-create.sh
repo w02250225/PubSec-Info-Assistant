@@ -38,11 +38,11 @@ fi
 
 WEB_APP_ENDPOINT_SUFFIX="azurewebsites.net"
 
-if $IS_USGOV_DEPLOYMENT; then
+if [ -n "${IS_USGOV_DEPLOYMENT}" ] && $IS_USGOV_DEPLOYMENT; then
   WEB_APP_ENDPOINT_SUFFIX="azurewebsites.us"
 fi
 
-if $IS_USGOV_DEPLOYMENT && ! $USE_EXISTING_AOAI; then
+if [ -n "${IS_USGOV_DEPLOYMENT}" ] && $IS_USGOV_DEPLOYMENT && ! $USE_EXISTING_AOAI; then
   echo "AOAI doesn't exist in US Gov regions.  Please create AOAI seperately and update the USE_EXISTING_AOAI in the env file. "
   exit 1  
 fi
@@ -154,9 +154,12 @@ declare -A REPLACE_TOKENS=(
     [\${AZURE_OPENAI_SERVICE_NAME}]=${AZURE_OPENAI_SERVICE_NAME}
     [\${AZURE_OPENAI_RESOURCE_GROUP}]=${AZURE_OPENAI_RESOURCE_GROUP}
     [\${CHATGPT_MODEL_DEPLOYMENT_NAME}]=${AZURE_OPENAI_CHATGPT_DEPLOYMENT}
-    [\${AZURE_OPENAI_EMBEDDING_MODEL}]=${AZURE_OPENAI_EMBEDDING_MODEL}
+    [\${AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME}]=${AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME}
+    [\${AZURE_OPENAI_EMBEDDINGS_MODEL_NAME}]=${AZURE_OPENAI_EMBEDDINGS_MODEL_NAME}
+    [\${AZURE_OPENAI_EMBEDDINGS_MODEL_VERSION}]=${AZURE_OPENAI_EMBEDDINGS_MODEL_VERSION}
     [\${CHATGPT_MODEL_MODEL_NAME}]=${AZURE_OPENAI_CHATGPT_MODEL_NAME}
     [\${CHATGPT_MODEL_VERSION}]=${AZURE_OPENAI_CHATGPT_MODEL_VERSION}
+    [\${CHATGPT_MODEL_CAPACITY}]=${AZURE_OPENAI_CHATGPT_MODEL_CAPACITY}
     [\${USE_EXISTING_AOAI}]=${USE_EXISTING_AOAI}
     [\${AZURE_OPENAI_SERVICE_KEY}]=${AZURE_OPENAI_SERVICE_KEY}
     [\${BUILD_NUMBER}]=${BUILD_NUMBER}
@@ -171,6 +174,10 @@ declare -A REPLACE_TOKENS=(
     [\${SUBSCRIPTION_ID}]=${SUBSCRIPTION_ID}
     [\${AZURE_AD_MGMT_APP_SECRET}]=${AZURE_AD_MGMT_APP_SECRET}
     [\${CHAT_WARNING_BANNER_TEXT}]=${CHAT_WARNING_BANNER_TEXT}
+    [\${USE_AZURE_OPENAI_EMBEDDINGS}]=${USE_AZURE_OPENAI_EMBEDDINGS}
+    [\${OPEN_SOURCE_EMBEDDING_MODEL_VECTOR_SIZE}]=${OPEN_SOURCE_EMBEDDING_MODEL_VECTOR_SIZE}
+    [\${OPEN_SOURCE_EMBEDDING_MODEL}]=${OPEN_SOURCE_EMBEDDING_MODEL}
+    [\${APPLICATION_TITLE}]=${APPLICATION_TITLE}
 )
 parameter_json=$(cat "$DIR/../infra/main.parameters.json.template")
 for token in "${!REPLACE_TOKENS[@]}"
@@ -182,23 +189,23 @@ echo $parameter_json > $DIR/../infra/main.parameters.json
 #make sure bicep is always the latest version
 az bicep upgrade
 
-#deploy bicep
-az deployment sub what-if --location $LOCATION --template-file main.bicep --parameters main.parameters.json --name $RG_NAME
-if [ -z $SKIP_PLAN_CHECK ]
-    then
-        printInfo "Are you happy with the plan, would you like to apply? (y/N)"
-        read -r answer
-        answer=${answer^^}
+# #deploy bicep
+# az deployment sub what-if --location $LOCATION --template-file main.bicep --parameters main.parameters.json --name $RG_NAME
+# if [ -z $SKIP_PLAN_CHECK ]
+#     then
+#         printInfo "Are you happy with the plan, would you like to apply? (y/N)"
+#         read -r answer
+#         answer=${answer^^}
         
-        if [[ "$answer" != "Y" ]];
-        then
-            printInfo "Exiting: User did not wish to apply infrastructure changes." 
-            exit 1
-        fi
-    fi
-results=$(az deployment sub create --location $LOCATION --template-file main.bicep --parameters main.parameters.json --name $RG_NAME)
+#         if [[ "$answer" != "Y" ]];
+#         then
+#             printInfo "Exiting: User did not wish to apply infrastructure changes." 
+#             exit 1
+#         fi
+#     fi
+# results=$(az deployment sub create --location $LOCATION --template-file main.bicep --parameters main.parameters.json --name $RG_NAME)
 
-#save deployment output
-printInfo "Writing output to infra_output.json"
-pushd "$DIR/.."
-echo $results > infra_output.json
+# #save deployment output
+# printInfo "Writing output to infra_output.json"
+# pushd "$DIR/.."
+# echo $results > infra_output.json

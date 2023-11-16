@@ -386,3 +386,6 @@ app/backend/shared_code
 packages-microsoft*
 
 scripts/ip_addr.txt
+
+# docker container build artifacts
+app/enrichment/shared_code

@@ -95,33 +95,34 @@ resource appService 'Microsoft.Web/sites@2022-09-01' = {
     ]
   }
 
-  resource authSettingsV2 'config' = {
-    name: 'authsettingsV2'
-    properties: {
-      globalValidation: {
-        unauthenticatedClientAction: 'RedirectToLoginPage'
-        redirectToProvider: 'AzureActiveDirectory'
-        requireAuthentication: true
-      }
-      identityProviders: {
-        azureActiveDirectory: {
-          enabled: true
-          registration: {
-            openIdIssuer: 'https://sts.windows.net/${tenantId}/v2.0'
-            clientId: aadClientId
-          }
-          validation: {
-            allowedAudiences: [
-              'api://${name}'
-            ]
-            defaultAuthorizationPolicy: {
-              allowedApplications: []
-            }
-          }
-        }
-      }
-    }
-  }
+// Auth handled in app
+//   resource authSettingsV2 'config' = {
+//     name: 'authsettingsV2'
+//     properties: {
+//       globalValidation: {
+//         unauthenticatedClientAction: 'RedirectToLoginPage'
+//         redirectToProvider: 'AzureActiveDirectory'
+//         requireAuthentication: true
+//       }
+//       identityProviders: {
+//         azureActiveDirectory: {
+//           enabled: true
+//           registration: {
+//             openIdIssuer: 'https://sts.windows.net/${tenantId}/v2.0'
+//             clientId: aadClientId
+//           }
+//           validation: {
+//             allowedAudiences: [
+//               'api://${name}'
+//             ]
+//             defaultAuthorizationPolicy: {
+//               allowedApplications: []
+//             }
+//           }
+//         }
+//       }
+//     }
+//   }
 }
 
 resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = if (!(empty(keyVaultName))) {
@@ -154,6 +155,14 @@ resource diagnosticLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
           enabled: true 
         }
       }
+      {
+        category: 'AppServiceConsoleLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: true 
+        }
+      }        
     ]
     metrics: [
       {

@@ -3,37 +3,45 @@
 
 import logging
 import os
+import re
 
 from sentence_transformers import SentenceTransformer
 
 
 def load_models():
-    available_models = []
+    model_names = os.getenv(
+        "TARGET_EMBEDDINGS_MODEL", "all-mpnet-base-v2|paraphrase-multilingual-MiniLM-L12-v2|BAAI/bge-small-en-v1.5"
+    )
+    print("Downloading models: ", model_names)
 
-    for dirpath, dirnames, filenames in os.walk("models"):
-        # Check if the current directory contains a file named "config.json"
-        if "pytorch_model.bin" in filenames:
-            # If it does, print the path to the directory
-            available_models.append(dirpath)
+    models_to_download = model_names.split("|")
 
-    # Load all models
+    models_path = "models/"
     models = {}
-
-    for model_path in available_models:
-        model = model_path.split("/")[-1]
-        models[model] = SentenceTransformer(model_path)
-        logging.debug(f"Loaded model {model}")
-
-    # Create model info
     model_info = {}
 
-    for model, model_obj in models.items():
-        model_info_entry = {
-            "model": model,
-            "max_seq_length": model_obj.get_max_seq_length(),
-            "vector_size": model_obj.get_sentence_embedding_dimension(),
-        }
+    try:
+        for model_name in models_to_download:
+            try:
+                for model_name in models_to_download:
+                    # Ignore AOAI models as they are downloaded elsewhere
+                    if model_name.startswith("azure-openai"):
+                        continue
+                    model = SentenceTransformer(model_name)
+                    sanitized_model_name = re.sub(r'[^a-zA-Z0-9_\-.]', '_', model_name)
+                    model.save(os.path.join(models_path,sanitized_model_name))
+                    models[sanitized_model_name] = model
+                    logging.debug(f"Loaded model {model_name}")
 
-        model_info[model] = model_info_entry
+                    model_info_entry = {
+                        "model": sanitized_model_name,
+                        "vector_size": model.get_sentence_embedding_dimension(),
+                    }
+                    model_info[sanitized_model_name] = model_info_entry
+
+            except Exception:
+                pass
+    except Exception as error:
+        logging.error(f"Failed to retrieve models - {str(error)}")
 
     return models, model_info
