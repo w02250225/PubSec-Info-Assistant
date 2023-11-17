@@ -12,8 +12,7 @@ import azure.functions as func
 from azure.storage.queue import QueueClient, TextBase64EncodePolicy
 from shared_code.status_log import StatusLog, State, StatusClassification
 from shared_code.utilities import Utilities, MediaType
-import mammoth
-import pandas as pd
+import minify_html
 
 def string_to_bool(s):
     return s.lower() == 'true'
@@ -105,6 +104,9 @@ def PartitionFile(file_extension: str, file_url: str):
         elif file_extension == '.xlsx':
             from unstructured.partition.xlsx import partition_xlsx
             elements = partition_xlsx(file=bytes_io)
+            # Minify the HTML
+            for element in elements:
+                element.metadata.text_as_html = minify_html.minify(element.metadata.text_as_html)
 
         elif file_extension == '.xml':
             from unstructured.partition.xml import partition_xml
@@ -191,7 +193,7 @@ def main(msg: func.QueueMessage) -> None:
 
         # submit message to the enrichment queue to continue processing
         queue_client = QueueClient.from_connection_string(azure_blob_connection_string, queue_name=text_enrichment_queue, message_encode_policy=TextBase64EncodePolicy())
-        message_json["enrichment_queued_count"] = 1
+        message_json["text_enrichment_queued_count"] = 1
         message_string = json.dumps(message_json)
         queue_client.send_message(message_string)
         statusLog.upsert_document(blob_name, f"{function_name} - message sent to enrichment queue", StatusClassification.DEBUG, State.QUEUED)
