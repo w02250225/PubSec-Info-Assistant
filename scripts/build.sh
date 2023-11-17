@@ -43,7 +43,7 @@ echo -e "\n"
 
 # Build the Azure Functions
 cd ${FUNCTIONS_ROOT_PATH}
-zip -r ${BINARIES_OUTPUT_PATH}/functions.zip . 2>&1 | pv > /dev/null
+zip -r ${BINARIES_OUTPUT_PATH}/functions.zip . -x ".venv/*" 2>&1 | pv > /dev/null
 echo "Successfully zipped functions"
 echo -e "\n"
 
