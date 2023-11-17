@@ -20,4 +20,4 @@ pandas == 2.1.3
 pyoo == 1.4
 tenacity == 8.2.3
 tiktoken == 0.5.1
-unstructured[csv,doc,docx,email,html,md,msg,ppt,pptx,text,xlsx,xml] == 0.10.29
+unstructured[csv,doc,docx,email,html,md,msg,ppt,pptx,text,xlsx,xml] @ git+https://github.com/Unstructured-IO/unstructured@7a741c9ae6b25b4f308bd602c2178bbc41ddf2d5
