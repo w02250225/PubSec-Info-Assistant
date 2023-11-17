@@ -199,13 +199,13 @@ Always include citations if you reference the source documents. Use square brack
                     'Content-Type': 'application/json',
                 }
 
-            response = requests.post(url, json=data,headers=headers,timeout=60)
+            response = requests.post(url, json=data, headers=headers, timeout=60)
             if response.status_code == 200:
                 response_data = response.json()
                 embedded_query_vector =response_data.get('data')
             else:
-                logging.error(f"Error generating embedding:: {response.status_code}")
-                raise Exception('Error generating embedding:', response.status_code)
+                logging.error(f"Error generating embedding: {response.text}")
+                raise Exception('Error generating embedding:', response.text)
 
             #vector set up for pure vector search & Hybrid search & Hybrid semantic
             vector = RawVectorQuery(vector=embedded_query_vector, k=top, fields="contentVector")
@@ -243,41 +243,24 @@ Always include citations if you reference the source documents. Use square brack
                         filter=search_filter
                 )
 
-                citation_lookup = {}  # dict of "FileX" moniker to the actual file name
-                results = []  # list of results to be used in the prompt
-                data_points = []  # list of data points to be used in the response
+            citation_lookup = {}  # dict of "FileX" moniker to the actual file name
+            results = []  # list of results to be used in the prompt
+            data_points = []  # list of data points to be used in the response
 
             for idx, doc in enumerate(r):  # for each document in the search results
-                if use_semantic_captions:
-                    # if using semantic captions, use the captions instead of the content
-                    # include the "FileX" moniker in the prompt, and the actual file name in the response
-                    results.append(
-                        f"File{idx} "
-                        + "| "
-                        + nonewlines(" . ".join([c.text for c in doc["@search.captions"]]))
+                # include the "FileX" moniker in the prompt, and the actual file name in the response
+                results.append(
+                    f"File{idx} " + "| " + nonewlines(doc[self.content_field])
+                )
+                data_points.append(
+                "/".join(urllib.parse.unquote(doc[self.source_file_field]).split("/")[4:]
+                    ) + "| " + nonewlines(doc[self.content_field])
                     )
-                    data_points.append(
-                        "/".join(doc[self.source_page_field].split("/")[4:])
-                        + "| "
-                        + nonewlines(" . ".join([c.text for c in doc["@search.captions"]]))
-                    )
-                else:
-                    # if not using semantic captions, use the content instead of the captions
-                    # include the "FileX" moniker in the prompt, and the actual file name in the response
-                    results.append(
-                        f"File{idx} " + "| " + nonewlines(doc[self.content_field])
-                    )
-                    data_points.append(
-                        "/".join(
-                            urllib.parse.unquote(doc[self.source_page_field]).split("/")[4:]
-                        )
-                        + "| "
-                        + nonewlines(doc[self.content_field])
-                    )
-                    # uncomment to debug size of each search result content_field
-                    # print(f"File{idx}: ", self.num_tokens_from_string(f"File{idx} " + "| " + nonewlines(doc[self.content_field]), "cl100k_base"))
-                # add the "FileX" moniker and full file name to the citation lookup
+                # uncomment to debug size of each search result content_field
+                # print(f"File{idx}: ", self.num_tokens_from_string(f"File{idx} " + /
+                #  "| " + nonewlines(doc[self.content_field]), "cl100k_base"))
 
+                # add the "FileX" moniker and full file name to the citation lookup
                 citation_lookup[f"File{idx}"] = {
                     "citation": urllib.parse.unquote("https://" + doc[self.source_file_field].split("/")[2] + f"/{self.content_storage_container}/" + doc[self.chunk_file_field]),
                     "source_path": self.get_source_file_with_sas(doc[self.source_file_field]),
@@ -379,7 +362,8 @@ Always include citations if you reference the source documents. Use square brack
             )
 
             msg_to_display = '\n\n'.join([str(message) for message in messages])
-
+            answer = urllib.parse.unquote(chat_completion.choices[0].message.content)
+            thoughts = f"Searched for:<br>{generated_query}<br><br>Conversations:<br>" + msg_to_display.replace('\n', '<br>')
             completion_tokens = chat_completion.usage.completion_tokens
             prompt_tokens = chat_completion.usage.prompt_tokens
             total_tokens = chat_completion.usage.total_tokens
@@ -387,11 +371,11 @@ Always include citations if you reference the source documents. Use square brack
         except Exception as error:
             return {
             "error_message": str(error),
-            "generated_query" : generated_query if generated_query else "",
-            "data_points": data_points if data_points else [],
-            "answer": answer if answer else "",
-            "thoughts":  thoughts if thoughts else "",
-            "citation_lookup": citation_lookup if citation_lookup else {},
+            "generated_query" : generated_query,
+            "data_points": data_points,
+            "answer": answer,
+            "thoughts":  thoughts,
+            "citation_lookup": citation_lookup,
             "token_usage": {
                 "completion_tokens" : completion_tokens,
                 "prompt_tokens" : prompt_tokens,
@@ -412,7 +396,6 @@ Always include citations if you reference the source documents. Use square brack
             }
         }
 
-    #Aparmar. Custom method to construct Chat History as opposed to single string of chat History.
     def get_messages_from_history(
         self,
         system_prompt: str,
