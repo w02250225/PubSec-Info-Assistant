@@ -306,7 +306,7 @@ const Chat = () => {
             >
                         <SpinButton
                             className={styles.chatSettingsSeparator}
-                            label="Retrieve this many documents from search:"
+                            label="Documents to retrieve from search:"
                             min={1}
                             max={50}
                             defaultValue={retrieveCount.toString()}
@@ -324,7 +324,7 @@ const Chat = () => {
                         <ResponseTempSlider className={styles.chatSettingsSeparator} onChange={setResponseTemp} value={responseTemp}/>
                         <TopPSlider className={styles.chatSettingsSeparator} onChange={setTopP} value={topP} />
                         <PromptOverride className={styles.chatSettingsSeparator} defaultValue={promptTemplate} onChange={onPromptTemplateChange}/>
-                        <Separator className={styles.chatSettingsSeparator}>Filter Search Results by</Separator>
+                        <Separator className={styles.chatSettingsSeparator}>Filter Search Results</Separator>
                         <FolderPicker allowFolderCreation={false} onSelectedKeyChange={onSelectedKeyChanged} preSelectedKeys={selectedFolders}/>
                         <TagPickerInline allowNewTags={false} onSelectedTagsChange={onSelectedTagsChange} preSelectedTags={selectedTags}/>
             </Panel>

@@ -2,8 +2,7 @@
 // Licensed under the MIT license.
 import { useState, useEffect } from 'react';
 import { TagPicker, ITag, IBasePickerSuggestionsProps} from '@fluentui/react/lib/Pickers';
-import { TooltipHost,
-  ITooltipHostStyles} from "@fluentui/react";
+import { Label, TooltipHost, ITooltipHostStyles} from "@fluentui/react";
 import { Info16Regular } from '@fluentui/react-icons';
 import { mergeStyles } from '@fluentui/react/lib/Styling';
 import { useId } from '@fluentui/react-hooks';
@@ -128,7 +127,7 @@ export const TagPickerInline = ({allowNewTags, onSelectedTagsChange, preSelected
       <div className={styles.tagArea}>
         <div className={styles.tagSelection}>
           <div className={allowAddNew ? styles.rootClass : styles.rootClassFilter}>
-            <label htmlFor={pickerId}>Tags</label>
+            <Label htmlFor={pickerId}>Tags</Label>
             <TagPicker
                 className={styles.tagPicker}
                 removeButtonAriaLabel="Remove"

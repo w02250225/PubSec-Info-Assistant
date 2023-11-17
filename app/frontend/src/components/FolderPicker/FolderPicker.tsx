@@ -196,7 +196,7 @@ export const FolderPicker = ({allowFolderCreation, onSelectedKeyChange, preSelec
                 <ComboBox
                     multiSelect={allowNewFolders? false : true}
                     selectedKey={selectedKeys}
-                    label={allowNewFolders? "Folder Selection" : "Folder Selection (Select multiple folders)"}
+                    label="Folder Selection"
                     options={options}
                     onChange={onChange}
                     styles={comboBoxStyles}
