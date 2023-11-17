@@ -24,13 +24,11 @@ if [ "$OLD_IP_ADDR" != "$CURR_IP_ADDR" ]; then
     az cognitiveservices account network-rule add --name CADISOPENAIAZS01 --resource-group RGDOPENAIAZS01 --ip-address $CURR_IP_ADDR
 fi
 
-#IP_ADDR=$(curl -s ifconfig.me)/32
+az webapp config access-restriction remove -g rgdsibinfoasstazs01 -n infoasst-web-kr839 --rule-name Codespace
+az webapp config access-restriction add -g rgdsibinfoasstazs01 -n infoasst-web-kr839 --rule-name Codespace --action Allow --ip-address $CURR_IP_ADDR --priority 250
 
-#az webapp config access-restriction remove -g rgdsibinfoasstazs01 -n infoasst-web-kr839 --rule-name Codespace
-#az webapp config access-restriction add -g rgdsibinfoasstazs01 -n infoasst-web-kr839 --rule-name Codespace --action Allow --ip-address $IP_ADDR --priority 250
+az webapp config access-restriction remove -g rgdsibinfoasstazs01 -n infoasst-web-gpt4-kr839 --rule-name Codespace
+az webapp config access-restriction add -g rgdsibinfoasstazs01 -n infoasst-web-gpt4-kr839 --rule-name Codespace --action Allow --ip-address $CURR_IP_ADDR --priority 250
 
-#az webapp config access-restriction remove -g rgdsibinfoasstazs01 -n infoasst-web-gpt4-kr839 --rule-name Codespace
-#az webapp config access-restriction add -g rgdsibinfoasstazs01 -n infoasst-web-gpt4-kr839 --rule-name Codespace --action Allow --ip-address $IP_ADDR --priority 250
-
-#az webapp config access-restriction remove -g rgdsibinfoasstazs01 -n infoasst-enrichmentweb-kr839 --rule-name Codespace
-#az webapp config access-restriction add -g rgdsibinfoasstazs01 -n infoasst-enrichmentweb-kr839 --rule-name Codespace --action Allow --ip-address $IP_ADDR --priority 250
+az webapp config access-restriction remove -g rgdsibinfoasstazs01 -n infoasst-enrichmentweb-kr839 --rule-name Codespace
+az webapp config access-restriction add -g rgdsibinfoasstazs01 -n infoasst-enrichmentweb-kr839 --rule-name Codespace --action Allow --ip-address $CURR_IP_ADDR --priority 250
