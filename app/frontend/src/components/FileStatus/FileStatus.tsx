@@ -40,6 +40,10 @@ interface Props {
 export const FileStatus = ({ className }: Props) => {
     const [selectedTimeFrameItem, setSelectedTimeFrameItem] = useState<IDropdownOption>();
     const [selectedFileStateItem, setSelectedFileStateItem] = useState<IDropdownOption>();
+    const [selectedFolderItem, setSelectedFolderItem] = useState<IDropdownOption>();
+
+    const [dropdownFolderOptions, setDropdownFolderOptions] = useState<IDropdownOption[]>([]);
+    
     const [files, setFiles] = useState<IDocument[]>();
     const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -49,6 +53,10 @@ export const FileStatus = ({ className }: Props) => {
 
     const onFileStateChange = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption<any> | undefined): void => {
         setSelectedFileStateItem(item);
+    };
+
+    const onFolderChange = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption<any> | undefined): void => {
+        setSelectedFolderItem(item);
     };
 
     const onFilesSorted = (items: IDocument[]): void => {
@@ -81,10 +89,25 @@ export const FileStatus = ({ className }: Props) => {
 
         const request: GetUploadStatusRequest = {
             timeframe: timeframe,
-            state: selectedFileStateItem?.key == undefined ? FileState.All : selectedFileStateItem?.key as FileState
+            state: selectedFileStateItem?.key == undefined ? FileState.All : selectedFileStateItem?.key as FileState,
+            folder_name: selectedFolderItem ? selectedFolderItem.key as string : "ALL"
         }
         const response = await getAllUploadStatus(request);
         const list = convertStatusToItems(response.statuses);
+        
+        // Filter out empty folder names and create dropdown options
+        const folderDropdownOptions = list.reduce<IDropdownOption[]>((acc, item) => {
+            // Check if folder_name is defined and is a string before trimming
+            const folderName = item.folder_name && typeof item.folder_name === 'string' ? item.folder_name.trim() : '';
+        
+            if (folderName && !acc.some(option => option.key === folderName)) {
+                acc.push({ key: folderName, text: folderName });
+            }
+            return acc;
+        }, [{ key: 'ALL', text: 'All' }]); // Add an "All" option
+        
+        setDropdownFolderOptions(folderDropdownOptions);
+        
         setIsLoading(false);
         setFiles(list);
     }
@@ -98,6 +121,8 @@ export const FileStatus = ({ className }: Props) => {
                 items.push({
                     key: fileList[i].id,
                     name: fileList[i].file_name,
+                    file_path: fileList[i].file_path,
+                    folder_name: fileList[i].folder_name,
                     iconName: FILE_ICONS[fileExtension.toLowerCase() || 'txt'],
                     fileType: fileExtension,
                     state: fileList[i].state,
@@ -144,7 +169,7 @@ export const FileStatus = ({ className }: Props) => {
     // Refresh file list on filter change
     useEffect(() => {
         onGetStatusClick();
-    }, [selectedTimeFrameItem, selectedFileStateItem]);
+    }, [selectedTimeFrameItem, selectedFileStateItem, selectedFolderItem]);
 
     return (
         <div className={styles.container}>
@@ -160,12 +185,21 @@ export const FileStatus = ({ className }: Props) => {
                 />
             <Dropdown
                     label="File State:"
-                    defaultSelectedKey={'ALL'}
                     onChange={onFileStateChange}
                     placeholder="Select file states"
                     options={dropdownFileStateOptions}
                     styles={dropdownFileStateStyles}
                     aria-label="file state options for file statuses to be displayed"
+                />
+            <Dropdown
+                        label="Folder:"
+                        defaultSelectedKey={'ALL'}
+                        selectedKey={selectedFolderItem ? selectedFolderItem.key : undefined}
+                        onChange={onFolderChange}
+                        placeholder="Select folder"
+                        options={dropdownFolderOptions}
+                        styles={dropdownFileStateStyles}
+                        aria-label="folder name options for file statuses to be displayed"
                 />
             <div className={styles.refresharea} onClick={onGetStatusClick} aria-label="Refresh displayed file statuses">
                 <ArrowClockwise24Filled className={styles.refreshicon} />

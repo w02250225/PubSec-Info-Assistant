@@ -11,6 +11,8 @@ import styles from "./DocumentsDetailList.module.css";
 export interface IDocument {
     key: string;
     name: string;
+    file_path: string;
+    folder_name: string;
     value: string;
     iconName: string;
     fileType: string;
@@ -55,7 +57,7 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
     }
 
     function viewFile(item: any): string {
-        return `${window.location.origin}/#/ViewDocument?documentName=${encodeURIComponent(item.name)}`;
+        return `${window.location.origin}/#/ViewDocument?documentName=${encodeURIComponent(item.folder_name)}/${encodeURIComponent(item.name)}`;
     }
 
     const [columns, setColumns] = useState<IColumn[]> ([
@@ -99,6 +101,21 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
         },
         {
             key: 'column3',
+            name: 'Folder',
+            fieldName: 'folder_name',
+            minWidth: 100,
+            maxWidth: 200,
+            isRowHeader: true,
+            isResizable: true,
+            ariaLabel: 'Folder name',
+            sortAscendingAriaLabel: 'Sorted A to Z',
+            sortDescendingAriaLabel: 'Sorted Z to A',
+            onColumnClick: onColumnClick,
+            data: 'string',
+            isPadded: true,
+        },
+        {
+            key: 'column4',
             name: 'State',
             fieldName: 'state',
             minWidth: 70,
@@ -115,7 +132,7 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
             isPadded: true,
         },
         {
-            key: 'column4',
+            key: 'column5',
             name: 'Submitted On',
             fieldName: 'upload_timestamp',
             minWidth: 90,
@@ -131,7 +148,7 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
             isPadded: true,
         },
         {
-            key: 'column5',
+            key: 'column6',
             name: 'Last Updated',
             fieldName: 'modified_timestamp',
             minWidth: 90,

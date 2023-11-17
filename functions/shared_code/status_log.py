@@ -58,7 +58,7 @@ class StatusLog:
         if self._container_name not in [container['id'] for container
                                         in self.database.list_containers()]:
             self.container = self.database.create_container(id=self._container_name,
-                partition_key=PartitionKey(path="/file_name"))
+                partition_key=PartitionKey(path="/file_path"))
 
     def encode_document_id(self, document_id):
         """ encode a path/file name to remove unsafe chars for a cosmos db id """
@@ -95,17 +95,19 @@ class StatusLog:
 
 
     def read_files_status_by_timeframe(self, 
-                       within_n_hours: int,
-                       state: State = State.ALL
+                       within_n_hours: int,                       
+                       state: State = State.ALL,
+                       folder_name: str = "ALL"
                        ):
         """ 
         Function to issue a query and return resulting docs          
         args
-            within_n_hours - integer representing from how many minutes ago to return docs for
+            within_n_hours - integer representing from how many hours ago to return docs for
+            folder_name - return docs within this folder
         """
 
-        query_string = "SELECT c.id,  c.file_path, c.file_name, c.state, \
-            c.start_timestamp, c.state_description, c.state_timestamp \
+        query_string = "SELECT c.id, c.file_path, c.file_name, c.folder_name, \
+            c.state, c.start_timestamp, c.state_description, c.state_timestamp \
             FROM c"
 
         conditions = []    
@@ -116,6 +118,9 @@ class StatusLog:
 
         if state != State.ALL:
             conditions.append(f"c.state = '{state.value}'")
+
+        if folder_name != 'ALL':
+            conditions.append(f"c.folder_name = '{folder_name}'")
 
         if conditions:
             query_string += " WHERE " + " AND ".join(conditions)
@@ -134,6 +139,8 @@ class StatusLog:
         """ Function to upsert a status item for a specified id """
         base_name = os.path.basename(document_path)
         document_id = self.encode_document_id(document_path)
+        document_path_parts = document_path.split('/')
+        folder_name = document_path_parts[1] if len(document_path_parts) > 2 else None
 
         # add status to standard logger
         logging.info(f"{status} DocumentID - {document_id}")
@@ -177,6 +184,7 @@ class StatusLog:
                 "id": document_id,
                 "file_path": document_path,
                 "file_name": base_name,
+                "folder_name" : folder_name,
                 "state": str(state.value),
                 "start_timestamp": str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
                 "state_description": "",
@@ -195,6 +203,7 @@ class StatusLog:
                 "id": document_id,
                 "file_path": document_path,
                 "file_name": base_name,
+                "folder_name" : folder_name,
                 "state": str(state.value),
                 "start_timestamp": str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
                 "state_description": "",

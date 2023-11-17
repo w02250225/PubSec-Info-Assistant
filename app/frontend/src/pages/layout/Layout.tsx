@@ -3,7 +3,7 @@
 
 import { Outlet, NavLink, Link } from "react-router-dom";
 
-import { WarningBanner } from "../../components/WarningBanner/WarningBanner";
+// import { WarningBanner } from "../../components/WarningBanner/WarningBanner";
 import qtlogo from "../../assets/qt-logo.png";
 
 import styles from "./Layout.module.css";
@@ -13,7 +13,7 @@ const Layout = () => {
     return (
         <div className={styles.layout}>
             <header className={styles.header} role={"banner"}>
-                <WarningBanner />
+                {/* <WarningBanner /> */}
                 <div className={styles.headerContainer}>
                     <div className={styles.headerTitleContainer}>
                         <img src={qtlogo} className={styles.headerLogo} />
@@ -47,7 +47,7 @@ const Layout = () => {
             <Outlet />
 
             <footer>
-                <WarningBanner />
+                {/* <WarningBanner /> */}
             </footer>
         </div>
     );

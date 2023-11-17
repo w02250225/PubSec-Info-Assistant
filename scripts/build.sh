@@ -53,6 +53,6 @@ mkdir -p ./shared_code
 cp  ../../functions/shared_code/status_log.py ./shared_code
 cp  ../../functions/shared_code/utilities_helper.py ./shared_code
 cp  ../../functions/shared_code/tags_helper.py ./shared_code
-zip -r ${BINARIES_OUTPUT_PATH}/enrichment.zip . -x "models/*" @ 2>&1 | pv > /dev/null
+zip -r ${BINARIES_OUTPUT_PATH}/enrichment.zip . -x "models/*" -x ".venv/*" @ 2>&1 | pv > /dev/null
 echo "Successfully zipped enrichment app"
 echo -e "\n"

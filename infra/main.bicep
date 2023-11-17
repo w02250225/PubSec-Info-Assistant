@@ -543,7 +543,7 @@ module cosmoslogdb 'core/db/cosmosdb.bicep' = {
     tags: tags
     databaseName: 'statusdb'
     containerName: 'statuscontainer'
-    partitionKeyPath: ['/file_name']
+    partitionKeyPath: ['/file_path']
     partitionKeyVersion: 1
   }
 }
@@ -557,7 +557,7 @@ module cosmostagdb 'core/db/cosmosdb.bicep' = {
     tags: tags
     databaseName: 'tagdb'
     containerName: 'tagcontainer'
-    partitionKeyPath: ['/file_name']
+    partitionKeyPath: ['/file_path']
     partitionKeyVersion: 1
   }
   dependsOn: [cosmoslogdb] // Cosmos doesn't like parallel deployments

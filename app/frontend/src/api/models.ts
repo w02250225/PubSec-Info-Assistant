@@ -76,6 +76,7 @@ export type FileUploadBasicStatus = {
     id: string;
     file_path: string;
     file_name: string;
+    folder_name: string;
     state: string;
     start_timestamp: string;
     state_description: string;
@@ -88,7 +89,8 @@ export type AllFilesUploadStatus = {
 
 export type GetUploadStatusRequest = {
     timeframe: number;
-    state: FileState
+    state: FileState;
+    folder_name: string;
 }
 
 

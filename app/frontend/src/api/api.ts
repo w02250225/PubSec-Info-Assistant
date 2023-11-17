@@ -160,14 +160,15 @@ export async function getBlobUrl(filename: string): Promise<string> {
 }
 
 export async function getAllUploadStatus(options: GetUploadStatusRequest): Promise<AllFilesUploadStatus> {
-    const response = await fetch("/getalluploadstatus", {
+    const response = await fetch("/getAllUploadStatus", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
             timeframe: options.timeframe,
-            state: options.state as string
+            state: options.state as string,
+            folder_name: options.folder_name
         })
     });
 
@@ -180,7 +181,7 @@ export async function getAllUploadStatus(options: GetUploadStatusRequest): Promi
 }
 
 export async function logStatus(status_log_entry: StatusLogEntry): Promise<StatusLogResponse> {
-    var response = await fetch("/logstatus", {
+    var response = await fetch("/logStatus", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -233,7 +234,7 @@ export async function getWarningBanner(): Promise<GetWarningBanner> {
 }
 
 export async function getCitationObj(citation: string): Promise<ActiveCitation> {
-    const response = await fetch(`/getcitation`, {
+    const response = await fetch(`/getCitation`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -269,7 +270,7 @@ export async function getApplicationTitle(): Promise<ApplicationTitle> {
 }
 
 export async function getAllTags(): Promise<GetTagsResponse> {
-    const response = await fetch("/getalltags", {
+    const response = await fetch("/getAllTags", {
         method: "GET",
         headers: {
             "Content-Type": "application/json"
