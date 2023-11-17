@@ -212,15 +212,15 @@ Always include citations if you reference the source documents. Use square brack
 
             #Create a filter for the search query
             if (folder_filter != "") & (folder_filter != "All"):
-                search_filter = f"search.in(folder, '{folder_filter}')"
+                search_filter = f"search.in(folder, '{folder_filter}', ',')"
             else:
                 search_filter = None
             if tags_filter != "" :
                 quoted_tags_filter = tags_filter.replace(",","','")
                 if search_filter is not None:
-                    search_filter = search_filter + f" and tags/any(t: search.in(t, '{quoted_tags_filter}'))"
+                    search_filter = search_filter + f" and tags/any(t: search.in(t, '{quoted_tags_filter}', ','))"
                 else:
-                    search_filter = f"tags/any(t: search.in(t, '{quoted_tags_filter}'))"
+                    search_filter = f"tags/any(t: search.in(t, '{quoted_tags_filter}', ','))"
         
             if (not self.is_gov_cloud_deployment and overrides.get("semantic_ranker")):
                 r = self.search_client.search(
