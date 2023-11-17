@@ -181,7 +181,7 @@ else:
     if USE_AZURE_OPENAI_EMBEDDINGS:
         embedding_deployment = openai_mgmt_client.deployments.get(
             resource_group_name=AZURE_OPENAI_RESOURCE_GROUP,
-            account_name=AZURE_OPENAI_SERVICE,
+            account_name=AZURE_OPENAI_ACCOUNT_NAME,
             deployment_name=EMBEDDING_DEPLOYMENT_NAME)
 
         embedding_model_name = embedding_deployment.properties.model.name
