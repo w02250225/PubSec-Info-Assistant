@@ -382,21 +382,22 @@ def get_blob_sas():
     return jsonify({"url": f"{BLOB_CLIENT.url}{AZURE_BLOB_UPLOAD_CONTAINER}/{file_name}?{sas_token}"})
 
 
-@app.route("/getalluploadstatus", methods=["POST"])
+@app.route("/getAllUploadStatus", methods=["POST"])
 def get_all_upload_status():
     """Get the status of all file uploads in the last N hours"""
-    timeframe = request.json["timeframe"]
-    state = request.json["state"]
+    timeframe = request.json.get("timeframe")
+    state = request.json.get("state")
+    folder_name = request.json.get("folder_name")
     try:
-        results = statusLog.read_files_status_by_timeframe(timeframe, State[state])
+        results = statusLog.read_files_status_by_timeframe(timeframe, State[state], folder_name)
     except Exception as ex:
-        logging.exception("Exception in /getalluploadstatus")
+        logging.exception("Exception in /getAllUploadStatus")
         return jsonify({"error": str(ex)}), 500
     return jsonify(results)
 
 
-@app.route("/logstatus", methods=["POST"])
-def logstatus():
+@app.route("/logStatus", methods=["POST"])
+def log_status():
     """Log the status of a file upload to CosmosDB"""
     try:
         path = request.json["path"]
@@ -412,11 +413,11 @@ def logstatus():
         statusLog.save_document(document_path=path)
 
     except Exception as ex:
-        logging.exception("Exception in /logstatus")
+        logging.exception("Exception in /logStatus")
         return jsonify({"error": str(ex)}), 500
     return jsonify({"status": 200})
 
-# Return AZURE_OPENAI_CHATGPT_DEPLOYMENT
+
 @app.route("/getInfoData")
 def get_info_data():
     """Get the info data for the app"""
@@ -439,6 +440,7 @@ def get_info_data():
         })
     return response
 
+
 @app.route("/getWarningBanner")
 def get_warning_banner():
     """Get the warning banner text"""
@@ -448,7 +450,8 @@ def get_warning_banner():
         })
     return response
 
-@app.route("/getcitation", methods=["POST"])
+
+@app.route("/getCitation", methods=["POST"])
 def get_citation():
     """Get the citation for a given file"""
     citation = urllib.parse.unquote(request.json["citation"])
@@ -458,7 +461,7 @@ def get_citation():
         results = jsonify(json.loads(decoded_text))
 
     except Exception as ex:
-        logging.exception("Exception in /getcitation")
+        logging.exception("Exception in /getCitation")
         return jsonify({"error": str(ex)}), 500
 
     return jsonify(results.json)
@@ -494,13 +497,13 @@ def get_application_title():
     return response
 
 
-@app.route("/getalltags", methods=["GET"])
+@app.route("/getAllTags", methods=["GET"])
 def get_all_tags():
     """Get the status of all tags in the system"""
     try:
         results = tagsHelper.get_all_tags()
     except Exception as ex:
-        logging.exception("Exception in /getalltags")
+        logging.exception("Exception in /getAllTags")
         return jsonify({"error": str(ex)}), 500
     return jsonify(results)
 
