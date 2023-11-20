@@ -94,7 +94,7 @@ Always include citations if you reference the source documents. Use square brack
     {"role": USER ,'content': 'I am looking for information in source documents'},
     {'role': ASSISTANT, 'content': 'user is looking for information in source documents. Do not provide answers that are not in the source documents'},
     {'role': USER, 'content': 'What steps are being taken to promote energy conservation?'},
-    {'role': ASSISTANT, 'content': 'Several steps are being taken to promote energy conservation including reducing energy consumption, increasing energy efficiency, and increasing the use of renewable energy sources.Citations[info1.json]'}
+    {'role': ASSISTANT, 'content': 'Several steps are being taken to promote energy conservation including reducing energy consumption, increasing energy efficiency, and increasing the use of renewable energy sources.Citations[File0]'}
     ]
 
     # # Define a class variable for the base URL
@@ -154,8 +154,9 @@ Always include citations if you reference the source documents. Use square brack
         tags_filter = overrides.get("selected_tags", "")
 
         user_q = 'Generate search query for: ' + history[-1]["user"]
-
+        
         query_prompt=self.query_prompt_template.format(query_term_language=self.query_term_language)
+        
 
         generated_query = ""
         data_points = []
@@ -205,7 +206,7 @@ Always include citations if you reference the source documents. Use square brack
                 embedded_query_vector =response_data.get('data')
             else:
                 logging.error(f"Error generating embedding: {response.text}")
-                raise Exception('Error generating embedding:', response.text)
+                raise Exception('Error generating embedding:', response.status_code)
 
             #vector set up for pure vector search & Hybrid search & Hybrid semantic
             vector = RawVectorQuery(vector=embedded_query_vector, k=top, fields="contentVector")

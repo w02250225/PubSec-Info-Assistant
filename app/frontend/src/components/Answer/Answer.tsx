@@ -53,7 +53,7 @@ export const Answer = ({
     if (parsedAnswer.citations.length > 0) {
         parsedAnswer.citations.forEach((x, i) => {
             const path = getCitationFilePath(x);
-            const originalFile = x.split("/")[0];
+            const originalFile = x.split("/")[1];
             const pageNumbers = parsedAnswer.pageNumbers[x];
             const sourceFiles = parsedAnswer.sourceFiles[x];
             const href = `${window.location.origin}/#/ViewDocument?documentName=${encodeURIComponent(originalFile)}&pageNumber=${pageNumbers}`

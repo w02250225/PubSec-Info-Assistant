@@ -148,7 +148,7 @@ class StatusLog:
         # If this event is the start of an upload, remove any existing status files for this path
         if fresh_start:
             try:
-                self.container.delete_item(item=document_id, partition_key=base_name)
+                self.container.delete_item(item=document_id, partition_key=document_path)
             except exceptions.CosmosResourceNotFoundError:
                 pass
 
@@ -157,7 +157,7 @@ class StatusLog:
             # if the document exists and if this is the first call to the function from the parent,
             # then retrieve the stored document from cosmos, otherwise, use the log stored in self
             if self._log_document.get(document_id, "") == "":
-                json_document = self.container.read_item(item=document_id, partition_key=base_name)
+                json_document = self.container.read_item(item=document_id, partition_key=document_path)
             else:
                 json_document = self._log_document[document_id]
 
