@@ -128,6 +128,16 @@ export const FolderPicker = ({allowFolderCreation, onSelectedKeyChange, preSelec
         fetchBlobFolderData();
     }, []);
 
+    useEffect(() => {
+        // This effect runs once on component mount and whenever allowFolderCreation changes.
+        // Set the default selected key based on allowFolderCreation.
+        if (allowFolderCreation) {
+            setSelectedKeys(['Generic']);
+        } else if (preSelectedKeys && preSelectedKeys.length > 0) {
+            setSelectedKeys(preSelectedKeys);
+        }
+    }, [allowFolderCreation, preSelectedKeys]);
+
     function getStyles(props: ITextFieldStyleProps): Partial<ITextFieldStyles> {
         const { required } = props;
         return {
@@ -195,9 +205,10 @@ export const FolderPicker = ({allowFolderCreation, onSelectedKeyChange, preSelec
             <div className={styles.folderSelection}>
                 <ComboBox
                     multiSelect={allowNewFolders? false : true}
-                    selectedKey={selectedKeys}
+                    selectedKey={selectedKeys.length ? selectedKeys : undefined}
                     label="Folder Selection"
                     options={options}
+                    defaultSelectedKey={allowFolderCreation && !selectedKeys.length ? 'Generic' : undefined}
                     onChange={onChange}
                     styles={comboBoxStyles}
                 />
