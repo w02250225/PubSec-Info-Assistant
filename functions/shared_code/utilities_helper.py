@@ -40,6 +40,8 @@ class UtilitiesHelper:
         container_name = separator.join(
             blob_path.split(separator)[0:1])
 
+        blob_path = urllib.parse.quote(blob_path)
+
         # Gen SAS token
         sas_token = generate_blob_sas(
             account_name=self.azure_blob_storage_account,
@@ -50,7 +52,5 @@ class UtilitiesHelper:
             expiry=datetime.utcnow() + timedelta(hours=1)
         )
         source_blob_path = f'{self.azure_blob_storage_endpoint}{blob_path}?{sas_token}'        
-        blob_path = urllib.parse.quote(blob_path)
-        # source_blob_path = source_blob_path.replace(" ", "%20")
         logging.info("Path and SAS token for file in azure storage are now generated \n")
         return source_blob_path
