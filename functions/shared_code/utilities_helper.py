@@ -3,6 +3,7 @@
 
 import os
 import logging
+import urllib.parse
 from datetime import datetime, timedelta
 from azure.storage.blob import generate_blob_sas, BlobSasPermissions
 
@@ -28,7 +29,7 @@ class UtilitiesHelper:
             file_name, file_extension = os.path.splitext(base_name)
             return file_name, file_extension, directory
     
-    def  get_blob_and_sas(self, blob_path):
+    def get_blob_and_sas(self, blob_path):
         """ Function to retrieve the uri and sas token for a given blob in azure storage"""
 
         # Get path and file name minus the root container
@@ -39,8 +40,6 @@ class UtilitiesHelper:
         container_name = separator.join(
             blob_path.split(separator)[0:1])
 
-        
-
         # Gen SAS token
         sas_token = generate_blob_sas(
             account_name=self.azure_blob_storage_account,
@@ -50,8 +49,7 @@ class UtilitiesHelper:
             permission=BlobSasPermissions(read=True),
             expiry=datetime.utcnow() + timedelta(hours=1)
         )
-        source_blob_path = f'{self.azure_blob_storage_endpoint}{blob_path}?{sas_token}'
-        import urllib.parse
+        source_blob_path = f'{self.azure_blob_storage_endpoint}{blob_path}?{sas_token}'        
         blob_path = urllib.parse.quote(blob_path)
         # source_blob_path = source_blob_path.replace(" ", "%20")
         logging.info("Path and SAS token for file in azure storage are now generated \n")
