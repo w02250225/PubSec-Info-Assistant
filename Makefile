@@ -18,8 +18,8 @@ build-deploy-functions: build extract-env deploy-functions ##Build and Deploy th
 build: ## Build application code
 	@./scripts/build.sh
 
-build-containers: extract-env
-	@./app/enrichment/docker-build.sh
+build-enrichment: ## Build enrichment WebApp code only
+	@./scripts/build-enrichment.sh
 	
 build-webapp: ## Build WebApp code only
 	@./scripts/build-webapp.sh

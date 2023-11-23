@@ -19,7 +19,7 @@ FUNCTIONS_ROOT_PATH="${DIR}/../functions"
 #trap finish EXIT
 
 # Clean previous runs on a dev machine
-rm -rf ${BINARIES_OUTPUT_PATH} && mkdir -p ${BINARIES_OUTPUT_PATH}
+rm -f ${BINARIES_OUTPUT_PATH}/functions.zip && mkdir -p ${BINARIES_OUTPUT_PATH}
 
 # Build the Azure Functions
 cd ${FUNCTIONS_ROOT_PATH}
