@@ -117,6 +117,7 @@ export const FileStatus = ({ className }: Props) => {
         for (let i = 0; i < fileList.length; i++) {
             let fileExtension = fileList[i].file_name.split('.').pop();
             fileExtension = fileExtension == undefined ? 'Folder' : fileExtension.toUpperCase()
+            const stateDescription = STATE_DESCRIPTION[fileList[i].state] || fileList[i].state;
             try {
                 items.push({
                     key: fileList[i].id,
@@ -126,7 +127,7 @@ export const FileStatus = ({ className }: Props) => {
                     iconName: FILE_ICONS[fileExtension.toLowerCase() || 'txt'],
                     fileType: fileExtension,
                     state: fileList[i].state,
-                    state_description: fileList[i].state_description || STATE_DESCRIPTION[fileList[i].state || "Error"],
+                    state_description: fileList[i].state_description || stateDescription,
                     upload_timestamp: fileList[i].start_timestamp,
                     modified_timestamp: fileList[i].state_timestamp,
                     value: fileList[i].id,
