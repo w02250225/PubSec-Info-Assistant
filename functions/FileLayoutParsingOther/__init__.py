@@ -106,8 +106,8 @@ def PartitionFile(file_extension: str, file_url: str):
             elements = partition_xlsx(file=bytes_io)
             # Minify the HTML
             for element in elements:
-                element.metadata.text_as_html = minify_html.minify(element.metadata.text_as_html)
-
+                element.metadata.text_as_html = minify_html.minify(element.metadata.text_as_html or '')
+            
         elif file_extension == '.xml':
             from unstructured.partition.xml import partition_xml
             elements = partition_xml(file=bytes_io)
