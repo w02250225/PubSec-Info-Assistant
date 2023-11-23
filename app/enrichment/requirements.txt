@@ -9,4 +9,5 @@ openai == 0.28.1
 opencensus-ext-azure == 1.1.11
 sentence-transformers == 2.2.2
 tenacity == 8.2.3
+tiktoken == 0.5.1
 uvicorn == 0.23.2

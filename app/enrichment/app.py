@@ -27,6 +27,7 @@ from sentence_transformers import SentenceTransformer
 from shared_code.utilities_helper import UtilitiesHelper
 from shared_code.status_log import State, StatusClassification, StatusLog
 from shared_code.tags_helper import TagsHelper
+import tiktoken
 
 # === ENV Setup ===
 
@@ -81,10 +82,12 @@ class AzOAIEmbedding(object):
     @retry(wait=wait_random_exponential(multiplier=1, max=10), stop=stop_after_attempt(5))
     def encode(self, texts):
         """Embeds a list of texts using a given model"""
+
         response = openai.Embedding.create(
             engine=self.deployment_name,
             input=texts
         )
+        
         return response
 
 class STModel(object):
@@ -222,6 +225,14 @@ def embed_texts(model: str, texts: List[str]):
     if model not in models:
         return {"message": f"Model {model} not found"}
 
+    # Dont bother embedding if it exceeds the token input limit
+    if token_count(texts[0]) > 8191:
+        return {
+            "model": model,
+            "model_info": model_info[model],
+            "data": []
+            }
+
     model_obj = models[model]
     try:
         if model.startswith("azure-openai_"):
@@ -244,6 +255,21 @@ def embed_texts(model: str, texts: List[str]):
     return output
 
 
+def num_tokens_from_string( string: str, encoding_name: str) -> int:
+    """ Function to return the number of tokens in a text string"""
+    encoding = tiktoken.get_encoding(encoding_name)
+    num_tokens = len(encoding.encode(string))
+    return num_tokens
+
+
+def token_count( input_text):
+    """ Function to return the number of tokens in a text string"""
+    # For gpt-4, gpt-3.5-turbo, text-embedding-ada-002, you need to use cl100k_base
+    encoding = "cl100k_base"
+    token_count = num_tokens_from_string(input_text, encoding)
+    return token_count
+
+
 def index_sections(chunks):
     """ Pushes a batch of content to the search index
     """
@@ -254,6 +280,7 @@ def index_sections(chunks):
     results = search_client.upload_documents(documents=chunks)
     succeeded = sum([1 for r in results if r.succeeded])
     log.debug(f"\tIndexed {len(results)} chunks, {succeeded} succeeded")
+
 
 def get_tags_and_upload_to_cosmos(blob_service_client, blob_path):
     """ Gets the tags from the blob metadata and uploads them to cosmos db"""
@@ -274,6 +301,7 @@ def get_tags_and_upload_to_cosmos(blob_service_client, blob_path):
     # Write the tags to cosmos db
     tagsHelper.upsert_document(blob_path, tags_list)
     return tags_list
+
 
 @app.on_event("startup")
 @repeat_every(seconds=5, logger=log, raise_exceptions=True)
