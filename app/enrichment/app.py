@@ -22,7 +22,7 @@ from fastapi_utils.tasks import repeat_every
 from model_handling import load_models
 import openai
 from opencensus.ext.azure.log_exporter import AzureLogHandler
-from tenacity import retry, wait_random_exponential, stop_after_attempt
+from tenacity import retry, stop_after_attempt, wait_random_exponential, retry_if_exception_type, before_sleep_log
 from sentence_transformers import SentenceTransformer
 from shared_code.utilities_helper import UtilitiesHelper
 from shared_code.status_log import State, StatusClassification, StatusLog
@@ -79,7 +79,21 @@ class AzOAIEmbedding(object):
     def __init__(self, deployment_name) -> None:
         self.deployment_name = deployment_name
 
-    @retry(wait=wait_random_exponential(multiplier=1, max=10), stop=stop_after_attempt(5))
+    def wait_strategy(retry_state):
+        exception = retry_state.outcome.exception()
+        if isinstance(exception, openai.error.RateLimitError):
+            log.debug("RateLimitError occurred, waiting for 30 seconds before retrying...")
+            return 30
+        else:
+            log.debug("A retryable error occurred: %s. Waiting with exponential backoff...", str(retry_state.outcome.exception()))
+            exp = wait_random_exponential(multiplier=1, max=10)
+            return exp(retry_state=retry_state)
+
+    @retry(
+        wait=wait_strategy,
+        stop=stop_after_attempt(5),
+        before_sleep=before_sleep_log(logging, logging.INFO)
+    )
     def encode(self, texts):
         """Embeds a list of texts using a given model"""
 
