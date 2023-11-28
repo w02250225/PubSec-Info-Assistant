@@ -3,16 +3,12 @@
 
 """ Library of code for status logs reused across various calling features """
 import os
-import time
 from datetime import datetime, timedelta
 import base64
 from enum import Enum
 import logging
 from azure.cosmos import CosmosClient, PartitionKey, exceptions
 import traceback, sys
-
-os.environ['TZ'] = 'Australia/Brisbane'
-time.tzset()
 
 class State(Enum):
     """ Enum for state of a process """
