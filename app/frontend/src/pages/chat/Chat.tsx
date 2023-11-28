@@ -4,7 +4,6 @@
 import { useRef, useState, useEffect } from "react";
 import Coeus from "../../assets/coeus.png";
 import { Checkbox, Panel, DefaultButton, TextField, SpinButton, Separator} from "@fluentui/react";
-import { SparkleFilled, ClockFilled, TargetArrowFilled, OptionsFilled, SearchInfoFilled, PersonStarFilled, TextBulletListSquareSparkleFilled } from "@fluentui/react-icons";
 import { ITag } from '@fluentui/react/lib/Pickers';
 
 import styles from "./Chat.module.css";
@@ -27,6 +26,7 @@ import { PromptOverride } from "../../components/PromptOverride";
 import { TopPSlider } from "../../components/TopPSlider";
 import { FolderPicker } from "../../components/FolderPicker";
 import { TagPickerInline } from "../../components/TagPicker";
+import { ModelPicker } from "../../components/ModelPicker";
 
 const Chat = () => {
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
@@ -318,6 +318,7 @@ const Chat = () => {
                             label="Suggest follow-up questions"
                             onChange={onUseSuggestFollowupQuestionsChange}
                         />
+                        <ModelPicker className={styles.chatSettingsSeparator} />
                         <TextField className={styles.chatSettingsSeparator} defaultValue={userPersona} label="User Persona" onChange={onUserPersonaChange} />
                         <TextField className={styles.chatSettingsSeparator} defaultValue={systemPersona} label="System Persona" onChange={onSystemPersonaChange} />
                         <ResponseLengthButtonGroup className={styles.chatSettingsSeparator} onClick={onResponseLengthChange} defaultValue={responseLength}/>

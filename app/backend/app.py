@@ -157,60 +157,78 @@ BLOB_CLIENT = BlobServiceClient(
 blob_container = BLOB_CLIENT.get_container_client(AZURE_BLOB_STORAGE_CONTAINER)
 export_container = BLOB_CLIENT.get_container_client(AZURE_BLOB_EXPORT_CONTAINER)
 
-MODEL_NAME = ''
-MODEL_VERSION = ''
+EMBEDDING_MODEL_NAME = ''
+EMBEDDING_MODEL_VERSION = ''
+ALL_GPT_DEPLOYMENTS = []
+GPT_DEPLOYMENT = {
+    'deploymentName': '',
+    'modelName': '',
+    'modelVersion': ''
+}
 
 if (IS_GOV_CLOUD_DEPLOYMENT):
-    MODEL_NAME = AZURE_OPENAI_CHATGPT_MODEL_NAME
-    MODEL_VERSION = AZURE_OPENAI_CHATGPT_MODEL_VERSION
-    embedding_model_name = AZURE_OPENAI_EMBEDDINGS_MODEL_NAME
-    embedding_model_version = AZURE_OPENAI_EMBEDDINGS_VERSION
+    GPT_DEPLOYMENT['deploymentName'] = AZURE_OPENAI_CHATGPT_DEPLOYMENT
+    GPT_DEPLOYMENT['modelName'] = AZURE_OPENAI_CHATGPT_MODEL_NAME
+    GPT_DEPLOYMENT['modelVersion'] = AZURE_OPENAI_CHATGPT_MODEL_VERSION
+    EMBEDDING_MODEL_NAME = AZURE_OPENAI_EMBEDDINGS_MODEL_NAME
+    EMBEDDING_MODEL_VERSION = AZURE_OPENAI_EMBEDDINGS_VERSION
 else:
     # Set up OpenAI management client
     openai_mgmt_client = CognitiveServicesManagementClient(
         credential=azure_credential,
         subscription_id=AZURE_SUBSCRIPTION_ID)
 
-    deployment = openai_mgmt_client.deployments.get(
+    deployments = openai_mgmt_client.deployments.list(
         resource_group_name=AZURE_OPENAI_RESOURCE_GROUP,
-        account_name=AZURE_OPENAI_ACCOUNT_NAME,
-        deployment_name=AZURE_OPENAI_CHATGPT_DEPLOYMENT)
+        account_name=AZURE_OPENAI_ACCOUNT_NAME)
 
-    MODEL_NAME = deployment.properties.model.name
-    MODEL_VERSION = deployment.properties.model.version
+    for deployment in deployments:
+        # Build the list for the model selection dropdown
+        capabilities = deployment.properties.capabilities
+        if capabilities.get('chatCompletion'):
+            ALL_GPT_DEPLOYMENTS.append({
+                'deploymentName': deployment.name,
+                'modelName': deployment.properties.model.name,
+                'modelVersion': deployment.properties.model.version
+            })
+        
+        # Check if this is the specific deployment we're interested in
+        if deployment.name == AZURE_OPENAI_CHATGPT_DEPLOYMENT:
+            GPT_DEPLOYMENT['deploymentName'] = deployment.name
+            GPT_DEPLOYMENT['modelName'] = deployment.properties.model.name
+            GPT_DEPLOYMENT['modelVersion'] = deployment.properties.model.version
+        
+        if USE_AZURE_OPENAI_EMBEDDINGS and deployment.name == EMBEDDING_DEPLOYMENT_NAME:
+            EMBEDDING_MODEL_NAME = deployment.properties.model.name
+            EMBEDDING_MODEL_VERSION = deployment.properties.model.version
+    
+    # Sort the GPT_DEPLOYMENTS list for the UI
+    ALL_GPT_DEPLOYMENTS.sort(key=lambda x: x['deploymentName'])
 
-    if USE_AZURE_OPENAI_EMBEDDINGS:
-        embedding_deployment = openai_mgmt_client.deployments.get(
-            resource_group_name=AZURE_OPENAI_RESOURCE_GROUP,
-            account_name=AZURE_OPENAI_ACCOUNT_NAME,
-            deployment_name=EMBEDDING_DEPLOYMENT_NAME)
+chat_approaches = {}
 
-        embedding_model_name = embedding_deployment.properties.model.name
-        embedding_model_version = embedding_deployment.properties.model.version
-    else:
-        embedding_model_name = ""
-        embedding_model_version = ""
-
-chat_approaches = {
-    "rrr": ChatReadRetrieveReadApproach(
-        SEARCH_CLIENT,
-        AZURE_OPENAI_SERVICE,
-        AZURE_OPENAI_SERVICE_KEY,
-        AZURE_OPENAI_CHATGPT_DEPLOYMENT,
-        KB_FIELDS_SOURCEFILE,
-        KB_FIELDS_CONTENT,
-        KB_FIELDS_PAGENUMBER,
-        KB_FIELDS_CHUNKFILE,
-        AZURE_BLOB_STORAGE_CONTAINER,
-        BLOB_CLIENT,
-        QUERY_TERM_LANGUAGE,
-        MODEL_NAME,
-        MODEL_VERSION,
-        IS_GOV_CLOUD_DEPLOYMENT,
-        TARGET_EMBEDDING_MODEL,
-        ENRICHMENT_APPSERVICE_NAME
-    )
-}
+def set_chat_approaches():
+        global chat_approaches
+        chat_approaches = {
+        "rrr": ChatReadRetrieveReadApproach(
+            SEARCH_CLIENT,
+            AZURE_OPENAI_SERVICE,
+            AZURE_OPENAI_SERVICE_KEY,
+            GPT_DEPLOYMENT["deploymentName"],
+            KB_FIELDS_SOURCEFILE,
+            KB_FIELDS_CONTENT,
+            KB_FIELDS_PAGENUMBER,
+            KB_FIELDS_CHUNKFILE,
+            AZURE_BLOB_STORAGE_CONTAINER,
+            BLOB_CLIENT,
+            QUERY_TERM_LANGUAGE,
+            GPT_DEPLOYMENT["modelName"],
+            GPT_DEPLOYMENT["modelVersion"],
+            IS_GOV_CLOUD_DEPLOYMENT,
+            TARGET_EMBEDDING_MODEL,
+            ENRICHMENT_APPSERVICE_NAME
+        )
+    }
 
 
 def token_is_valid():
@@ -301,7 +319,7 @@ def chat():
         start_time = datetime.now()
 
         # Log the request to CosmosDB
-        json_document = requestLog.log_request(request_id, request.json, start_time)
+        json_document = requestLog.log_request(request_id, GPT_DEPLOYMENT, request.json, start_time)
 
         impl = chat_approaches.get(approach)
         if not impl:
@@ -339,7 +357,7 @@ def chat():
         return jsonify({"error": str(ex)}), 500
 
 
-@app.route("/getblobclienturl")
+@app.route("/getBlobClientUrl")
 def get_blob_client_url():
     """Get a URL for a file in Blob Storage with SAS token"""
     sas_token = generate_account_sas(
@@ -428,17 +446,17 @@ def get_info_data():
     user_data["session_id"] = session["state"]
     response = jsonify(
         {
-            "AZURE_OPENAI_CHATGPT_DEPLOYMENT": f"{AZURE_OPENAI_CHATGPT_DEPLOYMENT}",
-            "AZURE_OPENAI_MODEL_NAME": f"{MODEL_NAME}",
-            "AZURE_OPENAI_MODEL_VERSION": f"{MODEL_VERSION}",
+            "AZURE_OPENAI_CHATGPT_DEPLOYMENT": f"{GPT_DEPLOYMENT['deploymentName']}",
+            "AZURE_OPENAI_MODEL_NAME": f"{GPT_DEPLOYMENT['modelName']}",
+            "AZURE_OPENAI_MODEL_VERSION": f"{GPT_DEPLOYMENT['modelVersion']}",
             "AZURE_OPENAI_SERVICE": f"{AZURE_OPENAI_SERVICE}",
             "AZURE_SEARCH_SERVICE": f"{AZURE_SEARCH_SERVICE}",
             "AZURE_SEARCH_INDEX": f"{AZURE_SEARCH_INDEX}",
             "TARGET_LANGUAGE": f"{QUERY_TERM_LANGUAGE}",
             "USE_AZURE_OPENAI_EMBEDDINGS": USE_AZURE_OPENAI_EMBEDDINGS,
             "EMBEDDINGS_DEPLOYMENT": f"{EMBEDDING_DEPLOYMENT_NAME}",
-            "EMBEDDINGS_MODEL_NAME": f"{embedding_model_name}",
-            "EMBEDDINGS_MODEL_VERSION": f"{embedding_model_version}",
+            "EMBEDDINGS_MODEL_NAME": f"{EMBEDDING_MODEL_NAME}",
+            "EMBEDDINGS_MODEL_VERSION": f"{EMBEDDING_MODEL_VERSION}",
             "USER_DATA": user_data
         })
     return response
@@ -477,17 +495,17 @@ def export():
                                                              export_container,
                                                              AZURE_OPENAI_SERVICE,
                                                              AZURE_OPENAI_SERVICE_KEY,
-                                                             AZURE_OPENAI_CHATGPT_DEPLOYMENT,
-                                                             MODEL_NAME)
+                                                             GPT_DEPLOYMENT['deploymentName'],
+                                                             GPT_DEPLOYMENT['modelName'])
+
+        return send_file(export_file,
+                        as_attachment=True,
+                        download_name=file_name
+                        )
 
     except Exception as ex:
         logging.exception("Exception in /exportAnswer")
         return jsonify({"error": str(ex)}), 500
-
-    return send_file(export_file,
-                     as_attachment=True,
-                     download_name=file_name
-                     )
 
 # Return APPLICATION_TITLE
 @app.route("/getApplicationTitle")
@@ -510,9 +528,43 @@ def get_all_tags():
         return jsonify({"error": str(ex)}), 500
     return jsonify(results)
 
+
+@app.route("/getGptDeployments", methods=["GET"])
+def get_gpt_deployments():
+    """Get a list of all GPT model deployments"""
+    try:
+        return jsonify(ALL_GPT_DEPLOYMENTS)
+    except Exception as ex:
+        logging.exception("Exception in /getGptDeployments")
+        return jsonify({"error": str(ex)}), 500
+
+
+@app.route("/setGptDeployment", methods=["POST"])
+def set_gpt_deployment():
+    """Update the GPT deployment model/version etc."""
+    global GPT_DEPLOYMENT
+    data = request.get_json()
+
+    keys = ['deploymentName', 'modelName', 'modelVersion']
+
+    if all(key in data for key in keys):
+        # Update GPT_DEPLOYMENT with the new values
+        for key in keys:
+            GPT_DEPLOYMENT[key] = data[key]
+
+        # Update chat approaches
+        set_chat_approaches()
+        return jsonify({'message': 'GPT Deployment information updated successfully'}), 200
+    else:
+        # If some keys are missing, return an error
+        missing_keys = [key for key in keys if key not in data]
+        return jsonify({'error': 'Missing required information', 'missing_keys': missing_keys}), 400
+        
+
 app.before_request(check_authenticated)
 
 if __name__ == "__main__":
     # app.run(debug=DEBUG)
     logging.info("IA WebApp Starting Up...")
     app.run(threaded=True)
+    set_chat_approaches()

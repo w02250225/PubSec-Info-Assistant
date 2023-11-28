@@ -22,7 +22,7 @@ This parameter determines the approximate length of the response from the model.
 export const ResponseLengthButtonGroup = ({ className, onClick, defaultValue }: Props) => {
     return (
         <div className={`${styles.container} ${className ?? ""}`}>
-            <Label>Response length:&nbsp;
+            <Label>Response length&nbsp;
                 <FiHelpCircle
                     data-tooltip-id="ResponseLength-tooltip"
                     data-tooltip-html={tooltipHtml}>

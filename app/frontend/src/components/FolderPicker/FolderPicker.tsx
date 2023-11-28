@@ -11,9 +11,10 @@ import { ComboBox,
     TooltipHost,
     ITooltipHostStyles,
     ActionButton, 
+    Label,
     DirectionalHint} from "@fluentui/react";
 import { TeachingBubble, ITeachingBubbleStyles } from '@fluentui/react/lib/TeachingBubble';
-import { Info16Regular } from '@fluentui/react-icons';
+import { FiHelpCircle } from 'react-icons/fi';
 import { ITextFieldStyleProps, ITextFieldStyles, TextField } from '@fluentui/react/lib/TextField';
 import { ILabelStyles, ILabelStyleProps } from '@fluentui/react/lib/Label';
 import { IIconProps } from '@fluentui/react';
@@ -203,20 +204,21 @@ export const FolderPicker = ({allowFolderCreation, onSelectedKeyChange, preSelec
     return (
         <div className={styles.folderArea}>
             <div className={styles.folderSelection}>
+                <Label>Folder Selection&nbsp;
+                    <TooltipHost content={allowNewFolders ? "Select a folder to upload documents into" : "Select a folder to filter the search by"}
+                            styles={hostStyles}
+                            id={tooltipId}>
+                        <FiHelpCircle></FiHelpCircle>
+                    </TooltipHost>
+                </Label>
                 <ComboBox
                     multiSelect={allowNewFolders? false : true}
                     selectedKey={selectedKeys.length ? selectedKeys : undefined}
-                    label="Folder Selection"
                     options={options}
                     defaultSelectedKey={allowFolderCreation && !selectedKeys.length ? 'Generic' : undefined}
                     onChange={onChange}
                     styles={comboBoxStyles}
                 />
-                <TooltipHost content={allowNewFolders ? "Select a folder to upload documents into" : "Select a folder to filter the search by"}
-                        styles={hostStyles}
-                        id={tooltipId}>
-                    <Info16Regular></Info16Regular>
-                </TooltipHost>
             </div>
             {allowNewFolders ? (
                 <div className={styles.actionButton}>

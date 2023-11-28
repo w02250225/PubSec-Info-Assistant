@@ -5,23 +5,28 @@ export const Tooltips = () => {
 
   return (
     <>
-    <ReactTooltip
-      id="ResponseTempSlider-tooltip"
-      className={`${styles.tooltip}`}
-      place="left"
-      variant="info" />
-    <ReactTooltip
-      id="ResponseLength-tooltip"
-      className={`${styles.tooltip}`}
-      place="left"
-      variant="info" />
-    <ReactTooltip
+      <ReactTooltip
+        id="ResponseTempSlider-tooltip"
+        className={`${styles.tooltip}`}
+        place="left"
+        variant="info" />
+      <ReactTooltip
+        id="ResponseLength-tooltip"
+        className={`${styles.tooltip}`}
+        place="left"
+        variant="info" />
+      <ReactTooltip
         id="PromptOverride-tooltip"
         className={`${styles.tooltip}`}
         place="left"
         variant="info" />
-    <ReactTooltip
+      <ReactTooltip
         id="TopPSlider-tooltip"
+        className={`${styles.tooltip}`}
+        place="left"
+        variant="info" />
+      <ReactTooltip
+        id="ModelPicker-tooltip"
         className={`${styles.tooltip}`}
         place="left"
         variant="info" />

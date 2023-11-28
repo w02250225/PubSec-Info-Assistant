@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { TagPicker, ITag, IBasePickerSuggestionsProps} from '@fluentui/react/lib/Pickers';
 import { Label, TooltipHost, ITooltipHostStyles} from "@fluentui/react";
-import { Info16Regular } from '@fluentui/react-icons';
+import { FiHelpCircle } from 'react-icons/fi';
 import { mergeStyles } from '@fluentui/react/lib/Styling';
 import { useId } from '@fluentui/react-hooks';
 import { getAllTags } from "../../api";
@@ -127,7 +127,13 @@ export const TagPickerInline = ({allowNewTags, onSelectedTagsChange, preSelected
       <div className={styles.tagArea}>
         <div className={styles.tagSelection}>
           <div className={allowAddNew ? styles.rootClass : styles.rootClassFilter}>
-            <Label htmlFor={pickerId}>Tags</Label>
+            <Label htmlFor={pickerId}>Tags&nbsp;
+              <TooltipHost content={allowAddNew ? "Tags to append to each document uploaded below." : "Tags to filter documents by."}
+                      styles={hostStyles}
+                      id={tooltipId}>
+                <FiHelpCircle></FiHelpCircle>
+              </TooltipHost>
+            </Label>
             <TagPicker
                 className={styles.tagPicker}
                 removeButtonAriaLabel="Remove"
@@ -147,11 +153,7 @@ export const TagPickerInline = ({allowNewTags, onSelectedTagsChange, preSelected
                 onChange={onChange}
             />
           </div>
-          <TooltipHost content={allowAddNew ? "Tags to append to each document uploaded below." : "Tags to filter documents by."}
-                    styles={hostStyles}
-                    id={tooltipId}>
-            <Info16Regular></Info16Regular>
-          </TooltipHost>
+
         </div>
       </div>
   );

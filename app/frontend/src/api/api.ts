@@ -3,7 +3,7 @@
 
 import { AskRequest, AskResponse, ChatRequest, BlobClientUrlResponse,
     AllFilesUploadStatus, GetUploadStatusRequest, GetInfoResponse, ActiveCitation, GetWarningBanner,
-    ExportRequest, StatusLogEntry, StatusLogResponse, ApplicationTitle, GetTagsResponse } from "./models";
+    ExportRequest, StatusLogEntry, StatusLogResponse, ApplicationTitle, GetTagsResponse, GptDeployment } from "./models";
 
 export async function askApi(options: AskRequest): Promise<AskResponse> {
     const response = await fetch("/ask", {
@@ -125,7 +125,7 @@ export function getCitationFilePath(citation: string): string {
 }
 
 export async function getBlobClientUrl(): Promise<string> {
-    const response = await fetch("/getblobclienturl", {
+    const response = await fetch("/getBlobClientUrl", {
         method: "GET",
         headers: {
             "Content-Type": "application/json"
@@ -284,4 +284,39 @@ export async function getAllTags(): Promise<GetTagsResponse> {
     }
     var results: GetTagsResponse = {tags: parsedResponse};
     return results;
+}
+
+export async function getGptDeployments(): Promise<GptDeployment[]> {
+    const response = await fetch("/getGptDeployments", {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+    
+    if (!response.ok) {
+        console.log(response);
+        const errorResponse = await response.json();
+        throw new Error(errorResponse.error || 'An unknown error occurred');
+    }
+
+    const parsedResponse: GptDeployment[] = await response.json();
+
+    return parsedResponse;
+}
+
+export async function setGptDeployment(deployment: GptDeployment): Promise<void> {
+    const response = await fetch("/setGptDeployment", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(deployment)
+    });
+    const parsedResponse = await response.json();
+    if (response.status > 299 || !response.ok) {
+        console.log(response);
+        throw Error(parsedResponse.error || "Unknown error");
+    }
+    return parsedResponse;
 }

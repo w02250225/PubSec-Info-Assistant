@@ -28,7 +28,7 @@ class RequestLog:
             self.container = self.database.create_container(id=self._container_name,
                                                             partition_key=PartitionKey("/user_id", "/session_id"))
 
-    def log_request(self, request_id, request_body, start_time):
+    def log_request(self, request_id, gpt_deployment, request_body, start_time):
         """Log the JSON Request into CosmosDB"""
         try:
             document_id = base64.urlsafe_b64encode(request_id.encode()).decode()
@@ -44,6 +44,9 @@ class RequestLog:
                 "session_id": session_id,
                 "request_id": request_id,
                 "request_body": request_body,
+                "gpt_deployment_name": gpt_deployment['deploymentName'],
+                "gpt_model_name": gpt_deployment['modelName'],
+                "gpt_model_version": gpt_deployment['modelVersion'],
                 "start_timestamp": str(start_time.strftime('%Y-%m-%d %H:%M:%S')),
                 }
             )

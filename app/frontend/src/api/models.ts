@@ -196,3 +196,9 @@ export type GetTagsResponse = {
     tags: string;
     error?: string;
 }
+
+export type GptDeployment = {
+    deploymentName: string;
+    modelName: string;
+    modelVersion: string;
+}

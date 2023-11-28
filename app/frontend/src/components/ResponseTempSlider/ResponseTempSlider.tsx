@@ -58,7 +58,7 @@ export const ResponseTempSlider = ({ className, onChange, value = 0 }: Props) =>
 
   return (
     <div className={`${styles.container} ${className ?? ""}`}>
-      <Label>Response Temperature:&nbsp;
+      <Label>Response Temperature&nbsp;
         <FiHelpCircle
           data-tooltip-id="ResponseTempSlider-tooltip"
           data-tooltip-html={tooltipHtml}

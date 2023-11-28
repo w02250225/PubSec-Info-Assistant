@@ -48,7 +48,7 @@ export const InfoContent = ({ className }: Props) => {
             <Label>Embeddings Model</Label><Text>{infoData?.EMBEDDINGS_DEPLOYMENT}</Text>
             </div>
             )}
-            <Separator>Azure AI Search</Separator>
+            <Separator className={styles.separator}>Azure AI Search</Separator>
             <Label>Service Name</Label><Text>{infoData?.AZURE_SEARCH_SERVICE}</Text>
             <Label>Index Name</Label><Text>{infoData?.AZURE_SEARCH_INDEX}</Text>
 

@@ -58,7 +58,7 @@ export const TopPSlider = ({ className, onChange, value }: Props) => {
 
   return (
     <div className={`${styles.container} ${className ?? ""}`}>
-      <Label>Top P:&nbsp;
+      <Label>Top P&nbsp;
         <FiHelpCircle
           data-tooltip-id="TopPSlider-tooltip"
           data-tooltip-html={tooltipHtml}

@@ -157,7 +157,6 @@ Always include citations if you reference the source documents. Use square brack
         
         query_prompt=self.query_prompt_template.format(query_term_language=self.query_term_language)
         
-
         generated_query = ""
         data_points = []
         answer = ""
