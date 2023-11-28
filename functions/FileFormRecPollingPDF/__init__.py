@@ -139,7 +139,10 @@ def main(msg: func.QueueMessage) -> None:
 
     except Exception as e:
         # a general error
-        statusLog.upsert_document(blob_name, f"{function_name} - An error occurred - code: {response.status_code} - {str(e)}", StatusClassification.ERROR, State.ERROR)
+        error_message = f"{function_name} - An error occurred"
+        error_message += f" - code: {getattr(response, 'status_code', 'No status code')}"
+        error_message += f" - {str(e)}"
+        statusLog.upsert_document(blob_name, error_message, StatusClassification.ERROR, State.ERROR)
 
     statusLog.save_document(blob_name)
 
