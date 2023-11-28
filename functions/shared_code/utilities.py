@@ -4,14 +4,13 @@
 import logging
 import json
 import html
+import minify_html
+import tiktoken
+from bs4 import BeautifulSoup
 from datetime import datetime
 from enum import Enum
 from azure.storage.blob import BlobServiceClient
 from shared_code.utilities_helper import UtilitiesHelper
-from nltk.tokenize import sent_tokenize
-import tiktoken
-import nltk
-nltk.download('punkt')
 
 class ParagraphRoles(Enum):
     """ Enum to define the priority of paragraph roles """
@@ -299,8 +298,21 @@ class Utilities:
         page_list = []
         chunk_count = 0
 
-        # iterate over the paragraphs and build a chuck based on a section
-        # and/or title of the document
+        def finalize_chunk():
+            nonlocal chunk_text, chunk_count, chunk_size, file_number, page_list, page_number
+            if chunk_text:  # Only write out if there is text to write
+                self.write_chunk(myblob_name, myblob_uri, file_number,
+                                 chunk_size, chunk_text, page_list,
+                                 previous_section_name, previous_title_name, 
+                                 previous_subtitle_name, MediaType.TEXT)
+                chunk_count += 1
+                file_number += 1  # Increment the file/chunk number
+            # Reset the chunk variables
+            chunk_text = ''
+            chunk_size = 0
+            page_list = []
+            page_number = 0  # Reset the page_number for the new chunk
+
         for index, paragraph_element in enumerate(document_map['structure']):
             paragraph_size = self.token_count(paragraph_element["text"])
             paragraph_text = paragraph_element["text"]
@@ -308,85 +320,83 @@ class Utilities:
             title_name = paragraph_element["title"]
             subtitle_name = paragraph_element["subtitle"]
 
-            #if the collected tokens in the current in-memory chunk + the next paragraph
-            # will be larger than the allowed chunk size prepare to write out the total chunk
-            if (chunk_size + paragraph_size >= chunk_target_size) or section_name != previous_section_name or title_name != previous_title_name or subtitle_name != previous_subtitle_name:
-                # If the current paragraph just by itself is larger than CHUNK_TARGET_SIZE,
-                # then we need to split this up and treat each slice as a new in-memory chunk
-                # that fall under the max size and ensure the first chunk,
-                # which will be added to the current
-                if paragraph_size >= chunk_target_size:
-                    # start by keeping the existing in-memory chunk in front of the large paragraph
-                    # and begin to process it on sentence boundaries to break it down into
-                    # sub-chunks that are below the CHUNK_TARGET_SIZE
-                    sentences = sent_tokenize(chunk_text + paragraph_text)
-                    chunks = []
-                    chunk = ""
-                    for sentence in sentences:
-                        temp_chunk = chunk + " " + sentence if chunk else sentence
-                        if self.token_count(temp_chunk) <= chunk_target_size:
-                            chunk = temp_chunk
-                        else:
-                            chunks.append(chunk)
-                            chunk = sentence
-                    if chunk:
-                        chunks.append(chunk)
+            # Handle table paragraphs separately
+            if paragraph_element["type"] == "table":
+                # Check if the table needs to be split into multiple chunks
+                if paragraph_size > chunk_target_size:
+                    # Split the table into chunks with headers
+                    table_chunks = self.chunk_table_with_headers(paragraph_text, chunk_target_size)
+                    for table_chunk in table_chunks:
+                        finalize_chunk()  # Finalize the previous chunk before starting a new one
+                        chunk_text = minify_html.minify(table_chunk)  # Set the current chunk to the table chunk
+                        chunk_size = self.token_count(chunk_text)  # Update the chunk size
+                        finalize_chunk()  # Finalize the current table chunk
+                    continue  # Skip to the next paragraph element
 
-                    # Now write out each chunk, apart from the last, as this will be less than or
-                    # equal to CHUNK_TARGET_SIZE the last chunk will be processed like
-                    # a regular paragraph
-                    for i, chunk_text_p in enumerate(chunks):
-                        if i < len(chunks) - 1:
-                            # Process all but the last chunk in this large para
-                            self.write_chunk(myblob_name, myblob_uri,
-                                             f"{file_number}.{i}",
-                                             self.token_count(chunk_text_p),
-                                             chunk_text_p, page_list,
-                                             previous_section_name, previous_title_name, previous_subtitle_name, 
-                                             MediaType.TEXT)
-                            chunk_count += 1
-                        else:
-                            # Reset the paragraph token count to just the tokens left in the last
-                            # chunk and leave the remaining text from the large paragraph to be
-                            # combined with the next in the outer loop
-                            paragraph_size = self.token_count(chunk_text_p)
-                            paragraph_text = chunk_text_p
-                            chunk_text = ''
-                else:
-                    # if this para is not large by itself but will put us over the max token count
-                    # or it is a new section, then write out the chunk text we have to this point
-                    self.write_chunk(myblob_name, myblob_uri, file_number,
-                                     chunk_size, chunk_text, page_list,
-                                     previous_section_name, previous_title_name, previous_subtitle_name,
-                                     MediaType.TEXT)
-                    chunk_count += 1
+            # Check if a new chunk should be started
+            if (chunk_size + paragraph_size > chunk_target_size) or \
+               (section_name != previous_section_name) or \
+               (title_name != previous_title_name) or \
+               (subtitle_name != previous_subtitle_name):
+                finalize_chunk()
 
-                    # reset chunk specific variables
-                    file_number += 1
-                    page_list = []
-                    chunk_text = ''
-                    chunk_size = 0
-                    page_number = 0
-
+            # Add paragraph to the chunk
+            chunk_text += "\n" + paragraph_text
+            chunk_size += paragraph_size
             if page_number != paragraph_element["page_number"]:
-                # increment page number if necessary
                 page_list.append(paragraph_element["page_number"])
                 page_number = paragraph_element["page_number"]
 
-            # add paragraph to the chunk
-            chunk_size = chunk_size + paragraph_size
-            chunk_text = chunk_text + "\n" + paragraph_text
-
-            # If this is the last paragraph then write the chunk
-            if index == len(document_map['structure'])-1:
-                self.write_chunk(myblob_name, myblob_uri, file_number, chunk_size,
-                                 chunk_text, page_list, section_name, title_name, previous_subtitle_name,
-                                 MediaType.TEXT)
-                chunk_count += 1
-
+            # Update previous section, title, and subtitle
             previous_section_name = section_name
             previous_title_name = title_name
             previous_subtitle_name = subtitle_name
 
-        logging.info("Chunking is complete \n")
+            # Finalize the last chunk after the loop
+            if index == len(document_map['structure']) - 1:
+                finalize_chunk()
+
+        logging.info("Chunking is complete")
         return chunk_count
+    
+    def chunk_table_with_headers(self, table_html, chunk_target_size):
+        soup = BeautifulSoup(table_html, 'html.parser')
+
+        # Check for and extract the thead and tbody, or default to entire table
+        thead = soup.find('thead')
+        tbody = soup.find('tbody') or soup.find('table')
+        rows = soup.find_all('tr') if not tbody else tbody.find_all('tr')
+
+        header_html = f"<table>{minify_html.minify(str(thead))}" if thead else "<table>"
+  
+        # if the headers alone exceed the chunk target size
+        # Just return the whole table, not much else we can do...?
+        if self.token_count(header_html) > chunk_target_size:
+            return [minify_html.minify(str(soup))]
+              
+        # Initialize chunks list and current_chunk with the header
+        current_chunk = header_html
+        chunks = []
+
+        def add_current_chunk():
+            nonlocal current_chunk
+            # Close the table tag for the current chunk and add it to the chunks list
+            if current_chunk.strip() and not current_chunk.endswith("<table>"):
+                current_chunk += '</table>'
+                chunks.append(current_chunk)
+                # Start a new chunk with header if it exists
+                current_chunk = header_html
+
+        for row in rows:
+            # If adding this row to the current chunk exceeds the target size, start a new chunk
+            row_html = minify_html.minify(str(row))
+            if self.token_count(current_chunk + row_html) > chunk_target_size:
+                add_current_chunk()
+
+            # Add the current row to the chunk
+            current_chunk += row_html
+
+        # Add the final chunk if there's any content left
+        add_current_chunk()
+        
+        return chunks
