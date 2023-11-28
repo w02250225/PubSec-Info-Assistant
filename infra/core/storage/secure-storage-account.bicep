@@ -20,10 +20,10 @@ resource storage 'Microsoft.Storage/storageAccounts@2022-05-01' = {
   }
 }
 
-module privateEndpoint '../network/secure-private_endpoint.bicep' = {
+module privateEndpointBlob '../network/secure-private_endpoint.bicep' = {
   name: 'private-endpoint-${name}'
   params: {
-    serviceName: name
+    serviceName: '${name}-blob'
     location: location
     tags: tags
     serviceResourceId: storage.id
@@ -32,12 +32,50 @@ module privateEndpoint '../network/secure-private_endpoint.bicep' = {
   }
 }
 
+module privateEndpointFile '../network/secure-private_endpoint.bicep' = {
+  name: 'private-endpoint-${name}'
+  params: {
+    serviceName: '${name}-file'
+    location: location
+    tags: tags
+    serviceResourceId: storage.id
+    subnetResourceId: subnetResourceId
+    groupId: 'File'
+  }
+}
+
+module privateEndpointQueue '../network/secure-private_endpoint.bicep' = {
+  name: 'private-endpoint-${name}'
+  params: {
+    serviceName: '${name}-queue'
+    location: location
+    tags: tags
+    serviceResourceId: storage.id
+    subnetResourceId: subnetResourceId
+    groupId: 'Queue'
+  }
+}
+
+module privateEndpointTable '../network/secure-private_endpoint.bicep' = {
+  name: 'private-endpoint-${name}'
+  params: {
+    serviceName: '${name}-table'
+    location: location
+    tags: tags
+    serviceResourceId: storage.id
+    subnetResourceId: subnetResourceId
+    groupId: 'Table'
+  }
+}
+
 module blobSelf '../dns/secure-private_dns_zone-record.bicep' = {
   name: 'a-record-${name}-blob-self'
   params: {
     hostname: name
+    groupId: 'Blob'
+    privateEndpointName: privateEndpointBlob.outputs.name
     privateDnsZoneName: dnsZoneNameBlob
-    ipAddress: privateEndpoint.outputs.ipAddress
+    ipAddress: privateEndpointBlob.outputs.ipAddress
   }
 }
 
@@ -45,8 +83,10 @@ module fileSelf '../dns/secure-private_dns_zone-record.bicep' = {
   name: 'a-record-${name}-file-self'
   params: {
     hostname: name
+    groupId: 'File'
+    privateEndpointName: privateEndpointFile.outputs.name
     privateDnsZoneName: dnsZoneNameFile
-    ipAddress: privateEndpoint.outputs.ipAddress
+    ipAddress: privateEndpointFile.outputs.ipAddress
   }
 }
 
@@ -54,8 +94,10 @@ module queueSelf '../dns/secure-private_dns_zone-record.bicep' = {
   name: 'a-record-${name}-queue-self'
   params: {
     hostname: name
+    groupId: 'Queue'
+    privateEndpointName: privateEndpointQueue.outputs.name
     privateDnsZoneName: dnsZoneNameQueue
-    ipAddress: privateEndpoint.outputs.ipAddress
+    ipAddress: privateEndpointQueue.outputs.ipAddress
   }
 }
 
@@ -63,12 +105,23 @@ module tableSelf '../dns/secure-private_dns_zone-record.bicep' = {
   name: 'a-record-${name}-table-self'
   params: {
     hostname: name
+    groupId: 'Table'
+    privateEndpointName: privateEndpointTable.outputs.name
     privateDnsZoneName: dnsZoneNameTable
-    ipAddress: privateEndpoint.outputs.ipAddress
+    ipAddress: privateEndpointTable.outputs.ipAddress
   }
 }
 
 output id string = storage.id
-output privateEndpointId string = privateEndpoint.outputs.id
-output privateEndpointName string = privateEndpoint.outputs.name
-output privateEndpointIp string = privateEndpoint.outputs.ipAddress
+output privateEndpointIdBlob string = privateEndpointBlob.outputs.id
+output privateEndpointNameBlob string = privateEndpointBlob.outputs.name
+output privateEndpointIpBlob string = privateEndpointBlob.outputs.ipAddress
+output privateEndpointIdFile string = privateEndpointFile.outputs.id
+output privateEndpointNameFile string = privateEndpointFile.outputs.name
+output privateEndpointIpFile string = privateEndpointFile.outputs.ipAddress
+output privateEndpointIdQueue string = privateEndpointQueue.outputs.id
+output privateEndpointNameQueue string = privateEndpointQueue.outputs.name
+output privateEndpointIpQueue string = privateEndpointQueue.outputs.ipAddress
+output privateEndpointIdTable string = privateEndpointTable.outputs.id
+output privateEndpointNameTable string = privateEndpointTable.outputs.name
+output privateEndpointIpTable string = privateEndpointTable.outputs.ipAddress

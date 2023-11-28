@@ -73,6 +73,7 @@ def main(msg: func.QueueMessage) -> None:
         
         # construct blob url
         blob_path_plus_sas = utilities.get_blob_and_sas(blob_path)
+
         statusLog.upsert_document(
             blob_path,
             f"{FUNCTION_NAME} - SAS token generated",
@@ -162,7 +163,7 @@ def main(msg: func.QueueMessage) -> None:
             # general error occurred
             statusLog.upsert_document(
                 blob_path,
-                f"{FUNCTION_NAME} - Error on PDF submission to FR - {response.status_code} - {response.reason}",
+                f"{FUNCTION_NAME} - Error on PDF submission to FR - {response.status_code} - {response.reason}. Blob Path SAS {blob_path_plus_sas}. Full Response {response.text}",
                 StatusClassification.ERROR,
                 State.ERROR,
             )

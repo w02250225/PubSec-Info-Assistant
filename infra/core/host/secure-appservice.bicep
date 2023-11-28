@@ -32,6 +32,8 @@ module self '../dns/secure-private_dns_zone-record.bicep' = {
   name: 'a-record-${appService.name}-self'
   params: {
     hostname: appService.name
+    groupId: privateEndpoint.outputs.groupId
+    privateEndpointName: privateEndpoint.outputs.name
     privateDnsZoneName: dnsZoneName
     ipAddress: privateEndpoint.outputs.ipAddress
   }
@@ -44,6 +46,8 @@ module scm '../dns/secure-private_dns_zone-record.bicep' = {
   name: 'a-record-${appService.name}-scm'
   params: {
     hostname: '${appService.name}.scm'
+    groupId: privateEndpoint.outputs.groupId
+    privateEndpointName: privateEndpoint.outputs.name
     privateDnsZoneName: dnsZoneName
     ipAddress: privateEndpoint.outputs.ipAddress
   }

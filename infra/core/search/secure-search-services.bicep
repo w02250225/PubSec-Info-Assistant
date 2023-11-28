@@ -53,6 +53,8 @@ module selfSearch '../dns/secure-private_dns_zone-record.bicep' = {
   name: 'a-record-${nameSearch}-self'
   params: {
     hostname: nameSearch
+    groupId: privateEndpointSearch.outputs.groupId
+    privateEndpointName: privateEndpointSearch.outputs.name
     privateDnsZoneName: dnsZoneNameSearch
     ipAddress: privateEndpointSearch.outputs.ipAddress
   }
@@ -74,6 +76,8 @@ module selfAccount '../dns/secure-private_dns_zone-record.bicep' = {
   name: 'a-record-${nameAccount}-self'
   params: {
     hostname: nameAccount
+    groupId: privateEndpointAccount.outputs.groupId
+    privateEndpointName: privateEndpointAccount.outputs.name
     privateDnsZoneName: dnsZoneNameAccount
     ipAddress: privateEndpointAccount.outputs.ipAddress
   }

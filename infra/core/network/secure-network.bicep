@@ -1,7 +1,22 @@
 param location string
 param vnetName string
-param networkSecurityGroupId string
 param tags object = {}
+param networkSecurityGroupId string
+
+param vnetIpAddressCIDR string
+param snetAppGatewayCIDR string
+param snetAzureMonitorCIDR string
+param snetApiManagementCIDR string
+param snetStorageAccountCIDR string
+param snetCosmosDbCIDR string
+param snetAzureAiCIDR string
+param snetKeyVaultCIDR string
+param snetAppInboundCIDR string
+param snetAppOutboundCIDR string 
+param snetFunctionInboundCIDR string
+param snetFunctionOutboundCIDR string
+param snetEnrichmentInboundCIDR string
+param snetEnrichmentOutboundCIDR string
 
 resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
   name: vnetName
@@ -10,14 +25,35 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
   properties: {
     addressSpace: {
       addressPrefixes: [
-        '10.0.0.0/22'
+        vnetIpAddressCIDR
       ]
     }
     subnets: [
       {
+        name: 'appGateway'
+        properties: {
+          addressPrefix: snetAppGatewayCIDR
+          serviceEndpoints: [
+          ]
+        }
+      }
+      {
+        name: 'azureMonitor'
+        properties: {
+          addressPrefix: snetAzureMonitorCIDR
+          serviceEndpoints: [
+          ]
+          delegations: [
+          ]
+          networkSecurityGroup: {
+            id: networkSecurityGroupId
+          }
+        }
+      }
+      {
         name: 'apiManagement'
         properties: {
-          addressPrefix: '10.0.0.0/26'
+          addressPrefix: snetApiManagementCIDR
           serviceEndpoints: [
             {
               service: 'Microsoft.Storage'
@@ -41,9 +77,53 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
         }
       }
       {
+        name: 'storageAccount'
+        properties: {
+          addressPrefix: snetStorageAccountCIDR
+          serviceEndpoints: [
+          ]
+          networkSecurityGroup: {
+            id: networkSecurityGroupId
+          }
+        }
+      }
+      {
+        name: 'cosmosDb'
+        properties: {
+          addressPrefix: snetCosmosDbCIDR
+          serviceEndpoints: [
+          ]
+          networkSecurityGroup: {
+            id: networkSecurityGroupId
+          }
+        }
+      }
+      {
+        name: 'azureAi'
+        properties: {
+          addressPrefix: snetAzureAiCIDR
+          serviceEndpoints: [
+          ]
+          networkSecurityGroup: {
+            id: networkSecurityGroupId
+          }
+        }
+      }
+      {
+        name: 'keyVault'
+        properties: {
+          addressPrefix: snetKeyVaultCIDR
+          serviceEndpoints: [
+          ]
+          networkSecurityGroup: {
+            id: networkSecurityGroupId
+          }
+        }
+      }
+      {
         name: 'appInbound'
         properties: {
-          addressPrefix: '10.0.0.64/26'
+          addressPrefix: snetAppInboundCIDR
           serviceEndpoints: []
           delegations: []
           networkSecurityGroup: {
@@ -54,7 +134,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
       {
         name: 'appOutbound'
         properties: {
-          addressPrefix: '10.0.0.128/26'
+          addressPrefix: snetAppOutboundCIDR
           serviceEndpoints: [
             {
               service: 'Microsoft.storage'
@@ -77,62 +157,71 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
         }
       }
       {
-        name: 'storageAccount'
-        properties: {
-          addressPrefix: '10.0.0.192/26'
-          serviceEndpoints: [
-          ]
-          networkSecurityGroup: {
-            id: networkSecurityGroupId
-          }
-        }
-      }
-      {
-        name: 'publicAccess'
-        properties: {
-          addressPrefix: '10.0.1.0/26'
-          serviceEndpoints: [
-          ]
-        }
-      }
-      {
-        name: 'cosmosDb'
-        properties: {
-          addressPrefix: '10.0.1.64/26'
-          serviceEndpoints: [
-          ]
-          networkSecurityGroup: {
-            id: networkSecurityGroupId
-          }
-        }
-      }
-      {
-        name: 'azureAi'
-        properties: {
-          addressPrefix: '10.0.1.192/26'
-          serviceEndpoints: [
-          ]
-          networkSecurityGroup: {
-            id: networkSecurityGroupId
-          }
-        }
-      }
-      {
-        name: 'keyVault'
-        properties: {
-          addressPrefix: '10.0.2.0/26'
-          serviceEndpoints: [
-          ]
-          networkSecurityGroup: {
-            id: networkSecurityGroupId
-          }
-        }
-      }
-      {
         name: 'functionInbound'
         properties: {
-          addressPrefix: '10.0.2.64/26'
+          addressPrefix: snetFunctionInboundCIDR
           serviceEndpoints: [
+          ]
+          networkSecurityGroup: {
+            id: networkSecurityGroupId
+          }
+        }
+      }
+      {
+        name: 'functionOutbound'
+        properties: {
+          addressPrefix: snetFunctionOutboundCIDR
+          serviceEndpoints: [
+            {
+              service: 'Microsoft.storage'
+              locations: [
+                location
+              ]
+            }
+          ]
+          delegations: [
+            {
+              name: 'Microsoft.Web/serverfarms'
+              properties: {
+                serviceName: 'Microsoft.Web/serverfarms'
+              }
+            }
+          ]
+          networkSecurityGroup: {
+            id: networkSecurityGroupId
+          }
+        }
+      }
+      {
+        name: 'enrichmentInbound'
+        properties: {
+          addressPrefix: snetEnrichmentInboundCIDR
+          serviceEndpoints: [
+          ]
+          networkSecurityGroup: {
+            id: networkSecurityGroupId
+          }
+        }
+      }
+      {
+        name: 'enrichmentOutbound'
+        properties: {
+          addressPrefix: snetEnrichmentOutboundCIDR
+          serviceEndpoints: [
+            {
+              service: 'Microsoft.storage'
+              locations: [
+                location
+              ]
+            }
+          ]
+          delegations: [
+            {
+              name: 'Microsoft.Web/serverfarms'
+              properties: {
+                serviceName: 'Microsoft.Web/serverfarms'
+              }
+            }
           ]
           networkSecurityGroup: {
             id: networkSecurityGroupId
@@ -145,12 +234,23 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
 
 output name string = vnetName
 output id string = vnet.id
-output subnetIdApiManagement string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'apiManagement')
-output subnetIdAppInbound string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'appInbound')
-output subnetIdFunctionInbound string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'functionInbound')
-output subnetIdAppOutbound string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'appOutbound')
-output subnetIdStorageAccount string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'storageAccount')
 output subnetIdAppGateway string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'appGateway')
+output subnetIdApiManagement string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'apiManagement')
+output subnetIdAzureMonitor string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'azureMonitor')
+
+output subnetIdStorageAccount string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'storageAccount')
 output subnetIdCosmosDb string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'cosmosDb')
 output subnetIdAzureAi string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'azureAi')
 output subnetIdKeyVault string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'keyVault')
+
+output subnetIdAppInbound string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'appInbound')
+output subnetIdAppOutbound string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'appOutbound')
+
+output subnetIdFunctionInbound string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'functionInbound')
+output subnetIdFunctionOutbound string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'functionOutbound')
+
+output subnetIdEnrichmentInbound string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'enrichmentInbound')
+output subnetIdEnrichmentOutbound string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'enrichmentOutbound')
+
+
+

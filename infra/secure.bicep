@@ -88,8 +88,27 @@ param principalId string = ''
 // SECURE ENVIRONMENT PARAMETERS
 param networkSecurityGroupName string = ''
 param vnetName string = ''
+
+@description('The IP address range of the virtual network in CIDR notation. Requires a minimum of /21. Example: 10.0.0.0/21')
+param vnetIpAddressCIDR string = '10.0.0.0/21'
+param snetAppGatewayCIDR string = '10.0.0.0/26'
+param snetAzureMonitorCIDR string = '10.0.0.64/26'
+param snetApiManagementCIDR string = '10.0.0.128/26'
+param snetStorageAccountCIDR string = '10.0.1.0/26'
+param snetCosmosDbCIDR string = '10.0.1.64/26'
+param snetAzureAiCIDR string = '10.0.1.128/26'
+param snetKeyVaultCIDR string = '10.0.1.192/26'
+param snetAppInboundCIDR string = '10.0.2.0/26'
+param snetAppOutboundCIDR string = '10.0.2.128/26'
+param snetFunctionInboundCIDR string = '10.0.3.0/26'
+param snetFunctionOutboundCIDR string = '10.0.3.128/26'
+param snetEnrichmentInboundCIDR string = '10.0.4.0/26'
+param snetEnrichmentOutboundCIDR string = '10.0.4.128/26'
+
+
 param frontDoorName string = ''
 param frontDoorWafPolicyName string = ''
+param privateLinkScopeName string = ''
 
 var abbrs = loadJsonContent('abbreviations.json')
 var tags = { ProjectName: 'Information Assistant', BuildNumber: buildNumber }
@@ -121,6 +140,21 @@ module network 'core/network/secure-network.bicep' = {
     vnetName: !empty(vnetName) ? vnetName : '${prefix}-${abbrs.networkVirtualNetworks}${randomString}'
     location: location
     networkSecurityGroupId: networkSecurityGroup.outputs.id
+    tags: tags
+    vnetIpAddressCIDR: vnetIpAddressCIDR
+    snetAppGatewayCIDR: snetAppGatewayCIDR
+    snetAzureMonitorCIDR: snetAzureMonitorCIDR
+    snetApiManagementCIDR: snetApiManagementCIDR
+    snetStorageAccountCIDR: snetStorageAccountCIDR
+    snetCosmosDbCIDR: snetCosmosDbCIDR
+    snetAzureAiCIDR: snetAzureAiCIDR
+    snetKeyVaultCIDR: snetKeyVaultCIDR
+    snetAppInboundCIDR: snetAppInboundCIDR
+    snetAppOutboundCIDR: snetAppOutboundCIDR
+    snetFunctionInboundCIDR: snetFunctionInboundCIDR
+    snetFunctionOutboundCIDR: snetFunctionOutboundCIDR
+    snetEnrichmentInboundCIDR: snetEnrichmentInboundCIDR
+    snetEnrichmentOutboundCIDR: snetEnrichmentOutboundCIDR
   }
   dependsOn: [
     networkSecurityGroup
@@ -131,7 +165,7 @@ module privateDnsZoneAzureOpenAi 'core/dns/secure-private_dns_zone.bicep' = {
   scope: rg
   name: 'secure-private-dns-zone-azure-openai'
   params: {
-    name: contains(location, 'USGov') ? 'openai.azure.com' : 'openai.azure.com'
+    name: contains(location, 'USGov') ? 'openai.azure.com' : 'privatelink.openai.azure.com'
     vnetLinkName: '${prefix}-link-azure-openai-${randomString}'
     location: 'global'
     tags: tags
@@ -146,7 +180,7 @@ module privateDnsZoneApiManagement 'core/dns/secure-private_dns_zone.bicep' = {
   scope: rg
   name: 'secure-private-dns-zone-api-management'
   params: {
-    name: contains(location, 'USGov') ? 'usgovcloudapi.net' : 'azure-api.net'
+    name: contains(location, 'USGov') ? 'usgovcloudapi.net' : 'privatelink.azure-api.net'
     vnetLinkName: '${prefix}-link-api-management-${randomString}'
     location: 'global'
     tags: tags
@@ -161,7 +195,7 @@ module privateDnsZoneAppService 'core/dns/secure-private_dns_zone.bicep' = {
   scope: rg
   name: 'secure-private-dns-zone-app-service'
   params: {
-    name: contains(location, 'USGov') ? 'appserviceenvironment.us' : 'appserviceenvironment.net'
+    name: contains(location, 'USGov') ? 'appserviceenvironment.us' : 'privatelink.appserviceenvironment.net'
     vnetLinkName: '${prefix}-link-app-service-outbound-${randomString}'
     location: 'global'
     tags: tags
@@ -176,7 +210,7 @@ module privateDnsZoneAzureAi 'core/dns/secure-private_dns_zone.bicep' = {
   scope: rg
   name: 'secure-private-dns-zone-azure-ai'
   params: {
-    name: contains(location, 'USGov') ? 'cognitiveservices.azure.us' : 'cognitiveservices.azure.com'
+    name: contains(location, 'USGov') ? 'cognitiveservices.azure.us' : 'privatelink.cognitiveservices.azure.com'
     vnetLinkName: '${prefix}-link-azure-ai-${randomString}'
     location: 'global'
     tags: tags
@@ -191,7 +225,7 @@ module privateDnsZoneApp 'core/dns/secure-private_dns_zone.bicep' = {
   scope: rg
   name: 'secure-private-dns-zone-app'
   params: {
-    name: contains(location, 'USGov') ? 'azurewebsites.us' : 'azurewebsites.net'
+    name: contains(location, 'USGov') ? 'azurewebsites.us' : 'privatelink.azurewebsites.net'
     vnetLinkName: '${prefix}-link-app-${randomString}'
     location: 'global'
     tags: tags
@@ -206,7 +240,7 @@ module privateDnsZoneKeyVault 'core/dns/secure-private_dns_zone.bicep' = {
   scope: rg
   name: 'secure-private-dns-zone-key-vault'
   params: {
-    name: contains(location, 'USGov') ? 'vault.usgovcloudapi.net' : 'vault.azure.net'
+    name: contains(location, 'USGov') ? 'vault.usgovcloudapi.net' : 'privatelink.vault.azure.net'
     vnetLinkName: '${prefix}-link-key-vault-${randomString}'
     location: 'global'
     tags: tags
@@ -221,7 +255,7 @@ module privateDnsZoneStorageAccountBlob 'core/dns/secure-private_dns_zone.bicep'
   scope: rg
   name: 'secure-private-dns-zone-storage-account-blob'
   params: {
-    name: contains(location, 'USGov') ? 'blob.core.usgovcloudapi.net' : 'blob.core.windows.net'
+    name: contains(location, 'USGov') ? 'blob.core.usgovcloudapi.net' : 'privatelink.blob.core.windows.net'
     vnetLinkName: '${prefix}-link-storate-account-${randomString}'
     location: 'global'
     tags: tags
@@ -236,7 +270,7 @@ module privateDnsZoneStorageAccountFile 'core/dns/secure-private_dns_zone.bicep'
   scope: rg
   name: 'secure-private-dns-zone-storage-account-file'
   params: {
-    name: contains(location, 'USGov') ? 'file.core.usgovcloudapi.net' : 'file.core.windows.net'
+    name: contains(location, 'USGov') ? 'file.core.usgovcloudapi.net' : 'privatelink.file.core.windows.net'
     vnetLinkName: '${prefix}-link-storate-account-${randomString}'
     location: 'global'
     tags: tags
@@ -251,7 +285,7 @@ module privateDnsZoneStorageAccountTable 'core/dns/secure-private_dns_zone.bicep
   scope: rg
   name: 'secure-private-dns-zone-storage-account-table'
   params: {
-    name: contains(location, 'USGov') ? 'table.core.usgovcloudapi.net' : 'table.core.windows.net'
+    name: contains(location, 'USGov') ? 'table.core.usgovcloudapi.net' : 'privatelink.table.core.windows.net'
     vnetLinkName: '${prefix}-link-storate-account-${randomString}'
     location: 'global'
     tags: tags
@@ -266,7 +300,7 @@ module privateDnsZoneStorageAccountQueue 'core/dns/secure-private_dns_zone.bicep
   scope: rg
   name: 'secure-private-dns-zone-storage-account-queue'
   params: {
-    name: contains(location, 'USGov') ? 'queue.core.usgovcloudapi.net' : 'queue.core.windows.net'
+    name: contains(location, 'USGov') ? 'queue.core.usgovcloudapi.net' : 'privatelink.queue.core.windows.net'
     vnetLinkName: '${prefix}-link-storate-account-${randomString}'
     location: 'global'
     tags: tags
@@ -281,7 +315,7 @@ module privateDnsZoneSearchService 'core/dns/secure-private_dns_zone.bicep' = {
   scope: rg
   name: 'secure-private-dns-zone-search-service'
   params: {
-    name: contains(location, 'USGov') ? 'search.windows.us' : 'search.windows.net'
+    name: contains(location, 'USGov') ? 'search.windows.us' : 'privatelink.search.windows.net'
     vnetLinkName: '${prefix}-link-service-service-${randomString}'
     location: 'global'
     tags: tags
@@ -296,7 +330,7 @@ module privateDnsZoneCosmosDb 'core/dns/secure-private_dns_zone.bicep' = {
   scope: rg
   name: 'secure-private-dns-zone-cosmos-db'
   params: {
-    name: contains(location, 'USGov') ? 'documents.azure.us' : 'documents.azure.com'
+    name: contains(location, 'USGov') ? 'documents.azure.us' : 'privatelink.documents.azure.com'
     vnetLinkName: '${prefix}-link-cosmos-db-${randomString}'
     location: 'global'
     tags: tags
@@ -311,7 +345,7 @@ module privateDnsZoneMediaService 'core/dns/secure-private_dns_zone.bicep' = if 
   scope: rg
   name: 'secure-private-dns-zone-media-service'
   params: {
-    name: 'media.azure.net'
+    name: 'privatelink.media.azure.net'
     vnetLinkName: '${prefix}-link-media-service-${randomString}'
     location: 'global'
     tags: tags
@@ -322,14 +356,91 @@ module privateDnsZoneMediaService 'core/dns/secure-private_dns_zone.bicep' = if 
   ]
 }
 
-module openAiBlob 'core/dns/secure-private_dns_zone-record.bicep' = {
+
+module privateDnsZoneAzureMonitor 'core/dns/secure-private_dns_zone.bicep' = {
   scope: rg
-  name: 'a-record-openai-public-open'
+  name: 'secure-private-dns-zone-azure-monitor'
   params: {
-    hostname: 'openaipublic'
-    privateDnsZoneName: privateDnsZoneStorageAccountBlob.outputs.name
-    ipAddress: '20.150.77.132'
+    name: contains(location, 'USGov') ? 'privatelink.monitor.azure.us' : 'privatelink.monitor.azure.com'
+    vnetLinkName: '${prefix}-link-azure-monitor-${randomString}'
+    location: 'global'
+    tags: tags
+    vnetResourceId: network.outputs.id
   }
+  dependsOn: [
+    network
+  ]
+}
+
+module privateDnsZoneOpsInsightOms 'core/dns/secure-private_dns_zone.bicep' = {
+  scope: rg
+  name: 'secure-private-dns-zone-ops-insight-oms'
+  params: {
+    name: contains(location, 'USGov') ? 'privatelink.oms.opinsights.azure.us' : 'privatelink.oms.opinsights.azure.com'
+    vnetLinkName: '${prefix}-link-ops-insight-oms-${randomString}'
+    location: 'global'
+    tags: tags
+    vnetResourceId: network.outputs.id
+  }
+  dependsOn: [
+    network
+  ]
+}
+module privateDnsZoneOpsInsightOds 'core/dns/secure-private_dns_zone.bicep' = {
+  scope: rg
+  name: 'secure-private-dns-zone-ops-insight-ods'
+  params: {
+    name: contains(location, 'USGov') ? 'privatelink.ods.opinsights.azure.us' : 'privatelink.ods.opinsights.azure.com'
+    vnetLinkName: '${prefix}-link-ops-insight-ods-${randomString}'
+    location: 'global'
+    tags: tags
+    vnetResourceId: network.outputs.id
+  }
+  dependsOn: [
+    network
+  ]
+}
+
+module privateDnsZoneAutomation 'core/dns/secure-private_dns_zone.bicep' = {
+  scope: rg
+  name: 'secure-private-dns-zone-automation'
+  params: {
+    name: contains(location, 'USGov') ? 'privatelink.agentsvc.azure-automation.us' : 'privatelink.agentsvc.azure-automation.net'
+    vnetLinkName: '${prefix}-link-ops-automation-${randomString}'
+    location: 'global'
+    tags: tags
+    vnetResourceId: network.outputs.id
+  }
+  dependsOn: [
+    network
+  ]
+}
+
+
+module privateLinkScope 'core/network/secure-private_link_scope.bicep' = {
+  scope: rg
+  name: 'private-link-scope'
+  params: {
+    name: !empty(privateLinkScopeName) ? privateLinkScopeName : '${prefix}-apls-${randomString}'
+    location: location
+    tags: tags
+    subnetResourceId: network.outputs.subnetIdAzureMonitor
+    workspaceName: !empty(logAnalyticsName) ? logAnalyticsName : '${prefix}-${abbrs.logAnalytics}${randomString}'
+    appInsightsName: !empty(applicationInsightsName) ? applicationInsightsName : '${prefix}-${abbrs.appInsights}${randomString}'
+    privateDnsZoneResourceIdMonitor: privateDnsZoneAzureMonitor.outputs.id
+    privateDnsZoneResourceIdOpsInsightOms: privateDnsZoneOpsInsightOms.outputs.id
+    privateDnsZoneResourceIdOpsInsightOds: privateDnsZoneOpsInsightOds.outputs.id
+    privateDnsZoneResourceIdAutomation: privateDnsZoneAutomation.outputs.id
+    privateDnsZoneResourceIdBlob: privateDnsZoneStorageAccountBlob.outputs.id
+    groupId: 'azuremonitor'
+  }
+  dependsOn: [
+    privateDnsZoneAzureMonitor
+    privateDnsZoneOpsInsightOms
+    privateDnsZoneOpsInsightOds
+    privateDnsZoneAutomation
+    privateDnsZoneStorageAccountBlob
+  ]
 }
 
 module appServicePlan 'core/host/appserviceplan.bicep' = {
@@ -484,43 +595,3 @@ module media_service 'core/video_indexer/secure-media_service.bicep' = if (!cont
     storageAccountID: storageMedia.outputs.id
   }
 }
-
-module frontDoorWafPolicy 'core/network/secure-front_door-waf_policy.bicep' = {
-  name: 'secure-front-door-waf-policy'
-  scope: rg
-  params: {
-    name: !empty(frontDoorWafPolicyName) ? frontDoorWafPolicyName : '${prefix}waf${randomString}'
-    location: location
-    tags: tags
-    sku: {
-      name: 'Premium_AzureFrontDoor'
-    }
-    state: 'Enabled'
-    mode: 'Detection'
-  }
-  dependsOn: [
-    network
-  ]
-}
-
-
-module frontDoor 'core/network/secure-front_door.bicep' = {
-  name: 'secure-front-door'
-  scope: rg
-  params: {
-    name: !empty(frontDoorName) ? frontDoorName : '${prefix}-${abbrs.networkFrontDoors}${randomString}'
-    location: 'Global'
-    locationRegion: location
-    tags: tags
-    prefix: prefix
-    originFqdn: backend.outputs.fqdn
-    wafPolicyResourceId: frontDoorWafPolicy.outputs.id
-    backendResourceId: backend.outputs.id
-  }
-  dependsOn: [
-    network
-    frontDoorWafPolicy
-  ]
-}
-
-output FRONTDOOR_URI string = frontDoor.outputs.uri

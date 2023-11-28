@@ -40,6 +40,8 @@ module self '../dns/secure-private_dns_zone-record.bicep' = {
   name: 'a-record-${name}-self'
   params: {
     hostname: name
+    groupId: privateEndpoint.outputs.groupId
+    privateEndpointName: privateEndpoint.outputs.name
     privateDnsZoneName: dnsZoneName
     ipAddress: privateEndpoint.outputs.ipAddress
   }
@@ -49,6 +51,8 @@ module selfRegion '../dns/secure-private_dns_zone-record.bicep' = {
   name: 'a-record-${name}-self-region'
   params: {
     hostname: '${name}-${location}'
+    groupId: privateEndpoint.outputs.groupId
+    privateEndpointName: privateEndpoint.outputs.name
     privateDnsZoneName: dnsZoneName
     ipAddress: privateEndpoint.outputs.inAddress2
   }
