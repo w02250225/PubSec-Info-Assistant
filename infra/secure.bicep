@@ -498,6 +498,52 @@ module backend 'core/host/secure-appservice.bicep' = {
   ]
 }
 
+module enrichmentAppServicePlan 'core/host/secure-enrichmentappserviceplan.bicep' = {
+  name: 'secure-enrichment-app-service-plan'
+  scope: rg
+  params: {
+    name: !empty(enrichmentAppServicePlanName) ? enrichmentAppServicePlanName : '${prefix}-enrichment${abbrs.webServerFarms}${randomString}'
+    location: location
+    tags: tags
+    sku: {
+      name: 'P1v3'
+      capacity: 1
+    }
+    kind: 'linux'
+  }
+}
+
+module enrichmentApp 'core/host/secure-enrichmentappservice.bicep' = {
+  name: 'secure-enrichment-app'
+  scope: rg
+  params: {
+    name: !empty(enrichmentServiceName) ? enrichmentServiceName : '${prefix}-enrichment${abbrs.webSitesAppService}${randomString}'
+    location: location
+    tags: tags
+    appServicePlanId: enrichmentAppServicePlan.outputs.id
+    subnetResourceIdInbound: network.outputs.subnetIdEnrichmentInbound
+    subnetResourceIdOutbound: network.outputs.subnetIdEnrichmentOutbound
+  }
+  dependsOn: [
+    enrichmentAppServicePlan
+  ]
+}
+
+module funcServicePlan 'core/host/funcserviceplan.bicep' = {
+  name: 'secure-funcserviceplan'
+  scope: rg
+  params: {
+    name: !empty(appServicePlanName) ? appServicePlanName : '${prefix}-${abbrs.funcServerFarms}${randomString}'
+    location: location
+    tags: tags
+    sku: {
+      name: 'P1v3'
+      capacity: 5
+    }
+    kind: 'linux'
+  }
+}
+
 module cognitiveServices 'core/ai/secure-cognitiveservices.bicep' = if (!useExistingAOAIService) {
   scope: rg
   name: 'secure-azure-openai'
