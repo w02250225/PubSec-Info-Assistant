@@ -20,7 +20,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
 module privateEndpoint '../network/secure-private_endpoint.bicep' = {
   name: 'private-endpoint-${name}'
   params: {
-    serviceName: name
+    name: name
     location: location
     serviceResourceId: functionApp.id
     subnetResourceId: subnetResourceIdInbound

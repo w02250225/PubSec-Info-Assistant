@@ -40,7 +40,7 @@ resource account 'Microsoft.CognitiveServices/accounts@2022-10-01' = {
 module privateEndpointSearch '../network/secure-private_endpoint.bicep' = {
   name: 'private-endpoint-${nameSearch}'
   params: {
-    serviceName: nameSearch
+    name: nameSearch
     location: location
     tags: tags
     serviceResourceId: search.id
@@ -63,7 +63,7 @@ module selfSearch '../dns/secure-private_dns_zone-record.bicep' = {
 module privateEndpointAccount '../network/secure-private_endpoint.bicep' = {
   name: 'private-endpoint-${nameAccount}'
   params: {
-    serviceName: nameAccount
+    name: nameAccount
     location: location
     tags: tags
     serviceResourceId: account.id

@@ -26,7 +26,7 @@ resource mediaService 'Microsoft.Media/mediaservices@2023-01-01' = {
 module privateEndpoint '../network/secure-private_endpoint.bicep' = {
   name: 'private-endpoint-${name}'
   params: {
-    serviceName: name
+    name: name
     location: location
     tags: tags
     serviceResourceId: mediaService.id

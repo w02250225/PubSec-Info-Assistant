@@ -4,7 +4,7 @@ param tags object = {}
 param networkSecurityGroupId string
 
 param vnetIpAddressCIDR string
-param snetAppGatewayCIDR string
+param snetPublicAccessCIDR string
 param snetAzureMonitorCIDR string
 param snetApiManagementCIDR string
 param snetStorageAccountCIDR string
@@ -30,9 +30,9 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
     }
     subnets: [
       {
-        name: 'appGateway'
+        name: 'publicAccess'
         properties: {
-          addressPrefix: snetAppGatewayCIDR
+          addressPrefix: snetPublicAccessCIDR
           serviceEndpoints: [
           ]
         }
@@ -234,7 +234,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
 
 output name string = vnetName
 output id string = vnet.id
-output subnetIdAppGateway string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'appGateway')
+output subnetIdPublicAccess string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'publicAccess')
 output subnetIdApiManagement string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'apiManagement')
 output subnetIdAzureMonitor string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'azureMonitor')
 

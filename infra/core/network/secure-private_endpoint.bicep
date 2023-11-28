@@ -1,4 +1,4 @@
-param serviceName string
+param name string
 param location string
 param serviceResourceId string
 param subnetResourceId string
@@ -6,7 +6,7 @@ param groupId string
 param tags object = {}
 
 resource privateEndpoint 'Microsoft.Network/privateEndpoints@2021-02-01' = {
-  name: '${serviceName}-private-endpoint'
+  name: '${name}-private-endpoint'
   location: location
   tags: tags
   properties: {
@@ -15,7 +15,7 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2021-02-01' = {
     }
     privateLinkServiceConnections: [
       {
-        name: '${serviceName}-private-link-service-connection'
+        name: '${name}-private-link-service-connection'
         properties: {
           privateLinkServiceId: serviceResourceId
           groupIds: [
@@ -28,7 +28,7 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2021-02-01' = {
 }
 
 module networkInterface 'secure-network_interface.bicep' = {
-  name: '${serviceName}-network-interface'
+  name: '${name}-network-interface'
   params: {
     name: last(split(privateEndpoint.properties.networkInterfaces[0].id, '/'))
   }

@@ -21,9 +21,9 @@ param aadMgmtServicePrincipalId string = ''
 param buildNumber string = 'local'
 param isInAutomation bool = false
 param useExistingAOAIService bool
-param azureOpenAIServiceName string = ''
-param azureOpenAIResourceGroup string = ''
-param azureOpenAIServiceKey string = ''
+param azureOpenAIServiceName string
+param azureOpenAIResourceGroup string
+param azureOpenAIServiceKey string
 param openAiServiceName string = ''
 param openAiSkuName string = 'S0'
 param cognitiveServiesForSearchName string = ''
@@ -31,7 +31,7 @@ param cosmosdbName string = ''
 param formRecognizerName string = ''
 param enrichmentName string = ''
 param formRecognizerSkuName string = 'S0'
-param encichmentSkuName string = 'S0'
+param enrichmentSkuName string = 'S0'
 param cognitiveServiesForSearchSku string = 'S0'
 param appServicePlanName string = ''
 param enrichmentAppServicePlanName string = ''
@@ -49,35 +49,57 @@ param storageAccountName string = ''
 param containerName string = 'content'
 param uploadContainerName string = 'upload'
 param functionLogsContainerName string = 'logs'
-param searchIndexName string = 'all-files-index'
+param searchIndexName string = 'vector-index'
 param chatGptDeploymentName string = 'chat'
+param azureOpenAIEmbeddingDeploymentName string = 'text-embedding-ada-002'
+param azureOpenAIEmbeddingsModelName string = 'text-embedding-ada-002'
+param azureOpenAIEmbeddingsModelVersion string = '2'
+param useAzureOpenAIEmbeddings bool = true
+param sentenceTransformersModelName string = 'BAAI/bge-small-en-v1.5'
+param sentenceTransformerEmbeddingVectorSize string = '384'
+param embeddingsDeploymentCapacity int = 240
+param chatWarningBannerText string = ''
 param chatGptModelName string = 'gpt-35-turbo-16k'
 param chatGptModelVersion string = '0613'
-param chatGptDeploymentCapacity int = 1
+param chatGptDeploymentCapacity int = 240
 // metadata in our chunking strategy adds about 180-200 tokens to the size of the chunks, 
 // our default target size is 750 tokens so the chunk files that get indexed will be around 950 tokens each
-param chunkTargetSize string = '750' 
+param chunkTargetSize string = '750'
 param targetPages string = 'ALL'
 param formRecognizerApiVersion string = '2022-08-31'
-param pdfSubmitQueue string = 'pdf-submit-queue'
-param pdfPollingQueue string = 'pdf-polling-queue'
-param nonPdfSubmitQueue string = 'non-pdf-submit-queue'
-param mediaSubmitQueue string = 'media-submit-queue'
-param textEnrichmentQueue string = 'text-enrichment-queue'
 param queryTermLanguage string = 'English'
+param isGovCloudDeployment bool = contains(location, 'usgov')
+
+// This block of variables are used by the enrichment pipeline
+// Azure Functions or Container. These values are also populated
+// in the debug env files at 'functions/local.settings.json'. You
+// may want to update the local debug values separate from what is deployed to Azure.
 param maxSecondsHideOnUpload string = '300'
 param maxSubmitRequeueCount string = '10'
 param pollQueueSubmitBackoff string = '60'
 param pdfSubmitQueueBackoff string = '60'
 param maxPollingRequeueCount string = '10'
-param submitRequeueHideSeconds  string = '1200'
+param submitRequeueHideSeconds string = '1200'
 param pollingBackoff string = '30'
 param maxReadAttempts string = '5'
-param cuaEnabled bool = false
-param cuaId string = ''
 param maxEnrichmentRequeueCount string = '10'
 param enrichmentBackoff string = '60'
 param targetTranslationLanguage string = 'en'
+param pdfSubmitQueue string = 'pdf-submit-queue'
+param pdfPollingQueue string = 'pdf-polling-queue'
+param nonPdfSubmitQueue string = 'non-pdf-submit-queue'
+param mediaSubmitQueue string = 'media-submit-queue'
+param textEnrichmentQueue string = 'text-enrichment-queue'
+param imageEnrichmentQueue string = 'image-enrichment-queue'
+param embeddingsQueue string = 'embeddings-queue'
+// End of valued replicated in debug env files
+
+// This block of variables are used for Branding
+param applicationtitle string = ''
+// End branding
+
+param cuaEnabled bool = false
+param cuaId string = ''
 param enableDevCode bool = false
 param tenantId string = ''
 param subscriptionId string = ''
@@ -85,13 +107,14 @@ param subscriptionId string = ''
 @description('Id of the user or app to assign application roles')
 param principalId string = ''
 
+
 // SECURE ENVIRONMENT PARAMETERS
 param networkSecurityGroupName string = ''
 param vnetName string = ''
 
 @description('The IP address range of the virtual network in CIDR notation. Requires a minimum of /21. Example: 10.0.0.0/21')
 param vnetIpAddressCIDR string = '10.0.0.0/21'
-param snetAppGatewayCIDR string = '10.0.0.0/26'
+param snetPublicAccessCIDR string = '10.0.0.0/26'
 param snetAzureMonitorCIDR string = '10.0.0.64/26'
 param snetApiManagementCIDR string = '10.0.0.128/26'
 param snetStorageAccountCIDR string = '10.0.1.0/26'
@@ -142,7 +165,7 @@ module network 'core/network/secure-network.bicep' = {
     networkSecurityGroupId: networkSecurityGroup.outputs.id
     tags: tags
     vnetIpAddressCIDR: vnetIpAddressCIDR
-    snetAppGatewayCIDR: snetAppGatewayCIDR
+    snetPublicAccessCIDR: snetPublicAccessCIDR
     snetAzureMonitorCIDR: snetAzureMonitorCIDR
     snetApiManagementCIDR: snetApiManagementCIDR
     snetStorageAccountCIDR: snetStorageAccountCIDR
@@ -595,3 +618,4 @@ module media_service 'core/video_indexer/secure-media_service.bicep' = if (!cont
     storageAccountID: storageMedia.outputs.id
   }
 }
+

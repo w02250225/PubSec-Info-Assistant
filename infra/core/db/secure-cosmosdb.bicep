@@ -27,7 +27,7 @@ resource cosmosDBAccount 'Microsoft.DocumentDB/databaseAccounts@2022-05-15' = {
 module privateEndpoint '../network/secure-private_endpoint.bicep' = {
   name: 'private-endpoint-${name}'
   params: {
-    serviceName: name
+    name: name
     location: location
     tags: tags
     serviceResourceId: cosmosDBAccount.id

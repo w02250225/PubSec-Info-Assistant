@@ -22,7 +22,7 @@ resource account 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
 module privateEndpoint '../network/secure-private_endpoint.bicep' = {
   name: 'private-endpoint-${name}'
   params: {
-    serviceName: name
+    name: name
     location: location
     tags: tags
     serviceResourceId: account.id
