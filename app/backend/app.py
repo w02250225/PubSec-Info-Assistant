@@ -95,6 +95,9 @@ DEBUG = os.getenv("CODESPACES") == "true"
 SCHEME = "http" if DEBUG else "https"
 LOGOUT_URL = os.getenv("LOGOUT_URL") or "https://treasuryqld.sharepoint.com/sites/corporate/"
 
+os.environ['TZ'] = 'Australia/Brisbane'
+time.tzset()
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = APP_SECRET
 app.config['SESSION_PERMANENT'] = True
