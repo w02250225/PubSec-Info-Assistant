@@ -134,6 +134,7 @@ param frontDoorWafPolicyName string = ''
 param privateLinkScopeName string = ''
 
 var abbrs = loadJsonContent('abbreviations.json')
+var azureRoles = loadJsonContent('azure_roles.json')
 var tags = { ProjectName: 'Information Assistant', BuildNumber: buildNumber }
 var prefix = 'infoasst'
 
@@ -665,3 +666,12 @@ module media_service 'core/video_indexer/secure-media_service.bicep' = if (!cont
   }
 }
 
+module storageRoleFunc 'core/security/role.bicep' = {
+  scope: rg
+  name: 'storage-role-Func'
+  params: {
+    principalId: formrecognizer.outputs.id
+    roleDefinitionId: azureRoles.StorageBlobDataReader
+    principalType: 'ServicePrincipal'
+  }
+}

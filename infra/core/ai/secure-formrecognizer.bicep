@@ -42,6 +42,7 @@ module self '../dns/secure-private_dns_zone-record.bicep' = {
   }
 }
 
+output id string = account.id
 output privateEndpointId string = privateEndpoint.outputs.id
 output privateEndpointName string = privateEndpoint.outputs.name
 output privateEndpointIp string = privateEndpoint.outputs.ipAddress
