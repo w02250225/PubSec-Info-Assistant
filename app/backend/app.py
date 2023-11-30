@@ -58,6 +58,7 @@ AZURE_OPENAI_EMBEDDINGS_MODEL_NAME = ( os.environ.get("AZURE_OPENAI_EMBEDDINGS_M
 AZURE_OPENAI_EMBEDDINGS_VERSION = ( os.environ.get("AZURE_OPENAI_EMBEDDINGS_VERSION") or "")
 
 AZURE_OPENAI_SERVICE_KEY = os.environ.get("AZURE_OPENAI_SERVICE_KEY")
+AZURE_OPENAI_API_VERSION = os.environ.get("AZURE_OPENAI_API_VERSION")
 AZURE_SUBSCRIPTION_ID = os.environ.get("AZURE_SUBSCRIPTION_ID")
 IS_GOV_CLOUD_DEPLOYMENT = str_to_bool.get(os.environ.get("IS_GOV_CLOUD_DEPLOYMENT").lower()) or False
 CHAT_WARNING_BANNER_TEXT = os.environ.get("CHAT_WARNING_BANNER_TEXT") or ""
@@ -119,7 +120,7 @@ azure_search_key_credential = AzureKeyCredential(AZURE_SEARCH_SERVICE_KEY)
 # Used by the OpenAI SDK
 openai.api_type = "azure"
 openai.api_base = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com"
-openai.api_version = "2023-06-01-preview"
+openai.api_version = AZURE_OPENAI_API_VERSION
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -289,7 +290,11 @@ def chat():
         session_gpt_deployment = session.get('gpt_deployment', GPT_DEPLOYMENT)
 
         # Log the request to CosmosDB
-        json_document = requestLog.log_request(request_id, session_gpt_deployment, request.json, start_time)
+        json_document = requestLog.log_request(
+                request_id, 
+                session_gpt_deployment, 
+                request.json, 
+                start_time)
 
         impl = ChatReadRetrieveReadApproach(
             SEARCH_CLIENT,
@@ -500,12 +505,11 @@ def get_citation():
 @app.route('/exportAnswer', methods=["POST"])
 def export():
     try:
+        session_gpt_deployment = session.get('gpt_deployment', GPT_DEPLOYMENT)
         file_name, export_file = exporthelper.export_to_blob(request.json,
                                                              export_container,
-                                                             AZURE_OPENAI_SERVICE,
-                                                             AZURE_OPENAI_SERVICE_KEY,
-                                                             GPT_DEPLOYMENT['deploymentName'],
-                                                             GPT_DEPLOYMENT['modelName'])
+                                                             session_gpt_deployment.get('deploymentName'),
+                                                             session_gpt_deployment.get('modelName'))
 
         return send_file(export_file,
                         as_attachment=True,

@@ -4,6 +4,7 @@ import re
 import time
 import docx
 import openai
+import os
 from bs4 import BeautifulSoup
 from docx import Document
 from docx.shared import Pt
@@ -14,19 +15,15 @@ from flask import session
 
 def export_to_blob(request: str,
                    container_client: ContainerClient,
-                   azure_openai_service: str,
-                   azure_openai_key: str,
-                   azure_openai_name: str,
+                   azure_openai_deployment_name: str,
                    azure_openai_model_name: str
                    ):
     try:
-        user_id = session.get('user_data', {}).get(
-            'userPrincipalName') or "Unknown User"
+
+        user_id = session.get('user_data', {}).get('userPrincipalName') or "Unknown User"
 
         title = generate_document_title(request["question"],
-                                        azure_openai_service,
-                                        azure_openai_key,
-                                        azure_openai_name,
+                                        azure_openai_deployment_name,
                                         azure_openai_model_name
                                         )
 
@@ -54,23 +51,26 @@ def export_to_blob(request: str,
 
 
 def generate_document_title(question: str,
-                            azure_openai_service: str,
-                            azure_openai_key: str,
-                            azure_openai_name: str,
+                            azure_openai_deployment_name: str,
                             azure_openai_model_name: str
                             ) -> str:
 
+    azure_openai_service = os.environ.get("AZURE_OPENAI_SERVICE") or os.environ.get("AZURE_OPENAI_ACCOUNT_NAME")
+    azure_openai_key = os.environ.get("AZURE_OPENAI_SERVICE_KEY")
+    azure_openai_api_version = os.environ.get("AZURE_OPENAI_API_VERSION")
+    
     openai.api_type = "azure"
     openai.api_base = f"https://{azure_openai_service}.openai.azure.com"
-    openai.api_version = "2023-06-01-preview"
+    openai.api_version = azure_openai_api_version
     openai.api_key = azure_openai_key
 
     messages = [
         {"role": "system", "content": "You are a helpful AI that generates document titles."},
         {"role": "user", "content": f"Generate a short (less than 10 words) document title for the following question or request: \"{question}\""},
     ]
+    
     response = openai.ChatCompletion.create(
-        deployment_id=azure_openai_name,
+        deployment_id=azure_openai_deployment_name,
         model=azure_openai_model_name,
         messages=messages,
         temperature=0.4,
