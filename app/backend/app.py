@@ -206,31 +206,6 @@ else:
     # Sort the GPT_DEPLOYMENTS list for the UI
     ALL_GPT_DEPLOYMENTS.sort(key=lambda x: x['deploymentName'])
 
-chat_approaches = {}
-
-def set_chat_approaches():
-        global chat_approaches
-        chat_approaches = {
-        "rrr": ChatReadRetrieveReadApproach(
-            SEARCH_CLIENT,
-            AZURE_OPENAI_SERVICE,
-            AZURE_OPENAI_SERVICE_KEY,
-            GPT_DEPLOYMENT["deploymentName"],
-            KB_FIELDS_SOURCEFILE,
-            KB_FIELDS_CONTENT,
-            KB_FIELDS_PAGENUMBER,
-            KB_FIELDS_CHUNKFILE,
-            AZURE_BLOB_STORAGE_CONTAINER,
-            BLOB_CLIENT,
-            QUERY_TERM_LANGUAGE,
-            GPT_DEPLOYMENT["modelName"],
-            GPT_DEPLOYMENT["modelVersion"],
-            IS_GOV_CLOUD_DEPLOYMENT,
-            TARGET_EMBEDDING_MODEL,
-            ENRICHMENT_APPSERVICE_NAME
-        )
-    }
-
 
 def token_is_valid():
     if "token_expires_at" in session:
@@ -311,13 +286,30 @@ def chat():
     try:
         request_id = str(uuid.uuid4())
         start_time = datetime.now()
+        session_gpt_deployment = session.get('gpt_deployment', GPT_DEPLOYMENT)
 
         # Log the request to CosmosDB
-        json_document = requestLog.log_request(request_id, GPT_DEPLOYMENT, request.json, start_time)
+        json_document = requestLog.log_request(request_id, session_gpt_deployment, request.json, start_time)
 
-        impl = chat_approaches.get(approach)
-        if not impl:
-            return jsonify({"error": "unknown approach"}), 400
+        impl = ChatReadRetrieveReadApproach(
+            SEARCH_CLIENT,
+            AZURE_OPENAI_SERVICE,
+            AZURE_OPENAI_SERVICE_KEY,
+            session_gpt_deployment.get("deploymentName"),
+            KB_FIELDS_SOURCEFILE,
+            KB_FIELDS_CONTENT,
+            KB_FIELDS_PAGENUMBER,
+            KB_FIELDS_CHUNKFILE,
+            AZURE_BLOB_STORAGE_CONTAINER,
+            BLOB_CLIENT,
+            QUERY_TERM_LANGUAGE,
+            session_gpt_deployment.get("modelName"),
+            session_gpt_deployment.get("modelVersion"),
+            IS_GOV_CLOUD_DEPLOYMENT,
+            TARGET_EMBEDDING_MODEL,
+            ENRICHMENT_APPSERVICE_NAME
+        )
+        
         r = impl.run(request.json["history"],
                      request.json.get("overrides") or {})
         
@@ -436,11 +428,13 @@ def log_status():
 @app.route("/getInfoData")
 def get_info_data():
     """Get the info data for the app"""
+    session_gpt_deployment = session.get('gpt_deployment', GPT_DEPLOYMENT)
+
     response = jsonify(
         {
-            "AZURE_OPENAI_CHATGPT_DEPLOYMENT": f"{GPT_DEPLOYMENT['deploymentName']}",
-            "AZURE_OPENAI_MODEL_NAME": f"{GPT_DEPLOYMENT['modelName']}",
-            "AZURE_OPENAI_MODEL_VERSION": f"{GPT_DEPLOYMENT['modelVersion']}",
+            "AZURE_OPENAI_CHATGPT_DEPLOYMENT": f"{session_gpt_deployment.get('deploymentName')}",
+            "AZURE_OPENAI_MODEL_NAME": f"{session_gpt_deployment.get('modelName')}",
+            "AZURE_OPENAI_MODEL_VERSION": f"{session_gpt_deployment.get('modelVersion')}",
             "AZURE_OPENAI_SERVICE": f"{AZURE_OPENAI_SERVICE}",
             "AZURE_SEARCH_SERVICE": f"{AZURE_SEARCH_SERVICE}",
             "AZURE_SEARCH_INDEX": f"{AZURE_SEARCH_INDEX}",
@@ -557,18 +551,16 @@ def get_gpt_deployments():
 @app.route("/setGptDeployment", methods=["POST"])
 def set_gpt_deployment():
     """Update the GPT deployment model/version etc."""
-    global GPT_DEPLOYMENT
     data = request.get_json()
-
+    session.setdefault('gpt_deployment', {})
     keys = ['deploymentName', 'modelName', 'modelVersion']
 
     if all(key in data for key in keys):
-        # Update GPT_DEPLOYMENT with the new values
         for key in keys:
-            GPT_DEPLOYMENT[key] = data[key]
+            session['gpt_deployment'][key] = data[key]
 
-        # Update chat approaches
-        set_chat_approaches()
+        session.modified = True
+        
         return jsonify({'message': 'GPT Deployment information updated successfully'}), 200
     else:
         # If some keys are missing, return an error
@@ -577,7 +569,6 @@ def set_gpt_deployment():
         
 
 app.before_request(check_authenticated)
-set_chat_approaches()
 
 if __name__ == "__main__":
     # app.run(debug=DEBUG)
