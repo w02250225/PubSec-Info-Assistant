@@ -48,7 +48,6 @@ const Chat = () => {
     // It must match a valid value of one of the buttons in the ResponseTempButtonGroup.tsx file.
     // If you update the default value here, you must also update the default value in the onResponseTempChange method.
     const [responseTemp, setResponseTemp] = useState<number>(0.4);
-
     const [topP, setTopP] = useState<number>(1.0);
 
     const lastQuestionRef = useRef<string>("");
@@ -304,6 +303,7 @@ const Chat = () => {
                 onRenderFooterContent={() => <DefaultButton onClick={() => setIsConfigPanelOpen(false)}>Close</DefaultButton>}
                 isFooterAtBottom={true}
             >
+                        <ModelPicker className={styles.chatSettingsSeparator} />
                         <SpinButton
                             className={styles.chatSettingsSeparator}
                             label="Documents to retrieve from search:"
@@ -318,7 +318,6 @@ const Chat = () => {
                             label="Suggest follow-up questions"
                             onChange={onUseSuggestFollowupQuestionsChange}
                         />
-                        <ModelPicker className={styles.chatSettingsSeparator} />
                         <TextField className={styles.chatSettingsSeparator} defaultValue={userPersona} label="User Persona" onChange={onUserPersonaChange} />
                         <TextField className={styles.chatSettingsSeparator} defaultValue={systemPersona} label="System Persona" onChange={onSystemPersonaChange} />
                         <ResponseLengthButtonGroup className={styles.chatSettingsSeparator} onClick={onResponseLengthChange} defaultValue={responseLength}/>

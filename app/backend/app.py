@@ -3,6 +3,7 @@
 
 from datetime import datetime, timedelta
 
+import base64
 import json
 import logging
 import os
@@ -290,13 +291,6 @@ def authorized():
     return redirect(url_for("login"))
 
 
-@app.route("/user")
-def get_user_info():
-    user_data = session["user_data"]
-    user_data["session_id"] = session["state"]
-    return jsonify(user_data)
-
-
 @app.route("/logout")
 def logout():
     session.clear()
@@ -442,8 +436,6 @@ def log_status():
 @app.route("/getInfoData")
 def get_info_data():
     """Get the info data for the app"""
-    user_data = session["user_data"]
-    user_data["session_id"] = session["state"]
     response = jsonify(
         {
             "AZURE_OPENAI_CHATGPT_DEPLOYMENT": f"{GPT_DEPLOYMENT['deploymentName']}",
@@ -456,10 +448,33 @@ def get_info_data():
             "USE_AZURE_OPENAI_EMBEDDINGS": USE_AZURE_OPENAI_EMBEDDINGS,
             "EMBEDDINGS_DEPLOYMENT": f"{EMBEDDING_DEPLOYMENT_NAME}",
             "EMBEDDINGS_MODEL_NAME": f"{EMBEDDING_MODEL_NAME}",
-            "EMBEDDINGS_MODEL_VERSION": f"{EMBEDDING_MODEL_VERSION}",
-            "USER_DATA": user_data
+            "EMBEDDINGS_MODEL_VERSION": f"{EMBEDDING_MODEL_VERSION}"
         })
     return response
+
+
+@app.route("/getUserData")
+def get_user_data():
+    try:
+        user_data = session["user_data"]
+        user_data["session_id"] = session["state"]
+
+        graph_data = requests.get(
+            "https://graph.microsoft.com/v1.0/me/photos/48x48/$value",
+            timeout=30,
+            stream=True,
+            headers={"Authorization": "Bearer " + session["access_token"]},
+        )
+
+        if graph_data.status_code == 200:
+            base64_image = base64.b64encode(graph_data.content).decode('utf-8')
+            user_data['base64_image'] = base64_image
+
+        return jsonify(user_data)
+    
+    except Exception as ex:
+        logging.exception("Exception in /getUserData")
+        return jsonify({"error": str(ex)}), 500
 
 
 @app.route("/getWarningBanner")
@@ -562,9 +577,9 @@ def set_gpt_deployment():
         
 
 app.before_request(check_authenticated)
+set_chat_approaches()
 
 if __name__ == "__main__":
     # app.run(debug=DEBUG)
     logging.info("IA WebApp Starting Up...")
     app.run(threaded=True)
-    set_chat_approaches()

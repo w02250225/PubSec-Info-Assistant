@@ -1,9 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { AskRequest, AskResponse, ChatRequest, BlobClientUrlResponse,
-    AllFilesUploadStatus, GetUploadStatusRequest, GetInfoResponse, ActiveCitation, GetWarningBanner,
-    ExportRequest, StatusLogEntry, StatusLogResponse, ApplicationTitle, GetTagsResponse, GptDeployment } from "./models";
+import {
+    AskRequest, AskResponse, ChatRequest, BlobClientUrlResponse, AllFilesUploadStatus,
+    GetUploadStatusRequest, GetInfoResponse, ActiveCitation, GetWarningBanner, ExportRequest,
+    StatusLogEntry, StatusLogResponse, ApplicationTitle, GetTagsResponse, GptDeployment, UserData
+} from "./models";
 
 export async function askApi(options: AskRequest): Promise<AskResponse> {
     const response = await fetch("/ask", {
@@ -282,7 +284,7 @@ export async function getAllTags(): Promise<GetTagsResponse> {
         console.log(response);
         throw Error(parsedResponse.error || "Unknown error");
     }
-    var results: GetTagsResponse = {tags: parsedResponse};
+    var results: GetTagsResponse = { tags: parsedResponse };
     return results;
 }
 
@@ -293,7 +295,7 @@ export async function getGptDeployments(): Promise<GptDeployment[]> {
             "Content-Type": "application/json"
         }
     });
-    
+
     if (!response.ok) {
         console.log(response);
         const errorResponse = await response.json();
@@ -314,6 +316,29 @@ export async function setGptDeployment(deployment: GptDeployment): Promise<void>
         body: JSON.stringify(deployment)
     });
     const parsedResponse = await response.json();
+    if (response.status > 299 || !response.ok) {
+        console.log(response);
+        throw Error(parsedResponse.error || "Unknown error");
+    }
+}
+
+export async function logout() {
+    const response = await fetch("/logout", { method: "GET" });
+
+    if (response.status > 299 || !response.ok) {
+        console.error(response);
+        throw new Error(response.statusText || "Unknown error");
+    }
+}
+
+export async function getUserData(): Promise<UserData> {
+    const response = await fetch("/getUserData", {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+    const parsedResponse: UserData = await response.json();
     if (response.status > 299 || !response.ok) {
         console.log(response);
         throw Error(parsedResponse.error || "Unknown error");

@@ -5,6 +5,7 @@ import { Outlet, NavLink, Link } from "react-router-dom";
 
 // import { WarningBanner } from "../../components/WarningBanner/WarningBanner";
 import qtlogo from "../../assets/qt-logo.png";
+import { UserInfoMenu }  from "../../components/UserInfoMenu"
 
 import styles from "./Layout.module.css";
 // import { Title } from "../../components/Title/Title";
@@ -31,13 +32,9 @@ const Layout = () => {
                                     Manage Content
                                 </NavLink>
                             </li>
-                            <li className={styles.headerNavLeftMargin}>
-                                <a href="/logout" className={styles.headerNavPageLink}>
-                                    Logout
-                                </a>
-                            </li>
                         </ul>
                     </nav>
+                    <UserInfoMenu />
                 </div>
             </header>
             <div className={styles.raibanner}>

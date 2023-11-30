@@ -52,13 +52,8 @@ export const InfoContent = ({ className }: Props) => {
             <Label>Service Name</Label><Text>{infoData?.AZURE_SEARCH_SERVICE}</Text>
             <Label>Index Name</Label><Text>{infoData?.AZURE_SEARCH_INDEX}</Text>
 
-            <Separator className={styles.separator}>System Configuration</Separator>
-            <Label>System Language</Label><Text>{infoData?.TARGET_LANGUAGE}</Text>
-
-            <Separator className={styles.separator}>Session Information</Separator>
-            <Label>User ID</Label><Text> {infoData?.USER_DATA?.id}</Text>
-            <Label>Session ID</Label><Text> {infoData?.USER_DATA?.session_id}</Text>
-            <Label>Username</Label><Text> {infoData?.USER_DATA?.userPrincipalName}</Text>
+            {/* <Separator className={styles.separator}>System Configuration</Separator>
+            <Label>System Language</Label><Text>{infoData?.TARGET_LANGUAGE}</Text> */}
         </div>
     );
 };

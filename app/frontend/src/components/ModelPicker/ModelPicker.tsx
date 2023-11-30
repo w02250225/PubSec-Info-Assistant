@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Dropdown, IDropdownOption, Label } from "@fluentui/react";
 import { FiHelpCircle } from 'react-icons/fi';
 
-import { GptDeployment, getGptDeployments, setGptDeployment } from "../../api";
+import { GptDeployment, GetInfoResponse, getGptDeployments, setGptDeployment, getInfoData } from "../../api";
 import styles from "./ModelPicker.module.css";
 
 interface Props {
@@ -67,6 +67,12 @@ export const ModelPicker = ({ className }: Props) => {
     }));
 
     useEffect(() => {
+        getInfoData()
+          .then((response: GetInfoResponse) => {
+            setSelectedDeploymentName(response.AZURE_OPENAI_CHATGPT_DEPLOYMENT);
+          })
+          .catch(err => console.log(err.message));
+
         getGptDeployments()
             .then(setDeployments)
             .catch(err => console.log(err.message));
@@ -87,7 +93,7 @@ export const ModelPicker = ({ className }: Props) => {
                 </FiHelpCircle>
             </Label>
             <Dropdown
-                placeholder="Select a Model"
+                placeholder="Loading..."
                 options={dropdownOptions}
                 selectedKey={selectedDeploymentName}
                 onChange={onDeploymentChange}

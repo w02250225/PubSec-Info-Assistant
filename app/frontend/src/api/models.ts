@@ -117,6 +117,7 @@ export type UserData = {
     preferredLanguage: string;
     surname: string;
     userPrincipalName: string;
+    base64_image?: string;
     error?: string;
 };
 
@@ -133,7 +134,6 @@ export type GetInfoResponse = {
     EMBEDDINGS_DEPLOYMENT: string;
     EMBEDDINGS_MODEL_NAME: string;
     EMBEDDINGS_MODEL_VERSION: string;
-    USER_DATA: UserData;
     error?: string;
 };
 
