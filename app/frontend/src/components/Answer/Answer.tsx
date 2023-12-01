@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Stack, IconButton } from "@fluentui/react";
 import DOMPurify from "dompurify";
 
@@ -38,7 +38,7 @@ export const Answer = ({
     onRegenerateClick
 }: Props) => {
     const parsedAnswer = useMemo(() => parseAnswerToHtml(answer.answer, answer.citation_lookup, onCitationClicked), [answer]);
-
+    const [isCopied, setIsCopied] = useState(false);
     const sanitizedAnswerHtml = DOMPurify.sanitize(parsedAnswer.answerHtml);
 
     interface CitationLink {
@@ -48,7 +48,7 @@ export const Answer = ({
         onClick: () => void;
         label: string;
     }
-    
+
     let citationLinks: CitationLink[] = [];
     if (parsedAnswer.citations.length > 0) {
         parsedAnswer.citations.forEach((x, i) => {
@@ -58,12 +58,12 @@ export const Answer = ({
             const sourceFiles = parsedAnswer.sourceFiles[x];
             const href = `${window.location.origin}/#/ViewDocument?documentName=${encodeURIComponent(originalFile)}&pageNumber=${pageNumbers}`
             const linkName = `${originalFile} ${!isNaN(pageNumbers) ? `(Page ${pageNumbers})` : ''}`;
-            
+
             // console.log('Answer')
             // console.log("Path: " + path);
             // console.log("sourcePath: " + sourceFiles);
             // console.log("pageNumber: " + pageNumbers);
-    
+
             citationLinks.push({
                 key: i,
                 href: href,
@@ -75,10 +75,10 @@ export const Answer = ({
     };
 
     const concatenatedCitationLinks = citationLinks
-    .map((link, i) => {
-        return `<a href="${link.href}" title="${link.title}">${link.label}</a>\n`;
-    })
-    .join(''); // Join the HTML strings into a single string
+        .map((link, i) => {
+            return `<a href="${link.href}" title="${link.title}">${link.label}</a>\n`;
+        })
+        .join(''); // Join the HTML strings into a single string
 
     const onExportClick = async () => {
         try {
@@ -88,7 +88,38 @@ export const Answer = ({
                 answer: sanitizedAnswerHtml,
                 citations: concatenatedCitationLinks,
             };
-            await exportAnswer(request);
+            return exportAnswer(request);
+        } catch (e) {
+            console.log(e);
+        }
+    };
+
+    function removeHtmlTags(html: string) {
+        return html.replace(/<a\b[^>]*>(.*?)<\/a>/gs, "");
+    }; // remove the HTML from the answer for copy to clipboard
+
+    const handleCopyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+    };
+
+    const onCopyAnswerClick = async () => {
+        try {
+            const text = removeHtmlTags(sanitizedAnswerHtml)
+            await handleCopyToClipboard(text);
+        } catch (e) {
+            console.log(e);
+        }
+    };
+
+    const onCopyRequestIdClick = async (text: string) => {
+        try {
+            await handleCopyToClipboard(text);
+
+            setIsCopied(true);
+            setTimeout(() => {
+                setIsCopied(false);
+            }, 2000); // Change back after 2 seconds
+
         } catch (e) {
             console.log(e);
         }
@@ -110,7 +141,7 @@ export const Answer = ({
                         />
                         <IconButton
                             style={{ color: "black" }}
-                            iconProps={{ iconName: "ClipboardList" }}
+                            iconProps={{ iconName: "Documentation" }}
                             title="Show supporting content"
                             ariaLabel="Show supporting content"
                             onClick={() => onSupportingContentClicked()}
@@ -154,14 +185,26 @@ export const Answer = ({
                     </Stack>
                 </Stack.Item>
             )}
-            <Stack.Item grow>
-                <div className={styles.answerTextRequestId}>Request ID: {answer.request_id}</div>
+            <Stack.Item>
+                <div className={`${styles.answerTextRequestId} ${isCopied ? styles.disabled : ''}`}
+                    onClick={() => onCopyRequestIdClick(`Request ID: ${answer.request_id}`)}>
+                    <IconButton
+                        style={{ color: "black" }}
+                        iconProps={{ iconName: "Copy" }}
+                        title="Copy Request ID"
+                        ariaLabel="Copy Request ID"
+                    />
+                    <span>
+                        {isCopied ? 'Copied!' : 'Copy Request ID'}
+                    </span>
+                </div>
             </Stack.Item>
             <Stack.Item align="center">
-                <RAIPanel   onAdjustClick={onAdjustClick} 
-                            onRegenerateClick={onRegenerateClick}  
-                            onExportClick={onExportClick}
-                        />
+                <RAIPanel onAdjustClick={onAdjustClick}
+                    onRegenerateClick={onRegenerateClick}
+                    onExportClick={onExportClick}
+                    onCopyAnswerClick={onCopyAnswerClick}
+                />
             </Stack.Item>
         </Stack>
     );

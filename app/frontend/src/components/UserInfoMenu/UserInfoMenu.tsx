@@ -1,6 +1,5 @@
 import { useRef, useEffect, useState } from "react";
 import { ContextualMenu, Persona, PersonaSize, PersonaInitialsColor, IContextualMenuItem } from '@fluentui/react';
-import { Clipboard24Regular, SignOut24Regular } from '@fluentui/react-icons';
 import { getUserData, UserData } from '../../api'
 
 import styles from "./UserInfoMenu.module.css";

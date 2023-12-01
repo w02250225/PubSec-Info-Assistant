@@ -3,13 +3,13 @@
 
 import { useRef, useState, useEffect } from "react";
 import Coeus from "../../assets/coeus.png";
-import { Checkbox, Panel, DefaultButton, TextField, SpinButton, Separator} from "@fluentui/react";
+import { Checkbox, Panel, DefaultButton, TextField, SpinButton, Separator } from "@fluentui/react";
 import { ITag } from '@fluentui/react/lib/Pickers';
 
 import styles from "./Chat.module.css";
 import rlbgstyles from "../../components/ResponseLengthButtonGroup/ResponseLengthButtonGroup.module.css";
 
-import { chatApi, Approaches, AskResponse, ChatRequest, ChatTurn } from "../../api";
+import { chatApi, Approaches, AskResponse, ChatRequest, ChatTurn, GptDeployment, getGptDeployments, getInfoData, GetInfoResponse, setGptDeployment } from "../../api";
 import { Answer, AnswerError, AnswerLoading } from "../../components/Answer";
 import { QuestionInput } from "../../components/QuestionInput";
 import { ExampleList } from "../../components/Example";
@@ -65,6 +65,36 @@ const Chat = () => {
 
     const [selectedAnswer, setSelectedAnswer] = useState<number>(0);
     const [answers, setAnswers] = useState<[user: string, response: AskResponse][]>([]);
+
+    const [allGptDeployments, setAllGptDeployments] = useState<GptDeployment[]>([]);
+    const [selectedGptDeployment, setSelectedGptDeployment] = useState<string | undefined>(undefined);
+
+    useEffect(() => {
+        getInfoData()
+          .then((response: GetInfoResponse) => {
+            setSelectedGptDeployment(response.AZURE_OPENAI_CHATGPT_DEPLOYMENT);
+          })
+          .catch(err => console.log(err.message));
+
+        getGptDeployments()
+            .then(setAllGptDeployments)
+            .catch(err => console.log(err.message));
+    }, []);
+
+    const onGptDeploymentChange = (deploymentName: string) => {
+        const deploymentToUpdate = allGptDeployments.find(d => d.deploymentName === deploymentName);
+
+        if (deploymentToUpdate) {
+            setSelectedGptDeployment(deploymentName)
+            setGptDeployment(deploymentToUpdate)
+                .then(() => {
+                    console.log('Deployment updated successfully');
+                })
+                .catch((err) => {
+                    console.error('Failed to update deployment:', err);
+                });
+        }
+    };
 
     const makeApiRequest = async (question: string) => {
         lastQuestionRef.current = question;
@@ -303,7 +333,14 @@ const Chat = () => {
                 onRenderFooterContent={() => <DefaultButton onClick={() => setIsConfigPanelOpen(false)}>Close</DefaultButton>}
                 isFooterAtBottom={true}
             >
-                        <ModelPicker className={styles.chatSettingsSeparator} />
+                        {selectedGptDeployment && (
+                        <ModelPicker 
+                            className={styles.chatSettingsSeparator}
+                            deployments={allGptDeployments}
+                            selectedGptDeployment={selectedGptDeployment}
+                            onGptDeploymentChange={onGptDeploymentChange}
+                        />
+                        )}
                         <SpinButton
                             className={styles.chatSettingsSeparator}
                             label="Documents to retrieve from search:"

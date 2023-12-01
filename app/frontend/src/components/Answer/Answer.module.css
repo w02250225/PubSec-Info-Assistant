@@ -24,7 +24,17 @@
 
 .answerTextRequestId {
     font-size: 10px;
+    cursor: pointer;
+    display: inline-flex; 
+    align-items: center; 
 }
+
+.answerTextRequestId span {
+    height: 100%; 
+    display: flex; 
+    align-items: center;
+}
+
 .selected {
     outline: 2px solid rgba(115, 118, 225, 1);
 }
@@ -128,4 +138,9 @@ sup {
 .loadingdots::after {
     content: "";
     animation: loading 1s infinite;
+}
+
+.disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
 }

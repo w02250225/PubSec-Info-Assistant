@@ -1,10 +1,11 @@
 /* Copyright (c) Microsoft Corporation.
    Licensed under the MIT license. */
-   
+
 .adjustInputContainer {
     display: flex;
     flex-direction: row;
 }
+
 .adjustInput {
     padding: 6px;
     cursor: pointer;
@@ -20,4 +21,9 @@
     padding-left: 8px;
     padding-right: 8px;
     white-space: pre-line;
+}
+
+.disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
 }
