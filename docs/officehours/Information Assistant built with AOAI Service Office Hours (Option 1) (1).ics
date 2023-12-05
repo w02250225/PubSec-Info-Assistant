@@ -1,0 +1,281 @@
+BEGIN:VCALENDAR
+PRODID:-//Microsoft Corporation//Outlook 16.0 MIMEDIR//EN
+VERSION:2.0
+METHOD:REQUEST
+X-MS-OLK-FORCEINSPECTOROPEN:TRUE
+BEGIN:VTIMEZONE
+TZID:Eastern Standard Time
+BEGIN:STANDARD
+DTSTART:16011104T020000
+RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=11
+TZOFFSETFROM:-0400
+TZOFFSETTO:-0500
+END:STANDARD
+BEGIN:DAYLIGHT
+DTSTART:16010311T020000
+RRULE:FREQ=YEARLY;BYDAY=2SU;BYMONTH=3
+TZOFFSETFROM:-0500
+TZOFFSETTO:-0400
+END:DAYLIGHT
+END:VTIMEZONE
+BEGIN:VEVENT
+ATTENDEE;CN="PRISCA MANOKORE";RSVP=TRUE:mailto:prisca.manokore@microsoft.co
+	m
+CLASS:PUBLIC
+CREATED:20231204T210502Z
+DESCRIPTION:Office Hours: Information Assistant built with AOAI Service\n\n
+		\n\n \n\nGreetings\,\n\n \n\nStarting 13th December\, join us for Office 
+	Hours where the WWPS Solutions Team will provide the latest updates\, supp
+	ort\, and problem resolution. In these dynamic sessions\, our team will ta
+	ke a few minutes to showcase exciting new features\, share innovative idea
+	s\, and provide a sneak peek into upcoming developments. We will address s
+	ubmitted questions with priority followed by an open Q&A.\n\n \n\nGoal: In
+	formation Assistant Support and Issue Resolution\n\nWhen: Bi-weekly starti
+	ng December 13th\, 2023 \n\nTime: 9am EST \n\nDuration: 1 Hour\n\nAudience
+	: Open to everyone (Technical and non-Technical)\n\n \n\nWhether you're ke
+	en to explore the latest features or have burning questions about our proj
+	ects\, this is your chance to engage directly with the Architects\, Develo
+	pers\, and Data Scientist behind the Information Assistant. \n\n \n\nWe ar
+	e eager to connect\, learn from each other\, and collectively contribute t
+	o the success of your projects.\n\n \n\nLooking forward to your active par
+	ticipation!\n\n \n\nBest regards\,\n\n \n\nISAT Team\n\n \n\nPlease post y
+	our questions and issue in GitHub via links below \n\n \n\nQuestions? Plea
+	se add them here: microsoft/PubSec-Info-Assistant Morning Est Office Hours
+	 Q A · Discussions · GitHub <https://github.com/microsoft/PubSec-Info-As
+	sistant/discussions/categories/morning-est-office-hours-q-a> \n\nIssues? P
+	lease add them here: Issues · microsoft/PubSec-Info-Assistant (github.c
+	om) <https://github.com/microsoft/PubSec-Info-Assistant/issues> \n\n \n\n	
+		\n\n \n\n________________________________________________________________
+	________________ \n\nMicrosoft Teams meeting \n\nJoin on your computer\, m
+	obile app or room device \n\nClick here to join the meeting <https://teams
+	.microsoft.com/l/meetup-join/19%3ameeting_OTM3NGM5ZmQtNDI1OS00YWFlLWFiMzAt
+	ODVkYzBmMzc4MTRj%40thread.v2/0?context=%7b%22Tid%22%3a%2272f988bf-86f1-41a
+	f-91ab-2d7cd011db47%22%2c%22Oid%22%3a%22637d34eb-b55d-4adc-bc11-eb08735b89
+	59%22%7d>  \n\nMeeting ID: 210 634 094 864 \nPasscode: 7PqXnv \n\nDownload
+	 Teams <https://www.microsoft.com/en-us/microsoft-teams/download-app>  | J
+	oin on the web <https://www.microsoft.com/microsoft-teams/join-a-meeting> 
+	\n\nOr call in (audio only) \n\n+1 323-849-4874\,\,351934231# <tel:+132384
+	94874\,\,351934231#>    United States\, Los Angeles \n\nPhone Conference I
+	D: 351 934 231# \n\nFind a local number <https://dialin.teams.microsoft.co
+	m/8551f4c1-bea3-441a-8738-69aa517a91c5?id=351934231>  | Reset PIN <https:/
+	/dialin.teams.microsoft.com/usp/pstnconferencing>  \n\nLearn More <https:/
+	/aka.ms/JoinTeamsMeeting>  | Meeting options <https://teams.microsoft.com/
+	meetingOptions/?organizerId=637d34eb-b55d-4adc-bc11-eb08735b8959&tenantId=
+	72f988bf-86f1-41af-91ab-2d7cd011db47&threadId=19_meeting_OTM3NGM5ZmQtNDI1O
+	S00YWFlLWFiMzAtODVkYzBmMzc4MTRj@thread.v2&messageId=0&language=en-US>  \n\
+	n_________________________________________________________________________
+	_______ \n\n \n\n
+DTEND;TZID="Eastern Standard Time":20231213T100000
+DTSTAMP:20231204T210233Z
+DTSTART;TZID="Eastern Standard Time":20231213T090000
+LAST-MODIFIED:20231204T210502Z
+LOCATION:Microsoft Teams Meeting
+ORGANIZER;CN="PRISCA MANOKORE":mailto:prisca.manokore@microsoft.com
+PRIORITY:5
+RRULE:FREQ=WEEKLY;COUNT=13;INTERVAL=2;BYDAY=WE;WKST=SU
+SEQUENCE:4
+SUMMARY;LANGUAGE=en-us:Information Assistant built with AOAI Service Office
+	 Hours (Option 1)
+TRANSP:OPAQUE
+UID:040000008200E00074C5B7101A82E00800000000A0E11672B126DA01000000000000000
+	0100000000C1B594721DD4045983A467157B97D3A
+X-ALT-DESC;FMTTYPE=text/html:<html xmlns:v="urn:schemas-microsoft-com:vml" 
+	xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-mic
+	rosoft-com:office:word" xmlns:m="http://schemas.microsoft.com/office/2004/
+	12/omml" xmlns="http://www.w3.org/TR/REC-html40"><head><meta name=Generato
+	r content="Microsoft Word 15 (filtered medium)"><style><!--\n/* Font Defin
+	itions */\n@font-face\n	{font-family:"Cambria Math"\;\n	panose-1:2 4 5 3 5
+	 4 6 3 2 4\;}\n@font-face\n	{font-family:Calibri\;\n	panose-1:2 15 5 2 2 2
+	 4 3 2 4\;}\n@font-face\n	{font-family:Aptos\;}\n@font-face\n	{font-family
+	:"Segoe UI"\;\n	panose-1:2 11 5 2 4 2 4 2 2 3\;}\n@font-face\n	{font-famil
+	y:"Segoe UI Semibold"\;\n	panose-1:2 11 7 2 4 2 4 2 2 3\;}\n/* Style Defin
+	itions */\np.MsoNormal\, li.MsoNormal\, div.MsoNormal\n	{margin:0in\;\n	fo
+	nt-size:11.0pt\;\n	font-family:"Aptos"\,sans-serif\;\n	mso-ligatures:stand
+	ardcontextual\;}\na:link\, span.MsoHyperlink\n	{mso-style-priority:99\;\n	
+	color:#467886\;\n	text-decoration:underline\;}\np.paragraph\, li.paragraph
+	\, div.paragraph\n	{mso-style-name:paragraph\;\n	mso-margin-top-alt:auto\;
+	\n	margin-right:0in\;\n	mso-margin-bottom-alt:auto\;\n	margin-left:0in\;\n
+		font-size:11.0pt\;\n	font-family:"Calibri"\,sans-serif\;}\nspan.EmailStyl
+	e19\n	{mso-style-type:personal-compose\;\n	font-family:"Aptos"\,sans-serif
+	\;\n	color:windowtext\;}\nspan.normaltextrun\n	{mso-style-name:normaltextr
+	un\;}\nspan.ui-provider\n	{mso-style-name:ui-provider\;}\n.MsoChpDefault\n
+		{mso-style-type:export-only\;\n	font-size:10.0pt\;\n	mso-ligatures:none\;
+	}\n@page WordSection1\n	{size:8.5in 11.0in\;\n	margin:1.0in 1.0in 1.0in 1.
+	0in\;}\ndiv.WordSection1\n	{page:WordSection1\;}\n--></style><!--[if gte m
+	so 9]><xml>\n<o:shapedefaults v:ext="edit" spidmax="1026" />\n</xml><![end
+	if]--><!--[if gte mso 9]><xml>\n<o:shapelayout v:ext="edit">\n<o:idmap v:e
+	xt="edit" data="1" />\n</o:shapelayout></xml><![endif]--></head><body lang
+	=EN-US link="#467886" vlink="#96607D" style='word-wrap:break-word'><div cl
+	ass=WordSection1><div align=center><table class=MsoNormalTable border=0 ce
+	llspacing=0 cellpadding=0 width=707 style='width:530.5pt\;background:#0066
+	FF\;border-collapse:collapse'><tr><td width=707 style='width:530.5pt\;padd
+	ing:11.25pt 22.5pt 11.25pt 22.5pt'><p><span style='font-size:18.0pt\;font-
+	family:"Segoe UI"\,sans-serif\;color:white'>Office Hours: Information Assi
+	stant built with AOAI Service<o:p></o:p></span></p></td></tr><tr><td width
+	=707 style='width:530.5pt\;padding:0in 0in 0in 0in'></td></tr></table></di
+	v><p class=MsoNormal style='mso-line-height-alt:0pt'><span lang=EN-AU styl
+	e='font-size:1.0pt\;font-family:"Calibri"\,sans-serif\;display:none\;mso-l
+	igatures:none'><o:p>&nbsp\;</o:p></span></p><div align=center><table class
+	=MsoNormalTable border=0 cellspacing=0 cellpadding=0 width=707 style='widt
+	h:530.5pt\;background:white\;border-collapse:collapse'><tr style='height:3
+	77.9pt'><td width=707 colspan=2 valign=top style='width:530.5pt\;border:so
+	lid windowtext 1.0pt\;padding:11.25pt 22.5pt 11.25pt 22.5pt\;height:377.9p
+	t'><p class=MsoNormal><span lang=EN-GB style='color:black'>Greetings\,</sp
+	an><span lang=EN-GB><o:p></o:p></span></p><p class=MsoNormal style='margin
+	-left:.5in'><span lang=EN-GB><o:p>&nbsp\;</o:p></span></p><p class=MsoNorm
+	al><span style='color:black'>Starting 13<sup>th</sup> December\, join us f
+	or Office Hours where the WWPS Solutions Team will provide the latest upda
+	tes\, support\, and problem resolution. </span><span lang=EN-GB style='col
+	or:black'>In these dynamic sessions\, our team will take a few minutes to 
+	showcase exciting new features\, share innovative ideas\, and provide a sn
+	eak peek into upcoming developments. </span><span class=ui-provider><span 
+	style='color:black'>We will address submitted questions with priority foll
+	owed by</span></span><span style='color:black'> </span><span lang=EN-GB st
+	yle='color:black'>an open Q&amp\;A.</span><span lang=EN-GB><o:p></o:p></sp
+	an></p><p class=MsoNormal><span lang=EN-GB><o:p>&nbsp\;</o:p></span></p><p
+	 class=MsoNormal style='margin-left:.5in'><b><span lang=EN-GB style='color
+	:black'>Goal: </span></b><span style='color:black'>Information Assistant S
+	upport and Issue Resolution</span><b><span lang=EN-GB><o:p></o:p></span></
+	b></p><p class=MsoNormal style='margin-left:.5in'><b><span lang=EN-GB styl
+	e='color:black'>When</span></b><span lang=EN-GB style='color:black'>: Bi-w
+	eekly s</span><span style='color:black'>tarting December 13<sup>th</sup>\,
+	 2023 </span><o:p></o:p></p><p class=MsoNormal style='margin-left:.5in'><b
+	><span lang=EN-GB style='color:black'>Time: </span></b><span lang=EN-GB st
+	yle='color:black'>9am EST <b><o:p></o:p></b></span></p><p class=MsoNormal 
+	style='margin-left:.5in'><b><span lang=EN-GB style='color:black'>Duration:
+	</span></b><span lang=EN-GB style='color:black'> 1 Hour</span><span lang=E
+	N-GB><o:p></o:p></span></p><p class=MsoNormal style='margin-left:.5in'><b>
+	<span lang=EN-GB style='color:black'>Audience:</span></b><span lang=EN-GB 
+	style='color:black'> Open to everyone (T</span><span style='color:black'>e
+	chnical and non-Technical)</span><span lang=EN-GB><o:p></o:p></span></p><p
+	 class=MsoNormal><span lang=EN-GB><o:p>&nbsp\;</o:p></span></p><p class=Ms
+	oNormal><span lang=EN-GB style='color:black'>Whether you're keen to explor
+	e the latest features or have burning questions about our projects\, this 
+	is your chance to engage directly with the </span><span style='color:black
+	'>Architects\, Developers\, and Data Scientist behind the Information Assi
+	stant. </span><o:p></o:p></p><p class=MsoNormal><span lang=EN-GB><o:p>&nbs
+	p\;</o:p></span></p><p class=MsoNormal><span lang=EN-GB style='color:black
+	'>We are eager to connect\, learn from each other\, and collectively contr
+	ibute to the success of your projects.</span><span lang=EN-GB><o:p></o:p><
+	/span></p><p class=MsoNormal><o:p>&nbsp\;</o:p></p><p class=MsoNormal><spa
+	n lang=EN-GB style='color:black'>Looking forward to your active participat
+	ion!</span><span lang=EN-GB><o:p></o:p></span></p><p class=MsoNormal style
+	='margin-left:.5in'><span lang=EN-GB><o:p>&nbsp\;</o:p></span></p><p class
+	=MsoNormal><span lang=EN-GB style='color:black'>Best regards\,</span><span
+	 lang=EN-GB><o:p></o:p></span></p><p class=MsoNormal><span lang=EN-GB><o:p
+	>&nbsp\;</o:p></span></p><p class=MsoNormal><span lang=EN-GB style='color:
+	black'>ISAT Team</span><span lang=EN-GB><o:p></o:p></span></p><p class=par
+	agraph style='margin:0in\;vertical-align:baseline'><o:p>&nbsp\;</o:p></p><
+	/td></tr><tr style='height:45.35pt'><td width=707 colspan=2 valign=top sty
+	le='width:530.5pt\;border:solid windowtext 1.0pt\;border-top:none\;padding
+	:11.25pt 22.5pt 11.25pt 22.5pt\;height:45.35pt'><p class=paragraph style='
+	margin:0in\;vertical-align:baseline'><b><span style='color:black\;backgrou
+	nd:white'>Please post your questions and issue in GitHub via links below <
+	o:p></o:p></span></b></p><p class=paragraph style='margin:0in\;vertical-al
+	ign:baseline'><span style='color:black\;background:white'><o:p>&nbsp\;</o:
+	p></span></p><p class=paragraph style='margin:0in\;vertical-align:baseline
+	'><b><span style='font-size:10.0pt\;font-family:"Segoe UI"\,sans-serif\;co
+	lor:black\;background:white'>Questions?</span></b><span style='font-size:1
+	0.0pt\;font-family:"Segoe UI"\,sans-serif\;color:black\;background:white'>
+	 Please add them here:</span><span class=normaltextrun><span style='font-s
+	ize:12.0pt\;color:#242424'> </span></span><span style='color:black'><a hre
+	f="https://github.com/microsoft/PubSec-Info-Assistant/discussions/categori
+	es/morning-est-office-hours-q-a">microsoft/PubSec-Info-Assistant Morning E
+	st Office Hours Q A · Discussions · GitHub</a></span><span style='font-s
+	ize:12.0pt\;font-family:"Aptos"\,sans-serif'><o:p></o:p></span></p><p clas
+	s=paragraph style='margin:0in\;vertical-align:baseline\;white-space:pre-wr
+	ap\;font-kerning:none'><b><span style='font-size:10.0pt\;font-family:"Sego
+	e UI"\,sans-serif\;color:black\;background:white'>Issues?</span></b><span 
+	style='font-size:10.0pt\;font-family:"Segoe UI"\,sans-serif\;color:black\;
+	background:white'> Please add them here: </span><span style='color:black
+	'><a href="https://github.com/microsoft/PubSec-Info-Assistant/issues">Issu
+	es · microsoft/PubSec-Info-Assistant (github.com)</a></span><span style='
+	font-size:12.0pt\;font-family:"Aptos"\,sans-serif'><o:p></o:p></span></p><
+	p class=paragraph style='margin:0in\;vertical-align:baseline\;white-space:
+	pre-wrap\;font-kerning:none'><span style='font-size:10.0pt\;font-family:"S
+	egoe UI"\,sans-serif\;color:black\;background:white'><o:p>&nbsp\;</o:p></s
+	pan></p></td></tr><tr><td width=428 valign=top style='width:321.0pt\;borde
+	r:solid windowtext 1.0pt\;border-top:none\;padding:0in 0in 0in 0in'></td><
+	td width=279 valign=top style='width:209.5pt\;border-top:none\;border-left
+	:none\;border-bottom:solid windowtext 1.0pt\;border-right:solid windowtext
+	 1.0pt\;padding:0in 0in 0in 0in'></td></tr></table></div><p class=MsoNorma
+	l><o:p>&nbsp\;</o:p></p><div><p class=MsoNormal><span style='color:#5F5F5F
+	'>________________________________________________________________________
+	________</span> <span style='font-size:12.0pt\;mso-ligatures:none'><o:p></
+	o:p></span></p></div><div><div style='margin-top:.25in\;margin-bottom:15.0
+	pt'><p class=MsoNormal><span style='font-size:18.0pt\;font-family:"Segoe U
+	I"\,sans-serif\;color:#252424'>Microsoft Teams meeting</span><span style='
+	font-family:"Segoe UI"\,sans-serif\;color:#252424'> <o:p></o:p></span></p>
+	</div><div style='margin-bottom:15.0pt'><div><p class=MsoNormal><b><span s
+	tyle='font-size:10.5pt\;font-family:"Segoe UI"\,sans-serif\;color:#252424'
+	>Join on your computer\, mobile app or room device</span></b><b><span styl
+	e='font-family:"Segoe UI"\,sans-serif\;color:#252424'> <o:p></o:p></span><
+	/b></p></div><p class=MsoNormal><span style='font-family:"Segoe UI"\,sans-
+	serif\;color:#252424'><a href="https://teams.microsoft.com/l/meetup-join/1
+	9%3ameeting_OTM3NGM5ZmQtNDI1OS00YWFlLWFiMzAtODVkYzBmMzc4MTRj%40thread.v2/0
+	?context=%7b%22Tid%22%3a%2272f988bf-86f1-41af-91ab-2d7cd011db47%22%2c%22Oi
+	d%22%3a%22637d34eb-b55d-4adc-bc11-eb08735b8959%22%7d" target="_blank"><spa
+	n style='font-size:10.5pt\;font-family:"Segoe UI Semibold"\,sans-serif\;co
+	lor:#6264A7'>Click here to join the meeting</span></a> <o:p></o:p></span><
+	/p></div><div style='margin-top:15.0pt\;margin-bottom:15.0pt'><div style='
+	margin-bottom:3.0pt'><p class=MsoNormal><span style='font-size:10.5pt\;fon
+	t-family:"Segoe UI"\,sans-serif\;color:#252424'>Meeting ID: </span><span s
+	tyle='font-family:"Segoe UI"\,sans-serif\;color:#252424'>210 634 094 864</
+	span><span style='font-size:10.5pt\;font-family:"Segoe UI"\,sans-serif\;co
+	lor:#252424'> </span><span style='font-family:"Segoe UI"\,sans-serif\;colo
+	r:#252424'><br></span><span style='font-size:10.5pt\;font-family:"Segoe UI
+	"\,sans-serif\;color:#252424'>Passcode: </span><span style='font-family:"S
+	egoe UI"\,sans-serif\;color:#252424'>7PqXnv <o:p></o:p></span></p><div><p 
+	class=MsoNormal><span style='font-size:10.5pt\;font-family:"Segoe UI"\,san
+	s-serif\;color:#252424'><a href="https://www.microsoft.com/en-us/microsoft
+	-teams/download-app" target="_blank"><span style='color:#6264A7'>Download 
+	Teams</span></a> | <a href="https://www.microsoft.com/microsoft-teams/join
+	-a-meeting" target="_blank"><span style='color:#6264A7'>Join on the web</s
+	pan></a><o:p></o:p></span></p></div></div></div><div style='margin-bottom:
+	3.0pt'><div style='margin-bottom:3.0pt'><p class=MsoNormal><b><span style=
+	'font-size:10.5pt\;font-family:"Segoe UI"\,sans-serif\;color:#252424'>Or c
+	all in (audio only)</span></b><span style='font-family:"Segoe UI"\,sans-se
+	rif\;color:#252424'> </span><span style='font-size:12.0pt\;font-family:"Se
+	goe UI"\,sans-serif\;color:#252424'><o:p></o:p></span></p></div><div style
+	='margin-bottom:3.0pt'><p class=MsoNormal><span style='font-family:"Segoe 
+	UI"\,sans-serif\;color:#252424'><a href="tel:+13238494874\,\,351934231# ">
+	<span style='font-size:10.5pt\;color:#6264A7'>+1 323-849-4874\,\,351934231
+	#</span></a> </span><span style='font-size:10.5pt\;font-family:"Segoe UI"\
+	,sans-serif\;color:#252424'>&nbsp\; United States\, Los Angeles </span><sp
+	an style='font-family:"Segoe UI"\,sans-serif\;color:#252424'><o:p></o:p></
+	span></p></div></div><p class=MsoNormal><span style='font-size:10.5pt\;fon
+	t-family:"Segoe UI"\,sans-serif\;color:#252424'>Phone Conference ID: </spa
+	n><span style='font-family:"Segoe UI"\,sans-serif\;color:#252424'>351 934 
+	231# <o:p></o:p></span></p><div style='margin-bottom:15.0pt'><p class=MsoN
+	ormal><span style='font-family:"Segoe UI"\,sans-serif\;color:#252424'><a h
+	ref="https://dialin.teams.microsoft.com/8551f4c1-bea3-441a-8738-69aa517a91
+	c5?id=351934231" target="_blank"><span style='font-size:10.5pt\;color:#626
+	4A7'>Find a local number</span></a> | <a href="https://dialin.teams.micros
+	oft.com/usp/pstnconferencing" target="_blank"><span style='font-size:10.5p
+	t\;color:#6264A7'>Reset PIN</span></a> <o:p></o:p></span></p></div><div st
+	yle='margin-top:15.0pt\;margin-bottom:.25in'><p class=MsoNormal><span styl
+	e='font-family:"Segoe UI"\,sans-serif\;color:#252424'><a href="https://aka
+	.ms/JoinTeamsMeeting" target="_blank"><span style='font-size:10.5pt\;color
+	:#6264A7'>Learn More</span></a> | <a href="https://teams.microsoft.com/mee
+	tingOptions/?organizerId=637d34eb-b55d-4adc-bc11-eb08735b8959&amp\;tenantI
+	d=72f988bf-86f1-41af-91ab-2d7cd011db47&amp\;threadId=19_meeting_OTM3NGM5Zm
+	QtNDI1OS00YWFlLWFiMzAtODVkYzBmMzc4MTRj@thread.v2&amp\;messageId=0&amp\;lan
+	guage=en-US" target="_blank"><span style='font-size:10.5pt\;color:#6264A7'
+	>Meeting options</span></a> <o:p></o:p></span></p></div></div><div><p clas
+	s=MsoNormal><span style='color:#5F5F5F'>__________________________________
+	______________________________________________</span> <o:p></o:p></p></div
+	><p class=MsoNormal><o:p>&nbsp\;</o:p></p></div></body></html>
+X-MICROSOFT-CDO-BUSYSTATUS:BUSY
+X-MICROSOFT-CDO-IMPORTANCE:1
+X-MICROSOFT-DISALLOW-COUNTER:FALSE
+X-MS-OLK-APPTLASTSEQUENCE:4
+X-MS-OLK-APPTSEQTIME:20231204T210233Z
+X-MS-OLK-AUTOFILLLOCATION:FALSE
+X-MS-OLK-CONFTYPE:0
+BEGIN:VALARM
+TRIGGER:-PT15M
+ACTION:DISPLAY
+DESCRIPTION:Reminder
+END:VALARM
+END:VEVENT
+END:VCALENDAR
