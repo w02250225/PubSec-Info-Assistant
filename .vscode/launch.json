@@ -8,6 +8,26 @@
 			"program": "${file}",
 			"console": "integratedTerminal"
 		},
+        {
+            "name": "Python: Quart",
+            "type": "python",
+            "request": "launch",
+            "module": "quart",
+            "cwd": "${workspaceFolder}/app/backend",
+            "env": {
+                "QUART_APP": "main:app",
+                "QUART_ENV": "development",
+                "QUART_DEBUG": "0"
+            },
+            "args": [
+                "run",
+                "--no-reload",
+                "-p 5000"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "envFile": "${workspaceFolder}/scripts/environments/infrastructure.debug.env",
+        },
 		{
 			"name": "Python: Flask",
 			"type": "python",

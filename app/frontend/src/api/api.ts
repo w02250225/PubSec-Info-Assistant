@@ -2,81 +2,19 @@
 // Licensed under the MIT license.
 
 import {
-    AskRequest, AskResponse, ChatRequest, BlobClientUrlResponse, AllFilesUploadStatus,
-    GetUploadStatusRequest, GetInfoResponse, ActiveCitation, GetWarningBanner, ExportRequest,
+    ChatAppRequest, BlobClientUrlResponse, AllFilesUploadStatus, GetUploadStatusRequest,
+    GetInfoResponse, ActiveCitation, GetWarningBanner, ExportRequest,
     StatusLogEntry, StatusLogResponse, ApplicationTitle, GetTagsResponse, GptDeployment, UserData
 } from "./models";
 
-export async function askApi(options: AskRequest): Promise<AskResponse> {
-    const response = await fetch("/ask", {
+export async function chatApi(request: ChatAppRequest): Promise<Response> {
+    return await fetch(`/chat`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-            question: options.question,
-            approach: options.approach,
-            overrides: {
-                semantic_ranker: options.overrides?.semanticRanker,
-                semantic_captions: options.overrides?.semanticCaptions,
-                top: options.overrides?.top,
-                temperature: options.overrides?.temperature,
-                prompt_template: options.overrides?.promptTemplate,
-                prompt_template_prefix: options.overrides?.promptTemplatePrefix,
-                prompt_template_suffix: options.overrides?.promptTemplateSuffix,
-                exclude_category: options.overrides?.excludeCategory,
-                user_persona: options.overrides?.userPersona,
-                system_persona: options.overrides?.systemPersona,
-                ai_persona: options.overrides?.aiPersona,
-            }
-        })
+        body: JSON.stringify(request)
     });
-
-    const parsedResponse: AskResponse = await response.json();
-    if (response.status > 299 || !response.ok) {
-        throw Error(parsedResponse.error || "Unknown error");
-    }
-
-    return parsedResponse;
-}
-
-export async function chatApi(options: ChatRequest): Promise<AskResponse> {
-    const response = await fetch("/chat", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            history: options.history,
-            approach: options.approach,
-            overrides: {
-                semantic_ranker: options.overrides?.semanticRanker,
-                semantic_captions: options.overrides?.semanticCaptions,
-                top: options.overrides?.top,
-                temperature: options.overrides?.temperature,
-                prompt_template: options.overrides?.promptTemplate,
-                prompt_template_prefix: options.overrides?.promptTemplatePrefix,
-                prompt_template_suffix: options.overrides?.promptTemplateSuffix,
-                exclude_category: options.overrides?.excludeCategory,
-                suggest_followup_questions: options.overrides?.suggestFollowupQuestions,
-                user_persona: options.overrides?.userPersona,
-                system_persona: options.overrides?.systemPersona,
-                ai_persona: options.overrides?.aiPersona,
-                response_length: options.overrides?.responseLength,
-                response_temp: options.overrides?.responseTemp,
-                top_p: options.overrides?.topP,
-                selected_folders: options.overrides?.selectedFolders,
-                selected_tags: options.overrides?.selectedTags
-            }
-        })
-    });
-
-    const parsedResponse: AskResponse = await response.json();
-    if (response.status > 299 || !response.ok) {
-        throw Error(parsedResponse.error || "Unknown error");
-    }
-
-    return parsedResponse;
 }
 
 export async function downloadFileFromResponse(response: Response): Promise<void> {

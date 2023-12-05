@@ -3,39 +3,55 @@
 
 from datetime import datetime, timedelta
 
+import asyncio
 import base64
 import json
 import logging
+import mimetypes
 import os
 import time
 import urllib.parse
 import uuid
 import core.exporthelper as exporthelper
 import msal
-import openai
 import requests
 
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from azure.core.credentials import AzureKeyCredential
-from azure.identity import DefaultAzureCredential
-from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
-from azure.search.documents import SearchClient
+from azure.identity.aio import DefaultAzureCredential, get_bearer_token_provider
+from azure.mgmt.cognitiveservices.aio import CognitiveServicesManagementClient
+from azure.monitor.opentelemetry import configure_azure_monitor
+from azure.search.documents.aio import SearchClient
+from azure.storage.blob.aio import BlobServiceClient
 from azure.storage.blob import (
     AccountSasPermissions,
     BlobSasPermissions,
-    BlobServiceClient,
     ResourceTypes,
     generate_account_sas,
     generate_blob_sas,
 )
-from flask import Flask, jsonify, redirect, request, send_file, session, url_for
+from quart import (
+    Quart,
+    Blueprint,
+    jsonify,
+    make_response,
+    redirect,
+    request,
+    send_file,
+    session,
+    url_for
+)
+from openai import APIError, AsyncAzureOpenAI, AsyncOpenAI
 from opencensus.ext.azure.log_exporter import AzureLogHandler
-from shared_code.status_log import State, StatusClassification, StatusLog
+from opentelemetry.instrumentation.aiohttp_client import AioHttpClientInstrumentor
+from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from request_log import RequestLog
+from shared_code.status_log import State, StatusClassification, StatusLog
 from shared_code.tags_helper import TagsHelper
+from typing import AsyncGenerator
 
 str_to_bool = {'true': True, 'false': False}
-# Replace these with your own values, either in environment variables or directly here
 AZURE_BLOB_STORAGE_ACCOUNT = os.environ.get("AZURE_BLOB_STORAGE_ACCOUNT") or "mystorageaccount"
 AZURE_BLOB_STORAGE_ENDPOINT = os.environ.get("AZURE_BLOB_STORAGE_ENDPOINT")
 AZURE_BLOB_STORAGE_KEY = os.environ.get("AZURE_BLOB_STORAGE_KEY")
@@ -46,21 +62,24 @@ AZURE_SEARCH_SERVICE = os.environ.get("AZURE_SEARCH_SERVICE") or "gptkb"
 AZURE_SEARCH_SERVICE_ENDPOINT = os.environ.get("AZURE_SEARCH_SERVICE_ENDPOINT")
 AZURE_SEARCH_SERVICE_KEY = os.environ.get("AZURE_SEARCH_SERVICE_KEY")
 AZURE_SEARCH_INDEX = os.environ.get("AZURE_SEARCH_INDEX") or "gptkbindex"
+
+OPENAI_HOST = os.environ.get("OPENAI_HOST") or "azure"
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY") or "NA"
+OPENAI_ORGANIZATION = os.environ.get("OPENAI_ORGANIZATION") or "NA"
 AZURE_OPENAI_ACCOUNT_NAME = os.environ.get("AZURE_OPENAI_ACCOUNT_NAME") or "myopenai"
 AZURE_OPENAI_SERVICE = os.environ.get("AZURE_OPENAI_SERVICE") or AZURE_OPENAI_ACCOUNT_NAME
 AZURE_OPENAI_CHATGPT_DEPLOYMENT = os.environ.get("AZURE_OPENAI_CHATGPT_DEPLOYMENT") or "gpt-35-turbo-16k"
 AZURE_OPENAI_RESOURCE_GROUP = os.environ.get("AZURE_OPENAI_RESOURCE_GROUP") or ""
-AZURE_OPENAI_CHATGPT_MODEL_NAME = ( os.environ.get("AZURE_OPENAI_CHATGPT_MODEL_NAME") or "")
-AZURE_OPENAI_CHATGPT_MODEL_VERSION = ( os.environ.get("AZURE_OPENAI_CHATGPT_MODEL_VERSION") or "")
+AZURE_OPENAI_CHATGPT_MODEL_NAME = os.environ.get("AZURE_OPENAI_CHATGPT_MODEL_NAME") or ""
+AZURE_OPENAI_CHATGPT_MODEL_VERSION = os.environ.get("AZURE_OPENAI_CHATGPT_MODEL_VERSION") or ""
 USE_AZURE_OPENAI_EMBEDDINGS = str_to_bool.get(os.environ.get("USE_AZURE_OPENAI_EMBEDDINGS").lower()) or False
-EMBEDDING_DEPLOYMENT_NAME = ( os.environ.get("EMBEDDING_DEPLOYMENT_NAME") or "")
-AZURE_OPENAI_EMBEDDINGS_MODEL_NAME = ( os.environ.get("AZURE_OPENAI_EMBEDDINGS_MODEL_NAME") or "")
-AZURE_OPENAI_EMBEDDINGS_MODEL_VERSION = ( os.environ.get("AZURE_OPENAI_EMBEDDINGS_MODEL_VERSION") or "")
+EMBEDDING_DEPLOYMENT_NAME = os.environ.get("EMBEDDING_DEPLOYMENT_NAME") or ""
+AZURE_OPENAI_EMBEDDINGS_MODEL_NAME = os.environ.get("AZURE_OPENAI_EMBEDDINGS_MODEL_NAME") or ""
+AZURE_OPENAI_EMBEDDINGS_MODEL_VERSION = os.environ.get("AZURE_OPENAI_EMBEDDINGS_MODEL_VERSION") or ""
 
 AZURE_OPENAI_SERVICE_KEY = os.environ.get("AZURE_OPENAI_SERVICE_KEY")
 AZURE_OPENAI_API_VERSION = os.environ.get("AZURE_OPENAI_API_VERSION")
 AZURE_SUBSCRIPTION_ID = os.environ.get("AZURE_SUBSCRIPTION_ID")
-IS_GOV_CLOUD_DEPLOYMENT = str_to_bool.get(os.environ.get("IS_GOV_CLOUD_DEPLOYMENT").lower()) or False
 CHAT_WARNING_BANNER_TEXT = os.environ.get("CHAT_WARNING_BANNER_TEXT") or ""
 
 TARGET_EMBEDDING_MODEL = os.environ.get("TARGET_EMBEDDING_MODEL") or "azure-openai_text-embedding-ada-002"
@@ -83,6 +102,10 @@ COSMOSDB_TAGS_CONTAINER_NAME = os.environ.get("COSMOSDB_TAGS_CONTAINER_NAME") or
 
 QUERY_TERM_LANGUAGE = os.environ.get("QUERY_TERM_LANGUAGE") or "English"
 
+ERROR_MESSAGE = """The application encountered an error processing your request.
+Error type: {error_type}"""
+ERROR_MESSAGE_FILTER = """Your message contains content that was flagged by the OpenAI content filter."""
+
 # Oauth
 CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
@@ -100,38 +123,27 @@ LOGOUT_URL = os.getenv("LOGOUT_URL") or "https://treasuryqld.sharepoint.com/site
 os.environ['TZ'] = 'Australia/Brisbane'
 time.tzset()
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = APP_SECRET
-app.config['SESSION_PERMANENT'] = True
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
+# app = Quart(__name__)
 
 msal_client = msal.ConfidentialClientApplication(
     CLIENT_ID, authority=AUTHORITY,
     client_credential=CLIENT_SECRET,
 )
 
-# Use the current user identity to authenticate with Azure OpenAI, Cognitive Search and Blob Storage (no secrets needed,
-# just use 'az login' locally, and managed identity when deployed on Azure). If you need to use keys, use separate AzureKeyCredential instances with the
-# keys for each service
-# If you encounter a blocking error during a DefaultAzureCredntial resolution, you can exclude the problematic credential by using a parameter (ex. exclude_shared_token_cache_credential=True)
 azure_credential = DefaultAzureCredential()
 azure_search_key_credential = AzureKeyCredential(AZURE_SEARCH_SERVICE_KEY)
 
-# Used by the OpenAI SDK
-openai.api_type = "azure"
-openai.api_base = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com"
-openai.api_version = AZURE_OPENAI_API_VERSION
-
 # Setup logger
-logger = logging.getLogger(__name__)
-logger.addHandler(AzureLogHandler())
-if DEBUG:
-    logger.setLevel(logging.DEBUG)
+# logger = logging.getLogger(__name__)
+# logger.addHandler(AzureLogHandler())
+# if DEBUG:
+#     logger.setLevel(logging.DEBUG)
 
 # Setup StatusLog to allow access to CosmosDB for logging
 statusLog = StatusLog(
     COSMOSDB_URL, COSMODB_KEY, COSMOSDB_LOG_DATABASE_NAME, COSMOSDB_LOG_CONTAINER_NAME
 )
+
 tagsHelper = TagsHelper(
     COSMOSDB_URL, COSMODB_KEY, COSMOSDB_TAGS_DATABASE_NAME, COSMOSDB_TAGS_CONTAINER_NAME
 )
@@ -141,17 +153,29 @@ requestLog = RequestLog(
     COSMOSDB_URL, COSMODB_KEY, COSMOSDB_REQUESTLOG_DATABASE_NAME, COSMOSDB_REQUESTLOG_CONTAINER_NAME
 )
 
-# Comment these two lines out if using keys, set your API key in the OPENAI_API_KEY environment variable instead
-# openai.api_type = "azure_ad"
-# openai_token = azure_credential.get_token("https://cognitiveservices.azure.com/.default")
-openai.api_key = AZURE_OPENAI_SERVICE_KEY
+# Set up clients for OpenAI, Cognitive Search and Storage
+OPENAI_CLIENT: AsyncOpenAI
 
-# Set up clients for Cognitive Search and Storage
+if OPENAI_HOST == "azure":
+    token_provider = get_bearer_token_provider(azure_credential, "https://cognitiveservices.azure.com/.default")
+    OPENAI_CLIENT = AsyncAzureOpenAI(
+        api_version = AZURE_OPENAI_API_VERSION,
+        azure_endpoint = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com",
+        api_key = AZURE_OPENAI_SERVICE_KEY
+        # azure_ad_token_provider = token_provider,
+    )
+else:
+    openai_client = AsyncOpenAI(
+        api_key=OPENAI_API_KEY,
+        organization=OPENAI_ORGANIZATION,
+    )
+
 SEARCH_CLIENT = SearchClient(
     endpoint=f"https://{AZURE_SEARCH_SERVICE}.search.windows.net",
     index_name=AZURE_SEARCH_INDEX,
     credential=azure_search_key_credential,
 )
+
 BLOB_CLIENT = BlobServiceClient(
     account_url=f"https://{AZURE_BLOB_STORAGE_ACCOUNT}.blob.core.windows.net",
     credential=AZURE_BLOB_STORAGE_KEY,
@@ -168,22 +192,16 @@ GPT_DEPLOYMENT = {
     'modelVersion': ''
 }
 
-if (IS_GOV_CLOUD_DEPLOYMENT):
-    GPT_DEPLOYMENT['deploymentName'] = AZURE_OPENAI_CHATGPT_DEPLOYMENT
-    GPT_DEPLOYMENT['modelName'] = AZURE_OPENAI_CHATGPT_MODEL_NAME
-    GPT_DEPLOYMENT['modelVersion'] = AZURE_OPENAI_CHATGPT_MODEL_VERSION
-else:
-    # Set up OpenAI management client
+async def fetch_deployments():
+    """Set up OpenAI management client"""
     openai_mgmt_client = CognitiveServicesManagementClient(
         credential=azure_credential,
         subscription_id=AZURE_SUBSCRIPTION_ID)
 
-    deployments = openai_mgmt_client.deployments.list(
+    async for deployment in openai_mgmt_client.deployments.list(
         resource_group_name=AZURE_OPENAI_RESOURCE_GROUP,
-        account_name=AZURE_OPENAI_ACCOUNT_NAME)
+        account_name=AZURE_OPENAI_ACCOUNT_NAME):
 
-    for deployment in deployments:
-        # Build the list for the model selection dropdown
         capabilities = deployment.properties.capabilities
         if capabilities.get('chatCompletion'):
             ALL_GPT_DEPLOYMENTS.append({
@@ -192,7 +210,6 @@ else:
                 'modelVersion': deployment.properties.model.version
             })
         
-        # Check if this is the specific deployment we're interested in
         if deployment.name == AZURE_OPENAI_CHATGPT_DEPLOYMENT:
             GPT_DEPLOYMENT['deploymentName'] = deployment.name
             GPT_DEPLOYMENT['modelName'] = deployment.properties.model.name
@@ -201,10 +218,13 @@ else:
         if USE_AZURE_OPENAI_EMBEDDINGS and deployment.name == EMBEDDING_DEPLOYMENT_NAME:
             EMBEDDING_MODEL_NAME = deployment.properties.model.name
             EMBEDDING_MODEL_VERSION = deployment.properties.model.version
-    
+
     # Sort the GPT_DEPLOYMENTS list for the UI
     ALL_GPT_DEPLOYMENTS.sort(key=lambda x: x['deploymentName'])
 
+bp = Blueprint("routes", __name__, static_folder="static")
+mimetypes.add_type("application/javascript", ".js")
+mimetypes.add_type("text/css", ".css")
 
 def token_is_valid():
     if "token_expires_at" in session:
@@ -215,25 +235,47 @@ def token_is_valid():
 
 
 def check_authenticated():
-    non_auth_endpoints = ['authorized', 'login', 'logout']
+    non_auth_endpoints = ['routes.authorized', 'routes.login', 'routes.logout']
     if request.endpoint not in non_auth_endpoints and not token_is_valid():
-        return redirect(url_for('login'))
-    return None
+        return redirect(url_for('routes.login'))
 
 
-@app.route("/login")
-def login():
+def error_dict(error: Exception) -> dict:
+    if isinstance(error, APIError) and error.code == "content_filter":
+        return {"error": ERROR_MESSAGE_FILTER}
+    return {"error": ERROR_MESSAGE.format(error_type=type(error))}
+
+
+def error_response(error: Exception, route: str, status_code: int = 500):
+    logging.exception("Exception in %s: %s", route, error)
+    if isinstance(error, APIError) and error.code == "content_filter":
+        status_code = 400
+    return jsonify(error_dict(error)), status_code
+
+
+async def format_as_ndjson(r: AsyncGenerator[dict, None], request_id: str) -> AsyncGenerator[str, None]:
+    try:
+        async for event in r:
+            event["request_id"] = request_id
+            yield json.dumps(event, ensure_ascii=False) + "\n"
+    except Exception as e:
+        logging.exception("Exception while generating response stream. Request ID: %s\nError:", request_id, e)
+        yield json.dumps(error_dict(e))
+
+
+@bp.route("/login")
+async def login():
     session["state"] = str(uuid.uuid4())
     auth_url = msal_client.get_authorization_request_url(
         scopes=SCOPES,
         state=session["state"],
-        redirect_uri=url_for("authorized", _external=True, _scheme=SCHEME)
+        redirect_uri=url_for("routes.authorized", _external=True, _scheme=SCHEME)
     )
     return redirect(auth_url)
 
 
-@app.route("/authorized")
-def authorized():
+@bp.route("/authorized")
+async def authorized():
     if request.args.get("state") != session.get("state"):
         return redirect("/")  # State mismatch, abort.
 
@@ -244,7 +286,7 @@ def authorized():
         token_response = msal_client.acquire_token_by_authorization_code(
             request.args["code"],
             scopes=SCOPES,
-            redirect_uri=url_for("authorized", _external=True, _scheme=SCHEME)
+            redirect_uri=url_for("routes.authorized", _external=True, _scheme=SCHEME)
         )
         if "error" in token_response:
             return "Error: " + token_response["error_description"]
@@ -262,43 +304,46 @@ def authorized():
 
         return redirect("/")
 
-    return redirect(url_for("login"))
+    return redirect(url_for("routes.login"))
 
 
-@app.route("/logout")
-def logout():
+@bp.route("/logout")
+async def logout():
     session.clear()
     return redirect(LOGOUT_URL)
 
 
-@app.route("/", defaults={"path": "index.html"})
-@app.route("/<path:path>")
-def static_file(path):
+@bp.route("/", defaults={"path": "index.html"})
+@bp.route("/<path:path>")
+async def static_file(path):
     """Serve static files from the 'static' directory"""
-    return app.send_static_file(path)
+    return await bp.send_static_file(path)
 
 
-@app.route("/chat", methods=["POST"])
-def chat():
-    """Chat with the bot using a given approach"""
-    approach = request.json["approach"]
-    try:
-        request_id = str(uuid.uuid4())
-        start_time = datetime.now()
+@bp.route("/chat", methods=["POST"])
+async def chat():
+    if not request.is_json:
+        return jsonify({"error": "request must be json"}), 415
+    request_json = await request.get_json()
+    context = request_json.get("context", {})
+    request_id = str(uuid.uuid4())
+    start_time = datetime.now()
+
+    try:    
         session_gpt_deployment = session.get('gpt_deployment', GPT_DEPLOYMENT)
 
         # Log the request to CosmosDB
-        json_document = requestLog.log_request(
-                request_id, 
-                session_gpt_deployment, 
-                request.json, 
-                start_time)
+        # json_document = requestLog.log_request(
+        #         request_id, 
+        #         session_gpt_deployment, 
+        #         request.json, 
+        #         start_time)
 
-        impl = ChatReadRetrieveReadApproach(
+        approach = ChatReadRetrieveReadApproach(
             SEARCH_CLIENT,
-            AZURE_OPENAI_SERVICE,
-            AZURE_OPENAI_SERVICE_KEY,
+            OPENAI_CLIENT,
             session_gpt_deployment.get("deploymentName"),
+            session_gpt_deployment.get("modelName"),
             KB_FIELDS_SOURCEFILE,
             KB_FIELDS_CONTENT,
             KB_FIELDS_PAGENUMBER,
@@ -306,48 +351,61 @@ def chat():
             AZURE_BLOB_STORAGE_CONTAINER,
             BLOB_CLIENT,
             QUERY_TERM_LANGUAGE,
-            session_gpt_deployment.get("modelName"),
-            session_gpt_deployment.get("modelVersion"),
-            IS_GOV_CLOUD_DEPLOYMENT,
             TARGET_EMBEDDING_MODEL,
             ENRICHMENT_APPSERVICE_NAME
         )
         
-        r = impl.run(request.json["history"],
-                     request.json.get("overrides") or {})
-        
-        # Check if there was an error
-        if r.get("error_message"):
-            raise ValueError(r["error_message"]) 
-
-        response = jsonify(
-            {
-                "data_points": r["data_points"],
-                "answer": r["answer"],
-                "thoughts": r["thoughts"],
-                "citation_lookup": r["citation_lookup"],
-                "request_id": request_id,
-                "generated_query": r["generated_query"],
-            }
-        )
-
-        finish_time = datetime.now()
-
-        # Log the request/response to CosmosDB
-        requestLog.log_response(request_id, json_document, r, finish_time)
-
-        return response
-
-    except Exception as ex:
-        finish_time = datetime.now()
+        result = await approach.run(
+            request_json["messages"],
+            stream = request_json.get("stream", False),
+            context = context,
+            session_state = request_json.get("session_state"),
+            )
+        if isinstance(result, dict):
+            # finish_time = datetime.now()
+            # requestLog.log_response(request_id, json_document, result, finish_time)
+            # Check if there was an error
+            if result.get("error_message"):
+                raise ValueError(result["error_message"])
+            
+            result["request_id"] = request_id
+            return jsonify(result)
+        else:
+            response = await make_response(format_as_ndjson(result, request_id))
+            response.timeout = None  # type: ignore
+            response.mimetype = "application/json-lines"
+            return response
+    except Exception as error:
+        # finish_time = datetime.now()
         # Send the response body if it made it that far, otherwise send the exception message
-        requestLog.log_response(request_id, json_document, locals().get('r', {"error_message": str(ex)}), finish_time)
-        logging.exception("Exception in /chat")
-        return jsonify({"error": str(ex)}), 500
+        # requestLog.log_response(request_id, json_document, locals().get('r', {"error_message": str(ex)}), finish_time)
+        return error_response(error, "/chat")
+        
+        # # Check if there was an error
+        # if r.get("error_message"):
+        #     raise ValueError(r["error_message"]) 
+
+        # response = jsonify(
+        #     {
+        #         "data_points": r["data_points"],
+        #         "answer": r["answer"],
+        #         "thoughts": r["thoughts"],
+        #         "citation_lookup": r["citation_lookup"],
+        #         "request_id": request_id,
+        #         "generated_query": r["generated_query"],
+        #     }
+        # )
+
+        # finish_time = datetime.now()
+
+        # # Log the request/response to CosmosDB
+        # requestLog.log_response(request_id, json_document, r, finish_time)
+
+        # return response
 
 
-@app.route("/getBlobClientUrl")
-def get_blob_client_url():
+@bp.route("/getBlobClientUrl")
+async def get_blob_client_url():
     """Get a URL for a file in Blob Storage with SAS token"""
     sas_token = generate_account_sas(
         AZURE_BLOB_STORAGE_ACCOUNT,
@@ -369,9 +427,10 @@ def get_blob_client_url():
     return jsonify({"url": f"{BLOB_CLIENT.url}?{sas_token}"})
 
 
-@app.route("/getBlobUrl", methods=["POST"])
-def get_blob_sas():
-    file_name = urllib.parse.unquote(request.json["file_name"])
+@bp.route("/getBlobUrl", methods=["POST"])
+async def get_blob_sas():
+    request_data = await request.json
+    file_name = urllib.parse.unquote(request_data["file_name"])
     sas_token = generate_blob_sas(
         account_name=AZURE_BLOB_STORAGE_ACCOUNT,
         container_name=AZURE_BLOB_UPLOAD_CONTAINER,
@@ -392,12 +451,13 @@ def get_blob_sas():
     return jsonify({"url": f"{BLOB_CLIENT.url}{AZURE_BLOB_UPLOAD_CONTAINER}/{file_name}?{sas_token}"})
 
 
-@app.route("/getAllUploadStatus", methods=["POST"])
-def get_all_upload_status():
+@bp.route("/getAllUploadStatus", methods=["POST"])
+async def get_all_upload_status():
     """Get the status of all file uploads in the last N hours"""
-    timeframe = request.json.get("timeframe")
-    state = request.json.get("state")
-    folder_name = request.json.get("folder_name")
+    request_data = await request.json
+    timeframe = request_data.get("timeframe")
+    state = request_data.get("state")
+    folder_name = request_data.get("folder_name")
     try:
         results = statusLog.read_files_status_by_timeframe(timeframe, State[state], folder_name)
     except Exception as ex:
@@ -406,8 +466,8 @@ def get_all_upload_status():
     return jsonify(results)
 
 
-@app.route("/logStatus", methods=["POST"])
-def log_status():
+@bp.route("/logStatus", methods=["POST"])
+async def log_status():
     """Log the status of a file upload to CosmosDB"""
     try:
         path = request.json["path"]
@@ -428,8 +488,8 @@ def log_status():
     return jsonify({"status": 200})
 
 
-@app.route("/getInfoData")
-def get_info_data():
+@bp.route("/getInfoData")
+async def get_info_data():
     """Get the info data for the app"""
     session_gpt_deployment = session.get('gpt_deployment', GPT_DEPLOYMENT)
 
@@ -450,8 +510,8 @@ def get_info_data():
     return response
 
 
-@app.route("/getUserData")
-def get_user_data():
+@bp.route("/getUserData")
+async def get_user_data():
     try:
         user_data = session["user_data"]
         user_data["session_id"] = session["state"]
@@ -474,8 +534,8 @@ def get_user_data():
         return jsonify({"error": str(ex)}), 500
 
 
-@app.route("/getWarningBanner")
-def get_warning_banner():
+@bp.route("/getWarningBanner")
+async def get_warning_banner():
     """Get the warning banner text"""
     response = jsonify(
         {
@@ -484,43 +544,46 @@ def get_warning_banner():
     return response
 
 
-@app.route("/getCitation", methods=["POST"])
-def get_citation():
+@bp.route("/getCitation", methods=["POST"])
+async def get_citation():
     """Get the citation for a given file"""
-    citation = urllib.parse.unquote(request.json["citation"])
+    request_data = await request.get_json()
+    citation = urllib.parse.unquote(request_data["citation"])
     try:
-        blob = blob_container.get_blob_client(citation).download_blob()
-        decoded_text = blob.readall().decode()
-        results = jsonify(json.loads(decoded_text))
+        blob = blob_container.get_blob_client(citation)
+        blob_data = await blob.download_blob()
+        decoded_text = await blob_data.readall()
+        results = json.loads(decoded_text.decode())
 
     except Exception as ex:
         logging.exception("Exception in /getCitation")
         return jsonify({"error": str(ex)}), 500
 
-    return jsonify(results.json)
+    return jsonify(results)
 
 
-@app.route('/exportAnswer', methods=["POST"])
-def export():
+@bp.route('/exportAnswer', methods=["POST"])
+async def export():
     try:
+        request_data = await request.json
         session_gpt_deployment = session.get('gpt_deployment', GPT_DEPLOYMENT)
-        file_name, export_file = exporthelper.export_to_blob(request.json,
+        file_name, export_file = exporthelper.export_to_blob(request_data,
                                                              export_container,
                                                              session_gpt_deployment.get('deploymentName'),
                                                              session_gpt_deployment.get('modelName'))
 
         return send_file(export_file,
-                        as_attachment=True,
-                        download_name=file_name
-                        )
+                         as_attachment=True,
+                         download_name=file_name
+                         )
 
     except Exception as ex:
         logging.exception("Exception in /exportAnswer")
         return jsonify({"error": str(ex)}), 500
 
-# Return APPLICATION_TITLE
-@app.route("/getApplicationTitle")
-def get_application_title():
+
+@bp.route("/getApplicationTitle")
+async def get_application_title():
     """Get the application title text"""
     response = jsonify(
         {
@@ -529,8 +592,8 @@ def get_application_title():
     return response
 
 
-@app.route("/getAllTags", methods=["GET"])
-def get_all_tags():
+@bp.route("/getAllTags", methods=["GET"])
+async def get_all_tags():
     """Get the status of all tags in the system"""
     try:
         results = tagsHelper.get_all_tags()
@@ -540,8 +603,8 @@ def get_all_tags():
     return jsonify(results)
 
 
-@app.route("/getGptDeployments", methods=["GET"])
-def get_gpt_deployments():
+@bp.route("/getGptDeployments", methods=["GET"])
+async def get_gpt_deployments():
     """Get a list of all GPT model deployments"""
     try:
         return jsonify(ALL_GPT_DEPLOYMENTS)
@@ -550,8 +613,8 @@ def get_gpt_deployments():
         return jsonify({"error": str(ex)}), 500
 
 
-@app.route("/setGptDeployment", methods=["POST"])
-def set_gpt_deployment():
+@bp.route("/setGptDeployment", methods=["POST"])
+async def set_gpt_deployment():
     """Update the GPT deployment model/version etc."""
     data = request.get_json()
     session.setdefault('gpt_deployment', {})
@@ -570,9 +633,33 @@ def set_gpt_deployment():
         return jsonify({'error': 'Missing required information', 'missing_keys': missing_keys}), 400
         
 
-app.before_request(check_authenticated)
 
-if __name__ == "__main__":
-    # app.run(debug=DEBUG)
-    logging.info("IA WebApp Starting Up...")
-    app.run(threaded=True)
+asyncio.run(fetch_deployments())
+
+def create_app():
+    app = Quart(__name__)
+    app.config['SECRET_KEY'] = APP_SECRET
+    app.config['SESSION_PERMANENT'] = True
+    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
+    bp.before_request(check_authenticated)
+    app.register_blueprint(bp)
+
+    # if os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING"):
+    #     configure_azure_monitor()
+    #     # This tracks HTTP requests made by aiohttp:
+    #     AioHttpClientInstrumentor().instrument()
+    #     # This tracks HTTP requests made by httpx/openai:
+    #     HTTPXClientInstrumentor().instrument()
+    #     # This middleware tracks app route requests:
+    #     app.asgi_app = OpenTelemetryMiddleware(app.asgi_app)  # type: ignore[method-assign]
+
+    # Level should be one of https://docs.python.org/3/library/logging.html#logging-levels
+    default_level = "DEBUG"  # In development, log more verbosely
+    if os.getenv("WEBSITE_HOSTNAME"):  # In production, don't log as heavily
+        default_level = "INFO"
+    logging.basicConfig(level = os.getenv("APP_LOG_LEVEL", default_level))
+
+    # if allowed_origin := os.getenv("ALLOWED_ORIGIN"):
+    #     app.logger.info("CORS enabled for %s", allowed_origin)
+    #     cors(app, allow_origin=allowed_origin, allow_methods=["GET", "POST"])
+    return app

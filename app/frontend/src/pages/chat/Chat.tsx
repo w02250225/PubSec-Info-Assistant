@@ -5,11 +5,13 @@ import { useRef, useState, useEffect } from "react";
 import Coeus from "../../assets/coeus.png";
 import { Checkbox, Panel, DefaultButton, TextField, SpinButton, Separator } from "@fluentui/react";
 import { ITag } from '@fluentui/react/lib/Pickers';
+import readNDJSONStream from "ndjson-readablestream";
 
 import styles from "./Chat.module.css";
 import rlbgstyles from "../../components/ResponseLengthButtonGroup/ResponseLengthButtonGroup.module.css";
 
-import { chatApi, Approaches, AskResponse, ChatRequest, ChatTurn, GptDeployment, getGptDeployments, getInfoData, GetInfoResponse, setGptDeployment } from "../../api";
+import { chatApi, RetrievalMode, ChatAppResponse, ChatAppResponseOrError, ChatAppRequest, ResponseMessage,
+    GptDeployment, getGptDeployments, getInfoData, GetInfoResponse, setGptDeployment } from "../../api";
 import { Answer, AnswerError, AnswerLoading } from "../../components/Answer";
 import { QuestionInput } from "../../components/QuestionInput";
 import { ExampleList } from "../../components/Example";
@@ -33,8 +35,10 @@ const Chat = () => {
     const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
     const [promptTemplate, setPromptTemplate] = useState<string>("");
     const [retrieveCount, setRetrieveCount] = useState<number>(5);
+    const [retrievalMode, setRetrievalMode] = useState<RetrievalMode>(RetrievalMode.Hybrid);
     const [useSemanticRanker, setUseSemanticRanker] = useState<boolean>(true);
     const [useSemanticCaptions, setUseSemanticCaptions] = useState<boolean>(false);
+    const [shouldStream, setShouldStream] = useState<boolean>(true);
     const [excludeCategory, setExcludeCategory] = useState<string>("");
     const [useSuggestFollowupQuestions, setUseSuggestFollowupQuestions] = useState<boolean>(true);
     const [userPersona, setUserPersona] = useState<string>("an analyst");
@@ -54,6 +58,7 @@ const Chat = () => {
     const chatMessageStreamEnd = useRef<HTMLDivElement | null>(null);
 
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [isStreaming, setIsStreaming] = useState<boolean>(false);
     const [error, setError] = useState<unknown>();
 
     const [activeCitation, setActiveCitation] = useState<string>();
@@ -64,36 +69,53 @@ const Chat = () => {
     const [selectedTags, setSelectedTags] = useState<ITag[]>([]);
 
     const [selectedAnswer, setSelectedAnswer] = useState<number>(0);
-    const [answers, setAnswers] = useState<[user: string, response: AskResponse][]>([]);
+    const [answers, setAnswers] = useState<[user: string, response: ChatAppResponse][]>([]);
+    const [streamedAnswers, setStreamedAnswers] = useState<[user: string, response: ChatAppResponse][]>([]);
 
     const [allGptDeployments, setAllGptDeployments] = useState<GptDeployment[]>([]);
     const [selectedGptDeployment, setSelectedGptDeployment] = useState<string | undefined>(undefined);
 
-    useEffect(() => {
-        getInfoData()
-          .then((response: GetInfoResponse) => {
-            setSelectedGptDeployment(response.AZURE_OPENAI_CHATGPT_DEPLOYMENT);
-          })
-          .catch(err => console.log(err.message));
+    const handleAsyncRequest = async (question: string, answers: [string, ChatAppResponse][], setAnswers: Function, responseBody: ReadableStream<any>) => {
+        let answer: string = "";
+        let askResponse: ChatAppResponse = {} as ChatAppResponse;
 
-        getGptDeployments()
-            .then(setAllGptDeployments)
-            .catch(err => console.log(err.message));
-    }, []);
-
-    const onGptDeploymentChange = (deploymentName: string) => {
-        const deploymentToUpdate = allGptDeployments.find(d => d.deploymentName === deploymentName);
-
-        if (deploymentToUpdate) {
-            setSelectedGptDeployment(deploymentName)
-            setGptDeployment(deploymentToUpdate)
-                .then(() => {
-                    console.log('Deployment updated successfully');
-                })
-                .catch((err) => {
-                    console.error('Failed to update deployment:', err);
-                });
+        const updateState = (newContent: string) => {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    answer += newContent;
+                    const latestResponse: ChatAppResponse = {
+                        ...askResponse,
+                        choices: [{ ...askResponse.choices[0], message: { content: answer, role: askResponse.choices[0].message.role } }]
+                    };
+                    setStreamedAnswers([...answers, [question, latestResponse]]);
+                    resolve(null);
+                }, 33);
+            });
+        };
+        try {
+            setIsStreaming(true);
+            for await (const event of readNDJSONStream(responseBody)) {
+                if (event["choices"] && event["choices"][0]["context"] && event["choices"][0]["context"]["data_points"]) {
+                    event["choices"][0]["message"] = event["choices"][0]["delta"];
+                    askResponse = event as ChatAppResponse;
+                } else if (event["choices"] && event["choices"][0]["delta"]["content"]) {
+                    setIsLoading(false);
+                    await updateState(event["choices"][0]["delta"]["content"]);
+                } else if (event["choices"] && event["choices"][0]["context"]) {
+                    // Update context with new keys from latest event
+                    askResponse.choices[0].context = { ...askResponse.choices[0].context, ...event["choices"][0]["context"] };
+                } else if (event["error"]) {
+                    throw Error(event["error"]);
+                }
+            }
+        } finally {
+            setIsStreaming(false);
         }
+        const fullResponse: ChatAppResponse = {
+            ...askResponse,
+            choices: [{ ...askResponse.choices[0], message: { content: answer, role: askResponse.choices[0].message.role } }]
+        };
+        return fullResponse;
     };
 
     const makeApiRequest = async (question: string) => {
@@ -105,29 +127,51 @@ const Chat = () => {
         setActiveAnalysisPanelTab(undefined);
 
         try {
-            const history: ChatTurn[] = answers.map(a => ({ user: a[0], bot: a[1].answer }));
-            const request: ChatRequest = {
-                history: [...history, { user: question, bot: undefined }],
-                approach: Approaches.ReadRetrieveRead,
-                overrides: {
-                    promptTemplate: promptTemplate.length === 0 ? undefined : promptTemplate,
-                    excludeCategory: excludeCategory.length === 0 ? undefined : excludeCategory,
-                    top: retrieveCount,
-                    semanticRanker: useSemanticRanker,
-                    semanticCaptions: useSemanticCaptions,
-                    suggestFollowupQuestions: useSuggestFollowupQuestions,
-                    userPersona: userPersona,
-                    systemPersona: systemPersona,
-                    aiPersona: aiPersona,
-                    responseLength: responseLength,
-                    responseTemp: responseTemp,
-                    topP: topP,
-                    selectedFolders: selectedFolders.includes("selectAll") ? "All" : selectedFolders.length == 0 ? "All" : selectedFolders.join(","),
-                    selectedTags: selectedTags.map(tag => tag.name).join(",")
-                }
+            const messages: ResponseMessage[] = answers.flatMap(a => [
+                { content: a[0], role: "user" },
+                { content: a[1].choices[0].message.content, role: "assistant" }
+            ]);
+
+            const request: ChatAppRequest = {
+                messages: [...messages, { content: question, role: "user" }],
+                stream: shouldStream,
+                context: {
+                    overrides: {
+                        retrieval_mode: retrievalMode,
+                        semantic_ranker: useSemanticRanker,
+                        semantic_captions: useSemanticCaptions,
+                        exclude_category: excludeCategory.length === 0 ? undefined : excludeCategory,
+                        top: retrieveCount,
+                        temperature: responseTemp,
+                        prompt_template: promptTemplate.length === 0 ? undefined : promptTemplate,
+                        suggest_followup_questions: useSuggestFollowupQuestions,
+                        user_persona: userPersona,
+                        system_persona: systemPersona,
+                        ai_persona: aiPersona,
+                        response_length: responseLength,
+                        top_p: topP,
+                        selected_folders: selectedFolders.includes("selectAll") ? "All" : selectedFolders.length == 0 ? "All" : selectedFolders.join(","),
+                        selected_tags: selectedTags.map(tag => tag.name).join(",")
+                    }
+                },
+                session_state: answers.length ? answers[answers.length - 1][1].choices[0].session_state : null
+
             };
-            const result = await chatApi(request);
-            setAnswers([...answers, [question, result]]);
+
+            const response = await chatApi(request);
+            if (!response.body) {
+                throw Error("No response body");
+            }
+            if (shouldStream) {
+                const parsedResponse: ChatAppResponse = await handleAsyncRequest(question, answers, setAnswers, response.body);
+                setAnswers([...answers, [question, parsedResponse]]);
+            } else {
+                const parsedResponse: ChatAppResponseOrError = await response.json();
+                if (response.status > 299 || !response.ok) {
+                    throw Error(parsedResponse.error || "Unknown error");
+                }
+                setAnswers([...answers, [question, parsedResponse as ChatAppResponse]]);
+            }
         } catch (e) {
             setError(e);
         } finally {
@@ -141,7 +185,13 @@ const Chat = () => {
         setActiveCitation(undefined);
         setActiveAnalysisPanelTab(undefined);
         setAnswers([]);
+        setStreamedAnswers([]);
+        setIsLoading(false);
+        setIsStreaming(false);
     };
+
+    useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "smooth" }), [isLoading]);
+    useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "auto" }), [streamedAnswers]);
 
     const onResponseLengthChange = (_ev: any) => {
         for (let node of _ev.target.parentNode.childNodes) {
@@ -191,6 +241,10 @@ const Chat = () => {
     const onRetrieveCountChange = (_ev?: React.SyntheticEvent<HTMLElement, Event>, newValue?: string) => {
         setRetrieveCount(parseInt(newValue || "5"));
     };
+    
+    // const onRetrievalModeChange = (_ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption<RetrievalMode> | undefined, index?: number | undefined) => {
+    //     setRetrievalMode(option?.data || RetrievalMode.Hybrid);
+    // };
 
     const onUserPersonaChange = (_ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
         setUserPersona(newValue || "");
@@ -239,6 +293,33 @@ const Chat = () => {
         setSelectedTags(selectedTags)
     }
 
+    useEffect(() => {
+        getInfoData()
+          .then((response: GetInfoResponse) => {
+            setSelectedGptDeployment(response.AZURE_OPENAI_CHATGPT_DEPLOYMENT);
+          })
+          .catch(err => console.log(err.message));
+
+        getGptDeployments()
+            .then(setAllGptDeployments)
+            .catch(err => console.log(err.message));
+    }, []);
+
+    const onGptDeploymentChange = (deploymentName: string) => {
+        const deploymentToUpdate = allGptDeployments.find(d => d.deploymentName === deploymentName);
+
+        if (deploymentToUpdate) {
+            setSelectedGptDeployment(deploymentName)
+            setGptDeployment(deploymentToUpdate)
+                .then(() => {
+                    console.log('Deployment updated successfully');
+                })
+                .catch((err) => {
+                    console.error('Failed to update deployment:', err);
+                });
+        }
+    };
+
     return (
         <div className={styles.container}>
             <div className={styles.commandsContainer}>
@@ -256,45 +337,66 @@ const Chat = () => {
                         </div>
                     ) : (
                         <div className={styles.chatMessageStream}>
-                        {answers.map((answer, index) => (
-                            <div key={index}>
-                                <UserChatMessage message={answer[0]} />
-                                <div className={styles.chatMessageGpt}>
-                                    <Answer
-                                        key={index}
-                                        question={answer[0]}
-                                        answer={answer[1]}
-                                        isSelected={selectedAnswer === index && activeAnalysisPanelTab !== undefined}
-                                        onCitationClicked={(c, s, p) => onShowCitation(c, s, p, index)}
-                                        onThoughtProcessClicked={() => onToggleTab(AnalysisPanelTabs.ThoughtProcessTab, index)}
-                                        onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab, index)}
-                                        onFollowupQuestionClicked={q => makeApiRequest(q)}
-                                        showFollowupQuestions={useSuggestFollowupQuestions && answers.length - 1 === index}
-                                        onAdjustClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
-                                        onRegenerateClick={() => makeApiRequest(answers[index][0])}
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                        {isLoading && (
-                            <>
-                                <UserChatMessage message={lastQuestionRef.current} />
-                                <div className={styles.chatMessageGptMinWidth}>
-                                    <AnswerLoading />
-                                </div>
-                            </>
-                        )}
-                        {error ? (
-                            <>
-                                <UserChatMessage message={lastQuestionRef.current} />
-                                <div className={styles.chatMessageGptMinWidth}>
-                                    <AnswerError error={error.toString()} onRetry={() => makeApiRequest(lastQuestionRef.current)} />
-                                </div>
-                            </>
-                        ) : null}
-                        <div ref={chatMessageStreamEnd} />
-                    </div>
-                )}
+                            {isStreaming &&
+                                streamedAnswers.map((streamedAnswer, index) => (
+                                    <div key={index}>
+                                        <UserChatMessage message={streamedAnswer[0]} />
+                                        <div className={styles.chatMessageGpt}>
+                                            <Answer
+                                                isStreaming={true}
+                                                key={index}
+                                                answer={streamedAnswer[1]}
+                                                isSelected={false}
+                                                onCitationClicked={(c, s, p) => onShowCitation(c, s, p, index)}
+                                                onThoughtProcessClicked={() => onToggleTab(AnalysisPanelTabs.ThoughtProcessTab, index)}
+                                                onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab, index)}
+                                                onFollowupQuestionClicked={q => makeApiRequest(q)}
+                                                showFollowupQuestions={useSuggestFollowupQuestions && answers.length - 1 === index}
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            {!isStreaming &&
+                                answers.map((answer, index) => (
+                                    <div key={index}>
+                                        <UserChatMessage message={answer[0]} />
+                                        <div className={styles.chatMessageGpt}>
+                                            <Answer
+                                                isStreaming={false}
+                                                key={index}
+                                                question={answer[0]}
+                                                answer={answer[1]}
+                                                isSelected={selectedAnswer === index && activeAnalysisPanelTab !== undefined}
+                                                onCitationClicked={(c, s, p) => onShowCitation(c, s, p, index)}
+                                                onThoughtProcessClicked={() => onToggleTab(AnalysisPanelTabs.ThoughtProcessTab, index)}
+                                                onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab, index)}
+                                                onFollowupQuestionClicked={q => makeApiRequest(q)}
+                                                showFollowupQuestions={useSuggestFollowupQuestions && answers.length - 1 === index}
+												onAdjustClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
+												onRegenerateClick={() => makeApiRequest(answers[index][0])}
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            {isLoading && (
+                                <>
+                                    <UserChatMessage message={lastQuestionRef.current} />
+                                    <div className={styles.chatMessageGptMinWidth}>
+                                        <AnswerLoading />
+                                    </div>
+                                </>
+                            )}
+                            {error ? (
+                                <>
+                                    <UserChatMessage message={lastQuestionRef.current} />
+                                    <div className={styles.chatMessageGptMinWidth}>
+                                        <AnswerError error={error.toString()} onRetry={() => makeApiRequest(lastQuestionRef.current)} />
+                                    </div>
+                                </>
+                            ) : null}
+                            <div ref={chatMessageStreamEnd} />
+                        </div>
+                    )}
 
                 <div className={styles.chatInput}>
                     <QuestionInput
