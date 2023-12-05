@@ -138,27 +138,28 @@ jq -r  '
     .[]
     ' | sed "s/\"/'/g" # replace double quote with single quote to handle special chars
 
-if [ -n "${IN_AUTOMATION}" ]
-then
-    IS_USGOV_DEPLOYMENT=$(jq -r '.properties.outputs.iS_USGOV_DEPLOYMENT.value' infra_output.json)
+#TODO
+# if [ -n "${IN_AUTOMATION}" ]
+# then
+#     IS_USGOV_DEPLOYMENT=$(jq -r '.properties.outputs.iS_USGOV_DEPLOYMENT.value' infra_output.json)
     
-    if [ -n "${IS_USGOV_DEPLOYMENT}" ] && $IS_USGOV_DEPLOYMENT; then
-        az cloud set --name AzureUSGovernment > /dev/null 2>&1
-    fi
+#     if [ -n "${IS_USGOV_DEPLOYMENT}" ] && $IS_USGOV_DEPLOYMENT; then
+#         az cloud set --name AzureUSGovernment > /dev/null 2>&1
+#     fi
 
-    az login --service-principal -u "$ARM_CLIENT_ID" -p "$ARM_CLIENT_SECRET" --tenant "$ARM_TENANT_ID" > /dev/null 2>&1
-    az account set -s "$ARM_SUBSCRIPTION_ID" > /dev/null 2>&1
-fi
+#     az login --service-principal -u "$ARM_CLIENT_ID" -p "$ARM_CLIENT_SECRET" --tenant "$ARM_TENANT_ID" > /dev/null 2>&1
+#     az account set -s "$ARM_SUBSCRIPTION_ID" > /dev/null 2>&1
+# fi
 
-# Name of your Key Vault
-keyVaultName=$(cat infra_output.json | jq -r .properties.outputs.deploymenT_KEYVAULT_NAME.value)
-# Names of your secrets
-secretNames=("AZURE-SEARCH-SERVICE-KEY" "AZURE-BLOB-STORAGE-KEY" "BLOB-CONNECTION-STRING" "COSMOSDB-KEY" "COGNITIVE-SERVICES-KEY" "AZURE-OPENAI-SERVICE-KEY")
+# # Name of your Key Vault
+# keyVaultName=$(cat infra_output.json | jq -r .properties.outputs.deploymenT_KEYVAULT_NAME.value)
+# # Names of your secrets
+# secretNames=("AZURE-SEARCH-SERVICE-KEY" "AZURE-BLOB-STORAGE-KEY" "BLOB-CONNECTION-STRING" "COSMOSDB-KEY" "COGNITIVE-SERVICES-KEY" "AZURE-OPENAI-SERVICE-KEY")
 
-# Retrieve and export each secret
-for secretName in "${secretNames[@]}"; do
-  secretValue=$(az keyvault secret show --name $secretName --vault-name $keyVaultName --query value -o tsv)
-  envVarName=$(echo $secretName | tr '-' '_')
-  echo export $envVarName=\'$secretValue\'
-done
+# # Retrieve and export each secret
+# for secretName in "${secretNames[@]}"; do
+#   secretValue=$(az keyvault secret show --name $secretName --vault-name $keyVaultName --query value -o tsv)
+#   envVarName=$(echo $secretName | tr '-' '_')
+#   echo export $envVarName=\'$secretValue\'
+# done
     
