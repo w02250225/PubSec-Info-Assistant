@@ -2,8 +2,7 @@
 // Licensed under the MIT license.
 
 import { useState } from 'react';
-import { Pivot,
-    PivotItem } from "@fluentui/react";
+import { Pivot, PivotItem } from "@fluentui/react";
 import { ITag } from '@fluentui/react/lib/Pickers';
 import { FilePicker } from "../../components/filepicker/file-picker";
 import { FileStatus } from "../../components/FileStatus/FileStatus";
@@ -41,7 +40,7 @@ const Content = () => {
                     <div className={styles.App} >
                         <FolderPicker allowFolderCreation={true} onSelectedKeyChange={onSelectedKeyChanged}/>
                         <TagPickerInline allowNewTags={true} onSelectedTagsChange={onSelectedTagsChanged}/>
-                        <FilePicker folderPath={selectedKey || ""} tags={selectedTags || []}/>
+                        <FilePicker folderPath={selectedKey || "Generic"} tags={selectedTags || []}/>
                     </div>
                 </PivotItem>
                 <PivotItem headerText="Upload Status" aria-label="Upload Status Tab">

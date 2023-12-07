@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { Stack, PrimaryButton } from "@fluentui/react";
+import { Stack, PrimaryButton, IIconProps} from "@fluentui/react";
 import { ErrorCircle24Regular } from "@fluentui/react-icons";
 
 import styles from "./Answer.module.css";
@@ -9,7 +9,11 @@ import styles from "./Answer.module.css";
 interface Props {
     error: string;
     onRetry: () => void;
-}
+};
+
+const getIconProps = (iconName: string): IIconProps => {
+    return { iconName };
+};
 
 export const AnswerError = ({ error, onRetry }: Props) => {
     return (
@@ -20,7 +24,7 @@ export const AnswerError = ({ error, onRetry }: Props) => {
                 <p className={styles.answerText}>{error}</p>
             </Stack.Item>
 
-            <PrimaryButton className={styles.retryButton} onClick={onRetry} text="Retry" />
+            <PrimaryButton iconProps={getIconProps('Refresh')} className={styles.retryButton} onClick={onRetry} text="Retry" />
         </Stack>
     );
 };

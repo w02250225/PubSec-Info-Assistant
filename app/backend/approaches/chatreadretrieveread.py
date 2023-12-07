@@ -103,13 +103,11 @@ Always include citations if you reference the source documents. Use square brack
     {'role': ASSISTANT, 'content': 'Several steps are being taken to promote energy conservation including reducing energy consumption, increasing energy efficiency, and increasing the use of renewable energy sources.Citations[File0]'}
     ]
 
-    # # Define a class variable for the base URL
-    # EMBEDDING_SERVICE_BASE_URL = 'https://infoasst-cr-{}.azurewebsites.net'
-
     def __init__(
         self,
         search_client: SearchClient,
         openai_client: AsyncOpenAI,
+        blob_client: BlobServiceClient,
         gpt_deployment: Optional[str],
         gpt_model_name: Optional[str],
         source_file_field: str,
@@ -117,13 +115,13 @@ Always include citations if you reference the source documents. Use square brack
         page_number_field: str,
         chunk_file_field: str,
         content_storage_container: str,
-        blob_client: BlobServiceClient,
         query_term_language: str,
         target_embedding_model: str,
         enrichment_appservice_name: str
     ):
         self.search_client = search_client
         self.openai_client = openai_client
+        self.blob_client = blob_client
         self.gpt_deployment = gpt_deployment
         self.gpt_model_name = gpt_model_name
         self.source_file_field = source_file_field
@@ -131,7 +129,6 @@ Always include citations if you reference the source documents. Use square brack
         self.page_number_field = page_number_field
         self.chunk_file_field = chunk_file_field
         self.content_storage_container = content_storage_container
-        self.blob_client = blob_client
         self.query_term_language = query_term_language
         self.chatgpt_token_limit = get_token_limit(gpt_model_name)
         self.escaped_target_model = re.sub(r'[^a-zA-Z0-9_\-.]', '_', target_embedding_model) #escape target embedding model name
@@ -174,15 +171,6 @@ Always include citations if you reference the source documents. Use square brack
         original_user_query = history[-1]["content"]
         user_query_request = "Generate search query for: " + original_user_query
 
-        generated_query = ""
-        data_points = []
-        answer = ""
-        thoughts = ""
-        citation_lookup = {}
-        completion_tokens = 0
-        prompt_tokens = 0
-        total_tokens = 0
-
         functions = [
             {
                 "name": "search_sources",
@@ -202,12 +190,8 @@ Always include citations if you reference the source documents. Use square brack
         
         generated_query = ""
         data_points = []
-        answer = ""
         thoughts = ""
         citation_lookup = {}
-        completion_tokens = 0
-        prompt_tokens = 0
-        total_tokens = 0
 
         query_prompt = self.query_prompt_template.format(query_term_language = self.query_term_language)
 
@@ -375,7 +359,7 @@ Always include citations if you reference the source documents. Use square brack
                 model_id = self.gpt_model_name,
                 history = history,
                 user_content = original_user_query + "\n\nSources:\n" + content + "\n\n",
-                max_tokens=messages_token_limit,
+                max_tokens = messages_token_limit,
             )
 
             chat_coroutine = self.openai_client.chat.completions.create(
@@ -385,8 +369,8 @@ Always include citations if you reference the source documents. Use square brack
                 temperature = float(overrides.get("temperature") or 0.4),
                 top_p = float(overrides.get("top_p") or 1.0),
                 max_tokens = response_length,
-                n=1,
-                stream=should_stream,
+                n = 1,
+                stream = should_stream,
             )
 
             msg_to_display = "\n\n".join([str(message) for message in messages])
@@ -395,19 +379,9 @@ Always include citations if you reference the source documents. Use square brack
                 "citation_lookup": citation_lookup,
                 "data_points": data_points,
                 "thoughts": f"Searched for:<br>{generated_query}<br><br>Conversations:<br>" + msg_to_display.replace('\n', '<br>'),
-                "token_usage": {
-                    "completion_tokens" : completion_tokens,
-                    "prompt_tokens" : prompt_tokens,
-                    "total_tokens" : total_tokens
-                    }
-            }
+                }
 
             return (extra_info, chat_coroutine)
-
-        # TODO
-        # completion_tokens = chat_completion.usage.completion_tokens
-        # prompt_tokens = chat_completion.usage.prompt_tokens
-        # total_tokens = chat_completion.usage.total_tokens
 
         except Exception as error:
             extra_info = {
@@ -416,12 +390,7 @@ Always include citations if you reference the source documents. Use square brack
                 "data_points": data_points,
                 "thoughts":  thoughts,
                 "citation_lookup": citation_lookup,
-                "token_usage": {
-                    "completion_tokens" : completion_tokens,
-                    "prompt_tokens" : prompt_tokens,
-                    "total_tokens" : total_tokens
                 }
-            }
         return (extra_info, None)
 
 
@@ -462,7 +431,7 @@ Always include citations if you reference the source documents. Use square brack
                         "delta": {"role": self.ASSISTANT},
                         "context": extra_info,
                         "session_state": session_state,
-                        "finish_reason": "ERROR",
+                        "finish_reason": None,
                         "index": 0,
                     }
                 ],
@@ -574,7 +543,7 @@ Always include citations if you reference the source documents. Use square brack
         return user_query
 
     def extract_followup_questions(self, content: str):
-        return content.split("<<")[0], re.findall(r"<<([^>>]+)>>", content)
+        return content.split("<<<")[0], re.findall(r"<<<([^>>>]+)>>>", content)
 
     #Get the prompt text for the response length
     def get_response_length_prompt_text(self, response_length: int):
@@ -592,6 +561,14 @@ Always include citations if you reference the source documents. Use square brack
         encoding = tiktoken.get_encoding(encoding_name)
         num_tokens = len(encoding.encode(string))
         return num_tokens
+    
+    def token_count(self, input_text):
+        """ Function to return the number of tokens in a text string"""
+        # calc token count
+        # For gpt-4, gpt-3.5-turbo, text-embedding-ada-002, you need to use cl100k_base
+        encoding = "cl100k_base"
+        token_count = self.num_tokens_from_string(input_text, encoding)
+        return token_count
 
     def get_source_file_with_sas(self, source_file: str) -> str:
         """ Function to return the source file with a SAS token"""
@@ -635,9 +612,3 @@ Always include citations if you reference the source documents. Use square brack
         except Exception as error:
             logging.exception("Unable to parse first page num: " + str(error) + "")
             return "0"
-
-    def num_tokens_from_string(self, string: str, encoding_name: str) -> int:
-        """ Function to return the number of tokens in a text string"""
-        encoding = tiktoken.get_encoding(encoding_name)
-        num_tokens = len(encoding.encode(string))
-        return num_tokens

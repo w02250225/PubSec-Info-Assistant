@@ -11,7 +11,7 @@ import styles from "./Chat.module.css";
 import rlbgstyles from "../../components/ResponseLengthButtonGroup/ResponseLengthButtonGroup.module.css";
 
 import { chatApi, RetrievalMode, ChatAppResponse, ChatAppResponseOrError, ChatAppRequest, ResponseMessage,
-    GptDeployment, getGptDeployments, getInfoData, GetInfoResponse, setGptDeployment } from "../../api";
+    GptDeployment, getGptDeployments, getInfoData, GetInfoResponse, setGptDeployment, stopStream } from "../../api";
 import { Answer, AnswerError, AnswerLoading } from "../../components/Answer";
 import { QuestionInput } from "../../components/QuestionInput";
 import { ExampleList } from "../../components/Example";
@@ -293,6 +293,16 @@ const Chat = () => {
         setSelectedTags(selectedTags)
     }
 
+    const onStopClick = async () => {
+        try {
+            return stopStream();
+        } catch (e) {
+            console.log(e);
+        }
+        setIsStreaming(false);
+    };
+
+
     useEffect(() => {
         getInfoData()
           .then((response: GetInfoResponse) => {
@@ -352,6 +362,8 @@ const Chat = () => {
                                                 onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab, index)}
                                                 onFollowupQuestionClicked={q => makeApiRequest(q)}
                                                 showFollowupQuestions={useSuggestFollowupQuestions && answers.length - 1 === index}
+                                                // onStopClick={onStopClick}
+                                                {...(streamedAnswers.length - 1 === index ? { onStopClick: onStopClick } : {})}
                                             />
                                         </div>
                                     </div>

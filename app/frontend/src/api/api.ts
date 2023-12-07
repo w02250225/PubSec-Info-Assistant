@@ -7,8 +7,20 @@ import {
     StatusLogEntry, StatusLogResponse, ApplicationTitle, GetTagsResponse, GptDeployment, UserData
 } from "./models";
 
+async function fetchWithSessionCheck(url: string, options: RequestInit) {
+    const response = await fetch(url, options);
+
+    // Check if the response URL is the login page
+    if (new URL(response.url).pathname === '/login') {
+        // Redirect to the login page
+        window.location.href = '/login';
+    }
+
+    return response;
+}
+
 export async function chatApi(request: ChatAppRequest): Promise<Response> {
-    return await fetch(`/chat`, {
+    return await fetchWithSessionCheck(`/chat`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -46,7 +58,7 @@ export async function downloadFileFromResponse(response: Response): Promise<void
 
 export async function exportAnswer(request: ExportRequest): Promise<void> {
     try {
-        const response = await fetch("/exportAnswer", {
+        const response = await fetchWithSessionCheck("/exportAnswer", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -65,7 +77,7 @@ export function getCitationFilePath(citation: string): string {
 }
 
 export async function getBlobClientUrl(): Promise<string> {
-    const response = await fetch("/getBlobClientUrl", {
+    const response = await fetchWithSessionCheck("/getBlobClientUrl", {
         method: "GET",
         headers: {
             "Content-Type": "application/json"
@@ -81,7 +93,7 @@ export async function getBlobClientUrl(): Promise<string> {
 }
 
 export async function getBlobUrl(filename: string): Promise<string> {
-    const response = await fetch("/getBlobUrl", {
+    const response = await fetchWithSessionCheck("/getBlobUrl", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -100,7 +112,7 @@ export async function getBlobUrl(filename: string): Promise<string> {
 }
 
 export async function getAllUploadStatus(options: GetUploadStatusRequest): Promise<AllFilesUploadStatus> {
-    const response = await fetch("/getAllUploadStatus", {
+    const response = await fetchWithSessionCheck("/getAllUploadStatus", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -121,7 +133,7 @@ export async function getAllUploadStatus(options: GetUploadStatusRequest): Promi
 }
 
 export async function logStatus(status_log_entry: StatusLogEntry): Promise<StatusLogResponse> {
-    var response = await fetch("/logStatus", {
+    var response = await fetchWithSessionCheck("/logStatus", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -144,7 +156,7 @@ export async function logStatus(status_log_entry: StatusLogEntry): Promise<Statu
 }
 
 export async function getInfoData(): Promise<GetInfoResponse> {
-    const response = await fetch("/getInfoData", {
+    const response = await fetchWithSessionCheck("/getInfoData", {
         method: "GET",
         headers: {
             "Content-Type": "application/json"
@@ -159,7 +171,7 @@ export async function getInfoData(): Promise<GetInfoResponse> {
 }
 
 export async function getWarningBanner(): Promise<GetWarningBanner> {
-    const response = await fetch("/getWarningBanner", {
+    const response = await fetchWithSessionCheck("/getWarningBanner", {
         method: "GET",
         headers: {
             "Content-Type": "application/json"
@@ -174,7 +186,7 @@ export async function getWarningBanner(): Promise<GetWarningBanner> {
 }
 
 export async function getCitationObj(citation: string): Promise<ActiveCitation> {
-    const response = await fetch(`/getCitation`, {
+    const response = await fetchWithSessionCheck(`/getCitation`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -192,8 +204,7 @@ export async function getCitationObj(citation: string): Promise<ActiveCitation> 
 }
 
 export async function getApplicationTitle(): Promise<ApplicationTitle> {
-    console.log("fetch Application Titless");
-    const response = await fetch("/getApplicationTitle", {
+    const response = await fetchWithSessionCheck("/getApplicationTitle", {
         method: "GET",
         headers: {
             "Content-Type": "application/json"
@@ -210,7 +221,7 @@ export async function getApplicationTitle(): Promise<ApplicationTitle> {
 }
 
 export async function getAllTags(): Promise<GetTagsResponse> {
-    const response = await fetch("/getAllTags", {
+    const response = await fetchWithSessionCheck("/getAllTags", {
         method: "GET",
         headers: {
             "Content-Type": "application/json"
@@ -227,7 +238,7 @@ export async function getAllTags(): Promise<GetTagsResponse> {
 }
 
 export async function getGptDeployments(): Promise<GptDeployment[]> {
-    const response = await fetch("/getGptDeployments", {
+    const response = await fetchWithSessionCheck("/getGptDeployments", {
         method: "GET",
         headers: {
             "Content-Type": "application/json"
@@ -246,7 +257,7 @@ export async function getGptDeployments(): Promise<GptDeployment[]> {
 }
 
 export async function setGptDeployment(deployment: GptDeployment): Promise<void> {
-    const response = await fetch("/setGptDeployment", {
+    const response = await fetchWithSessionCheck("/setGptDeployment", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -270,7 +281,7 @@ export async function logout() {
 }
 
 export async function getUserData(): Promise<UserData> {
-    const response = await fetch("/getUserData", {
+    const response = await fetchWithSessionCheck("/getUserData", {
         method: "GET",
         headers: {
             "Content-Type": "application/json"
@@ -282,4 +293,13 @@ export async function getUserData(): Promise<UserData> {
         throw Error(parsedResponse.error || "Unknown error");
     }
     return parsedResponse;
+}
+
+export async function stopStream(): Promise<Response> {
+    return await fetchWithSessionCheck(`/stopStream`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
 }

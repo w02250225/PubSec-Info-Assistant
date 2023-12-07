@@ -7,7 +7,7 @@ import DOMPurify from "dompurify";
 
 import styles from "./Answer.module.css";
 
-import { ChatAppResponse, getCitationFilePath, ExportRequest, exportAnswer } from "../../api";
+import { ChatAppResponse, getCitationFilePath, ExportRequest, exportAnswer, stopStream } from "../../api";
 import { parseAnswerToHtml } from "./AnswerParser";
 import { AnswerIcon } from "./AnswerIcon";
 import { RAIPanel } from "../RAIPanel";
@@ -24,6 +24,7 @@ interface Props {
     showFollowupQuestions?: boolean;
     onAdjustClick?: () => void;
     onRegenerateClick?: () => void;
+    onStopClick?: () => void;
 }
 
 export const Answer = ({
@@ -37,12 +38,13 @@ export const Answer = ({
     onFollowupQuestionClicked,
     showFollowupQuestions,
     onAdjustClick,
-    onRegenerateClick
+    onRegenerateClick,
+    onStopClick
 }: Props) => {
     const followupQuestions = answer.choices[0].context.followup_questions;
     const messageContent = answer.choices[0].message.content;
     const citation_lookup = answer.choices[0].context.citation_lookup;
-    const request_id = answer.choices[0].context.request_id;
+    const request_id = answer.request_id;
 
     const parsedAnswer = useMemo(() => parseAnswerToHtml(messageContent, isStreaming, citation_lookup, onCitationClicked), [answer]);
     const [isCopied, setIsCopied] = useState(false);
@@ -131,7 +133,6 @@ export const Answer = ({
             console.log(e);
         }
     };
-
     return (
         <Stack className={`${styles.answerContainer} ${isSelected && styles.selected}`} verticalAlign="space-between">
             <Stack.Item>
@@ -194,7 +195,6 @@ export const Answer = ({
             )}
             
             {!isStreaming && (
-                <>
                 <Stack.Item>
                     <div className={`${styles.answerTextRequestId} ${isCopied ? styles.disabled : ''}`}
                         onClick={() => onCopyRequestIdClick(`Request ID: ${request_id}`)}>
@@ -209,16 +209,19 @@ export const Answer = ({
                         </span>
                     </div>
                 </Stack.Item>
+                )}
             
                 <Stack.Item align="center">
                     <RAIPanel onAdjustClick={onAdjustClick}
                         onRegenerateClick={onRegenerateClick}
                         onExportClick={onExportClick}
                         onCopyAnswerClick={onCopyAnswerClick}
+                        onStopClick={onStopClick}
+                        isStreaming={isStreaming}
                     />
                 </Stack.Item>
-                </>
-            )}
+                
+            
         </Stack>
     );
 };

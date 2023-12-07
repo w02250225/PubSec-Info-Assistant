@@ -33,6 +33,7 @@ from azure.storage.blob import (
 from quart import (
     Quart,
     Blueprint,
+    current_app,
     jsonify,
     make_response,
     redirect,
@@ -103,7 +104,8 @@ COSMOSDB_TAGS_CONTAINER_NAME = os.environ.get("COSMOSDB_TAGS_CONTAINER_NAME") or
 QUERY_TERM_LANGUAGE = os.environ.get("QUERY_TERM_LANGUAGE") or "English"
 
 ERROR_MESSAGE = """The application encountered an error processing your request.
-Error type: {error_type}"""
+Error Type: {error_type}
+Error Message: {error_msg}"""
 ERROR_MESSAGE_FILTER = """Your message contains content that was flagged by the OpenAI content filter."""
 
 # Oauth
@@ -123,8 +125,6 @@ LOGOUT_URL = os.getenv("LOGOUT_URL") or "https://treasuryqld.sharepoint.com/site
 os.environ['TZ'] = 'Australia/Brisbane'
 time.tzset()
 
-# app = Quart(__name__)
-
 msal_client = msal.ConfidentialClientApplication(
     CLIENT_ID, authority=AUTHORITY,
     client_credential=CLIENT_SECRET,
@@ -132,26 +132,6 @@ msal_client = msal.ConfidentialClientApplication(
 
 azure_credential = DefaultAzureCredential()
 azure_search_key_credential = AzureKeyCredential(AZURE_SEARCH_SERVICE_KEY)
-
-# Setup logger
-# logger = logging.getLogger(__name__)
-# logger.addHandler(AzureLogHandler())
-# if DEBUG:
-#     logger.setLevel(logging.DEBUG)
-
-# Setup StatusLog to allow access to CosmosDB for logging
-statusLog = StatusLog(
-    COSMOSDB_URL, COSMODB_KEY, COSMOSDB_LOG_DATABASE_NAME, COSMOSDB_LOG_CONTAINER_NAME
-)
-
-tagsHelper = TagsHelper(
-    COSMOSDB_URL, COSMODB_KEY, COSMOSDB_TAGS_DATABASE_NAME, COSMOSDB_TAGS_CONTAINER_NAME
-)
-
-# Setup RequestLog to allow access to CosmosDB for request logging
-requestLog = RequestLog(
-    COSMOSDB_URL, COSMODB_KEY, COSMOSDB_REQUESTLOG_DATABASE_NAME, COSMOSDB_REQUESTLOG_CONTAINER_NAME
-)
 
 # Set up clients for OpenAI, Cognitive Search and Storage
 OPENAI_CLIENT: AsyncOpenAI
@@ -165,7 +145,7 @@ if OPENAI_HOST == "azure":
         # azure_ad_token_provider = token_provider,
     )
 else:
-    openai_client = AsyncOpenAI(
+    OPENAI_CLIENT = AsyncOpenAI(
         api_key=OPENAI_API_KEY,
         organization=OPENAI_ORGANIZATION,
     )
@@ -180,6 +160,7 @@ BLOB_CLIENT = BlobServiceClient(
     account_url=f"https://{AZURE_BLOB_STORAGE_ACCOUNT}.blob.core.windows.net",
     credential=AZURE_BLOB_STORAGE_KEY,
 )
+
 blob_container = BLOB_CLIENT.get_container_client(AZURE_BLOB_STORAGE_CONTAINER)
 export_container = BLOB_CLIENT.get_container_client(AZURE_BLOB_EXPORT_CONTAINER)
 
@@ -226,6 +207,9 @@ bp = Blueprint("routes", __name__, static_folder="static")
 mimetypes.add_type("application/javascript", ".js")
 mimetypes.add_type("text/css", ".css")
 
+# Dictionary to track streaming sessions
+active_sessions = {}
+
 def token_is_valid():
     if "token_expires_at" in session:
         expiration_time = session["token_expires_at"]
@@ -242,8 +226,12 @@ def check_authenticated():
 
 def error_dict(error: Exception) -> dict:
     if isinstance(error, APIError) and error.code == "content_filter":
-        return {"error": ERROR_MESSAGE_FILTER}
-    return {"error": ERROR_MESSAGE.format(error_type=type(error))}
+        return {ERROR_MESSAGE_FILTER}
+    
+    return {ERROR_MESSAGE.format(
+            error_type = type(error).__name__, 
+            error_msg = str(error))
+        }
 
 
 def error_response(error: Exception, route: str, status_code: int = 500):
@@ -253,14 +241,49 @@ def error_response(error: Exception, route: str, status_code: int = 500):
     return jsonify(error_dict(error)), status_code
 
 
-async def format_as_ndjson(r: AsyncGenerator[dict, None], request_id: str) -> AsyncGenerator[str, None]:
+async def format_response(session_id: str, 
+                          result: AsyncGenerator[dict, None], 
+                          request_log: RequestLog, 
+                          request_doc: str) -> AsyncGenerator[str, None]:
     try:
-        async for event in r:
+        async for event in result:
+
+            request_id = request_doc["request_id"]
             event["request_id"] = request_id
+            request_doc.setdefault('response', {})
+            
+            # Update request_doc with data from each event
+            request_doc["response"].setdefault('context', {})
+            if event.get("choices", [{}])[0].get("context", {}).get("generated_query"):
+                request_doc["response"]["context"] = event["choices"][0]["context"]
+
+            if event.get("choices", [{}])[0].get("context", {}).get("error_message"):
+                error_message = event["choices"][0]["context"]["error_message"]
+                raise ValueError(error_message)
+
+            # request_doc["response"].setdefault('answer', {})
+            # if event.get("choices", [{}])[0].get("delta", {}).get("content"):
+            #     request_doc["response"]["answer"] += event["choices"][0]["delta"]["content"]
+
+            request_doc["response"].setdefault('followup_questions', {})
+            if event.get("choices", [{}])[0].get("context", {}).get("followup_questions"):
+                request_doc["response"]["followup_questions"] = event["choices"][0]["context"]["followup_questions"]
+            
+            if not active_sessions.get(session_id, True):
+                break
+
             yield json.dumps(event, ensure_ascii=False) + "\n"
+
     except Exception as e:
-        logging.exception("Exception while generating response stream. Request ID: %s\nError:", request_id, e)
+        logging.exception("Exception while generating response stream. %s", e)
         yield json.dumps(error_dict(e))
+
+    finally:
+        #TODO
+        # Calculate completion tokens
+        active_sessions.pop(session_id, None)
+        finish_time = datetime.now()
+        await request_log.log_response(request_id, request_doc, finish_time)
 
 
 @bp.route("/login")
@@ -324,6 +347,9 @@ async def static_file(path):
 async def chat():
     if not request.is_json:
         return jsonify({"error": "request must be json"}), 415
+    
+    session_id = session["state"]
+    active_sessions[session_id] = True
     request_json = await request.get_json()
     context = request_json.get("context", {})
     request_id = str(uuid.uuid4())
@@ -333,15 +359,17 @@ async def chat():
         session_gpt_deployment = session.get('gpt_deployment', GPT_DEPLOYMENT)
 
         # Log the request to CosmosDB
-        # json_document = requestLog.log_request(
-        #         request_id, 
-        #         session_gpt_deployment, 
-        #         request.json, 
-        #         start_time)
+        request_log = current_app.request_log
+        request_doc = await request_log.log_request(
+                request_id, 
+                session_gpt_deployment, 
+                request_json, 
+                start_time)
 
         approach = ChatReadRetrieveReadApproach(
             SEARCH_CLIENT,
             OPENAI_CLIENT,
+            BLOB_CLIENT,
             session_gpt_deployment.get("deploymentName"),
             session_gpt_deployment.get("modelName"),
             KB_FIELDS_SOURCEFILE,
@@ -349,7 +377,6 @@ async def chat():
             KB_FIELDS_PAGENUMBER,
             KB_FIELDS_CHUNKFILE,
             AZURE_BLOB_STORAGE_CONTAINER,
-            BLOB_CLIENT,
             QUERY_TERM_LANGUAGE,
             TARGET_EMBEDDING_MODEL,
             ENRICHMENT_APPSERVICE_NAME
@@ -362,46 +389,28 @@ async def chat():
             session_state = request_json.get("session_state"),
             )
         if isinstance(result, dict):
-            # finish_time = datetime.now()
-            # requestLog.log_response(request_id, json_document, result, finish_time)
-            # Check if there was an error
+            
             if result.get("error_message"):
                 raise ValueError(result["error_message"])
             
             result["request_id"] = request_id
             return jsonify(result)
         else:
-            response = await make_response(format_as_ndjson(result, request_id))
-            response.timeout = None  # type: ignore
+            response = await make_response(format_response(session_id, result, request_log, request_doc))
+            response.timeout = None
             response.mimetype = "application/json-lines"
             return response
     except Exception as error:
-        # finish_time = datetime.now()
-        # Send the response body if it made it that far, otherwise send the exception message
-        # requestLog.log_response(request_id, json_document, locals().get('r', {"error_message": str(ex)}), finish_time)
         return error_response(error, "/chat")
-        
-        # # Check if there was an error
-        # if r.get("error_message"):
-        #     raise ValueError(r["error_message"]) 
 
-        # response = jsonify(
-        #     {
-        #         "data_points": r["data_points"],
-        #         "answer": r["answer"],
-        #         "thoughts": r["thoughts"],
-        #         "citation_lookup": r["citation_lookup"],
-        #         "request_id": request_id,
-        #         "generated_query": r["generated_query"],
-        #     }
-        # )
-
-        # finish_time = datetime.now()
-
-        # # Log the request/response to CosmosDB
-        # requestLog.log_response(request_id, json_document, r, finish_time)
-
-        # return response
+@bp.route('/stopStream', methods=['POST'])
+async def stop_stream():
+    session_id = session["state"]
+    if session_id in active_sessions:
+        active_sessions[session_id] = False
+        return json.dumps({'status': 'stopped'})
+    else:
+        return json.dumps({'status': 'session not found'})
 
 
 @bp.route("/getBlobClientUrl")
@@ -459,7 +468,7 @@ async def get_all_upload_status():
     state = request_data.get("state")
     folder_name = request_data.get("folder_name")
     try:
-        results = statusLog.read_files_status_by_timeframe(timeframe, State[state], folder_name)
+        results = await current_app.status_log.read_files_status_by_timeframe(timeframe, State[state], folder_name)
     except Exception as ex:
         logging.exception("Exception in /getAllUploadStatus")
         return jsonify({"error": str(ex)}), 500
@@ -469,18 +478,21 @@ async def get_all_upload_status():
 @bp.route("/logStatus", methods=["POST"])
 async def log_status():
     """Log the status of a file upload to CosmosDB"""
+    request_data = await request.json
     try:
-        path = request.json["path"]
-        status = request.json["status"]
-        status_classification = StatusClassification[request.json["status_classification"].upper()]
-        state = State[request.json["state"].upper()]
+        path = request_data["path"]
+        status = request_data["status"]
+        status_classification = StatusClassification[request_data["status_classification"].upper()]
+        state = State[request_data["state"].upper()]
 
-        statusLog.upsert_document(document_path=path,
-                                  status=status,
-                                  status_classification=status_classification,
-                                  state=state,
-                                  fresh_start=True)
-        statusLog.save_document(document_path=path)
+        await current_app.status_log.upsert_document(
+                            document_path = path,
+                            status = status,
+                            status_classification = status_classification,
+                            state = state,
+                            fresh_start = True)
+        
+        await current_app.status_log.save_document(document_path=path)
 
     except Exception as ex:
         logging.exception("Exception in /logStatus")
@@ -567,15 +579,17 @@ async def export():
     try:
         request_data = await request.json
         session_gpt_deployment = session.get('gpt_deployment', GPT_DEPLOYMENT)
-        file_name, export_file = exporthelper.export_to_blob(request_data,
-                                                             export_container,
-                                                             session_gpt_deployment.get('deploymentName'),
-                                                             session_gpt_deployment.get('modelName'))
+        file_name, export_file = await exporthelper.export_to_blob(
+                                    request_data,
+                                    export_container,
+                                    OPENAI_CLIENT,
+                                    session_gpt_deployment.get('deploymentName'),
+                                    session_gpt_deployment.get('modelName'))
 
-        return send_file(export_file,
-                         as_attachment=True,
-                         download_name=file_name
-                         )
+        return await send_file( export_file,
+                                as_attachment = True,
+                                attachment_filename = file_name
+                                )
 
     except Exception as ex:
         logging.exception("Exception in /exportAnswer")
@@ -596,7 +610,7 @@ async def get_application_title():
 async def get_all_tags():
     """Get the status of all tags in the system"""
     try:
-        results = tagsHelper.get_all_tags()
+        results = await current_app.tags_helper.get_all_tags()
     except Exception as ex:
         logging.exception("Exception in /getAllTags")
         return jsonify({"error": str(ex)}), 500
@@ -616,31 +630,44 @@ async def get_gpt_deployments():
 @bp.route("/setGptDeployment", methods=["POST"])
 async def set_gpt_deployment():
     """Update the GPT deployment model/version etc."""
-    data = request.get_json()
+    request_data = await request.json
     session.setdefault('gpt_deployment', {})
     keys = ['deploymentName', 'modelName', 'modelVersion']
 
-    if all(key in data for key in keys):
+    if all(key in request_data for key in keys):
         for key in keys:
-            session['gpt_deployment'][key] = data[key]
+            session['gpt_deployment'][key] = request_data[key]
 
         session.modified = True
         
         return jsonify({'message': 'GPT Deployment information updated successfully'}), 200
     else:
         # If some keys are missing, return an error
-        missing_keys = [key for key in keys if key not in data]
+        missing_keys = [key for key in keys if key not in request_data]
         return jsonify({'error': 'Missing required information', 'missing_keys': missing_keys}), 400
-        
-
-
-asyncio.run(fetch_deployments())
+    
 
 def create_app():
     app = Quart(__name__)
     app.config['SECRET_KEY'] = APP_SECRET
     app.config['SESSION_PERMANENT'] = True
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
+    
+    request_log = RequestLog(COSMOSDB_URL, COSMODB_KEY, COSMOSDB_REQUESTLOG_DATABASE_NAME, COSMOSDB_REQUESTLOG_CONTAINER_NAME)
+    status_log = StatusLog(COSMOSDB_URL, COSMODB_KEY, COSMOSDB_LOG_DATABASE_NAME, COSMOSDB_LOG_CONTAINER_NAME)
+    tags_helper = TagsHelper(COSMOSDB_URL, COSMODB_KEY, COSMOSDB_TAGS_DATABASE_NAME, COSMOSDB_TAGS_CONTAINER_NAME)
+
+    @app.before_serving
+    async def init():
+        await request_log.initialize()
+        await status_log.initialize()
+        await tags_helper.initialize()
+        await fetch_deployments()
+
+    app.request_log = request_log
+    app.status_log = status_log
+    app.tags_helper = tags_helper
+
     bp.before_request(check_authenticated)
     app.register_blueprint(bp)
 

@@ -55,6 +55,7 @@ export type ChatAppResponseOrError = {
 
 export type ChatAppResponse = {
     choices: ResponseChoice[];
+    request_id: string;
 };
 
 export type ChatAppRequestContext = {
@@ -121,7 +122,6 @@ export type GetUploadStatusRequest = {
     state: FileState;
     folder_name: string;
 }
-
 
 // These keys need to match case with the defined Enum in the
 // shared code (functions/shared_code/status_log.py)
