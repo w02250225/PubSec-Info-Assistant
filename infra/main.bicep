@@ -248,10 +248,11 @@ module backend 'core/host/appservice.bicep' = {
   params: {
     name: !empty(backendServiceName) ? backendServiceName : '${prefix}-${abbrs.webSitesAppService}${randomString}'
     location: location
-    tags: union(tags, { 'azd-service-name': 'backend' })
+    tags: tags
     appServicePlanId: appServicePlan.outputs.id
     runtimeName: 'python'
     runtimeVersion: '3.10'
+    appCommandLine: 'python3 -m gunicorn main:app'
     scmDoBuildDuringDeployment: true
     managedIdentity: true
     applicationInsightsName: logging.outputs.applicationInsightsName
