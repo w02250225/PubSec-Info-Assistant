@@ -71,6 +71,7 @@ const Chat = () => {
     const [selectedAnswer, setSelectedAnswer] = useState<number>(0);
     const [answers, setAnswers] = useState<[user: string, response: ChatAppResponse][]>([]);
     const [streamedAnswers, setStreamedAnswers] = useState<[user: string, response: ChatAppResponse][]>([]);
+    const [currentStreamingIndex, setCurrentStreamingIndex] = useState(-1); // -1 indicates no active streaming
 
     const [allGptDeployments, setAllGptDeployments] = useState<GptDeployment[]>([]);
     const [selectedGptDeployment, setSelectedGptDeployment] = useState<string | undefined>(undefined);
@@ -78,6 +79,7 @@ const Chat = () => {
     const handleAsyncRequest = async (question: string, answers: [string, ChatAppResponse][], setAnswers: Function, responseBody: ReadableStream<any>) => {
         let answer: string = "";
         let askResponse: ChatAppResponse = {} as ChatAppResponse;
+        const currentStreamIndex = answers.length; 
 
         const updateState = (newContent: string) => {
             return new Promise(resolve => {
@@ -94,6 +96,7 @@ const Chat = () => {
         };
         try {
             setIsStreaming(true);
+            setCurrentStreamingIndex(currentStreamIndex);
             for await (const event of readNDJSONStream(responseBody)) {
                 if (event["choices"] && event["choices"][0]["context"] && event["choices"][0]["context"]["data_points"]) {
                     event["choices"][0]["message"] = event["choices"][0]["delta"];
@@ -110,6 +113,7 @@ const Chat = () => {
             }
         } finally {
             setIsStreaming(false);
+            setCurrentStreamingIndex(-1); 
         }
         const fullResponse: ChatAppResponse = {
             ...askResponse,
@@ -362,8 +366,10 @@ const Chat = () => {
                                                 onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab, index)}
                                                 onFollowupQuestionClicked={q => makeApiRequest(q)}
                                                 showFollowupQuestions={useSuggestFollowupQuestions && answers.length - 1 === index}
-                                                // onStopClick={onStopClick}
-                                                {...(streamedAnswers.length - 1 === index ? { onStopClick: onStopClick } : {})}
+                                                // Only show the stop button on the current answer
+												onAdjustClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
+												onRegenerateClick={() => makeApiRequest(answers[index][0])}
+                                                {...(currentStreamingIndex === index ? { onStopClick: onStopClick } : {})}
                                             />
                                         </div>
                                     </div>
