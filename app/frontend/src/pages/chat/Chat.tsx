@@ -441,7 +441,7 @@ const Chat = () => {
             <Panel
                 headerText="Configure answer generation"
                 isOpen={isConfigPanelOpen}
-                isBlocking={false}
+                isBlocking={true}
                 onDismiss={() => setIsConfigPanelOpen(false)}
                 closeButtonAriaLabel="Close"
                 onRenderFooterContent={() => <DefaultButton onClick={() => setIsConfigPanelOpen(false)}>Close</DefaultButton>}
