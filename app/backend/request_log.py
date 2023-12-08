@@ -35,7 +35,7 @@ class RequestLog:
                 "user_id": user_id,
                 "session_id": session_id,
                 "request_id": request_id,
-                "request_body": request_body,
+                "request": request_body,
                 "gpt_deployment_name": gpt_deployment['deploymentName'],
                 "gpt_model_name": gpt_deployment['modelName'],
                 "gpt_model_version": gpt_deployment['modelVersion'],

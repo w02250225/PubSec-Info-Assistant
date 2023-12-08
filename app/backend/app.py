@@ -226,14 +226,14 @@ def check_authenticated():
 
 def error_dict(error: Exception) -> dict:
     if isinstance(error, APIError) and error.code == "content_filter":
-        return {ERROR_MESSAGE_FILTER}
+        return {"error": ERROR_MESSAGE_FILTER}
     
-    return {ERROR_MESSAGE.format(
-            error_type = type(error).__name__, 
-            error_msg = str(error))
-        }
+    return {"error": ERROR_MESSAGE.format(
+            error_type=type(error).__name__, 
+            error_msg=str(error))
+            }
 
-
+        
 def error_response(error: Exception, route: str, status_code: int = 500):
     logging.exception("Exception in %s: %s", route, error)
     if isinstance(error, APIError) and error.code == "content_filter":
@@ -244,30 +244,35 @@ def error_response(error: Exception, route: str, status_code: int = 500):
 async def format_response(session_id: str, 
                           result: AsyncGenerator[dict, None], 
                           request_log: RequestLog, 
-                          request_doc: str) -> AsyncGenerator[str, None]:
+                          request_doc: dict) -> AsyncGenerator[str, None]:
     try:
+        accumulated_content = ""
+        request_doc.setdefault('response', {})
         async for event in result:
-
             request_id = request_doc["request_id"]
             event["request_id"] = request_id
-            request_doc.setdefault('response', {})
+            
+            choice = event.get("choices", [{}])[0]
+            context = choice.get("context", {})
+            delta = choice.get("delta", {})
             
             # Update request_doc with data from each event
-            request_doc["response"].setdefault('context', {})
-            if event.get("choices", [{}])[0].get("context", {}).get("generated_query"):
-                request_doc["response"]["context"] = event["choices"][0]["context"]
+            # Check if generated_query is set context as this chunk
+            # will contain the extra info we need, data_points/citations etc.
+            if context.get("generated_query"):
+                for key, value in context.items():
+                    request_doc["response"][key] = value
 
-            if event.get("choices", [{}])[0].get("context", {}).get("error_message"):
-                error_message = event["choices"][0]["context"]["error_message"]
-                raise ValueError(error_message)
+            if context.get("error_message"):
+                raise ValueError(context["error_message"])
 
-            # request_doc["response"].setdefault('answer', {})
-            # if event.get("choices", [{}])[0].get("delta", {}).get("content"):
-            #     request_doc["response"]["answer"] += event["choices"][0]["delta"]["content"]
+            content = delta.get("content")
+            if content:
+                accumulated_content += content
 
-            request_doc["response"].setdefault('followup_questions', {})
-            if event.get("choices", [{}])[0].get("context", {}).get("followup_questions"):
-                request_doc["response"]["followup_questions"] = event["choices"][0]["context"]["followup_questions"]
+            followup_questions = context.get("followup_questions")
+            if followup_questions:
+                request_doc["response"].setdefault('followup_questions', followup_questions)
             
             if not active_sessions.get(session_id, True):
                 break
@@ -281,6 +286,11 @@ async def format_response(session_id: str,
     finally:
         #TODO
         # Calculate completion tokens
+
+        if accumulated_content:
+            # Add the full answer to the request_doc
+            request_doc["response"].setdefault('answer', accumulated_content)
+
         active_sessions.pop(session_id, None)
         finish_time = datetime.now()
         await request_log.log_response(request_id, request_doc, finish_time)
