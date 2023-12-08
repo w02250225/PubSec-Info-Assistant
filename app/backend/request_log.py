@@ -1,7 +1,8 @@
 import base64
 import logging
-from azure.cosmos import CosmosClient, PartitionKey
-from flask import jsonify, session
+from azure.cosmos.aio import CosmosClient
+from azure.cosmos import PartitionKey
+from quart import session
 
 class RequestLog:
 
@@ -11,24 +12,16 @@ class RequestLog:
         self._key = key
         self._database_name = database_name
         self._container_name = container_name
-        self.cosmos_client = CosmosClient(url=self._url, credential=self._key)
+        self.cosmos_client = None
 
-        # Select a database (will create it if it doesn't exist)
-        self.database = self.cosmos_client.get_database_client(
-            self._database_name)
-        if self._database_name not in [db['id'] for db in self.cosmos_client.list_databases()]:
-            self.database = self.cosmos_client.create_database(
-                self._database_name)
 
-        # Select a container (will create it if it doesn't exist)
-        self.container = self.database.get_container_client(
-            self._container_name)
-        if self._container_name not in [container['id'] for container
-                                        in self.database.list_containers()]:
-            self.container = self.database.create_container(id=self._container_name,
-                                                            partition_key=PartitionKey("/user_id", "/session_id"))
+    async def initialize(self):
+        self.cosmos_client = CosmosClient(url = self._url, credential = self._key)
+        self.database = await self.cosmos_client.create_database_if_not_exists(id = self._database_name)
+        self.container = await self.database.create_container_if_not_exists(id = self._container_name, partition_key = PartitionKey("/user_id", "/session_id"))
 
-    def log_request(self, request_id, gpt_deployment, request_body, start_time):
+
+    async def log_request(self, request_id, gpt_deployment, request_body, start_time):
         """Log the JSON Request into CosmosDB"""
         try:
             document_id = base64.urlsafe_b64encode(request_id.encode()).decode()
@@ -37,8 +30,7 @@ class RequestLog:
 
             logging.info('Logging Request ID %s for Session ID %s', request_id, session_id)
 
-            json_document = jsonify(
-                {
+            json_document = {
                 "id": document_id,
                 "user_id": user_id,
                 "session_id": session_id,
@@ -49,28 +41,23 @@ class RequestLog:
                 "gpt_model_version": gpt_deployment['modelVersion'],
                 "start_timestamp": str(start_time.strftime('%Y-%m-%d %H:%M:%S')),
                 }
-            )
 
-            self.container.create_item(body = json_document.json)
+            await self.container.create_item(body = json_document)
 
-            return json_document.json
+            return json_document
 
         except Exception as ex:
             logging.exception("Exception in log_request. Error: %s", str(ex))
 
-    def log_response(self, request_id, json_document, response_body, finish_time):
-        """Log the JSON Request into CosmosDB"""
+
+    async def log_response(self, request_id, json_document, finish_time):
+        """Upsert the JSON Request into CosmosDB"""
         try:
-            session_id = session["state"]
-            logging.info('Logging Request ID %s for Session ID %s', request_id, session_id)
+            logging.info('Updating Request ID %s with Response', request_id,)
 
-            # Remove request_id if present in response_body
-            response_body.pop("request_id", None)
-
-            json_document["response_body"] = response_body
             json_document["finish_timestamp"] = str(finish_time.strftime('%Y-%m-%d %H:%M:%S'))
 
-            self.container.upsert_item(body = json_document)
+            await self.container.upsert_item(body = json_document)
 
         except Exception as ex:
             logging.exception("Exception in log_response. Error: %s", str(ex))

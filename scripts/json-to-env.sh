@@ -150,7 +150,7 @@ jq -r  '
 #     az login --service-principal -u "$ARM_CLIENT_ID" -p "$ARM_CLIENT_SECRET" --tenant "$ARM_TENANT_ID" > /dev/null 2>&1
 #     az account set -s "$ARM_SUBSCRIPTION_ID" > /dev/null 2>&1
 # fi
-
+#TODO
 # # Name of your Key Vault
 # keyVaultName=$(cat infra_output.json | jq -r .properties.outputs.deploymenT_KEYVAULT_NAME.value)
 # # Names of your secrets

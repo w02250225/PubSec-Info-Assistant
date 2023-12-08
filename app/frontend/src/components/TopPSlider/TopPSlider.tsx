@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Label, TextField } from "@fluentui/react";
-import styles from "./TopPSlider.module.css";
 import { FiHelpCircle } from 'react-icons/fi'
+import styles from "./TopPSlider.module.css";
 
 interface Props {
   className?: string;
@@ -15,45 +15,42 @@ Lowering Top P will narrow the model's token selection to likelier tokens.<br />
 Increasing Top P will let the model choose from tokens with both high and low likelihood.<br />
 Try adjusting temperature or Top P but not both.`
 
-export const TopPSlider = ({ className, onChange, value }: Props) => {
-  const [sliderValue, setSliderValue] = useState<number>(value || 0);
-  const [inputValue, setInputValue] = useState<string>(value?.toFixed(2) || "0.00");
+export const TopPSlider = ({ className, onChange, value = 0 }: Props) => {
+  const [sliderValue, setSliderValue] = useState<number>(value);
+  const [displayValue, setDisplayValue] = useState<string>(value.toFixed(2));
 
-  const formatNumber = (num: number) => {
-    return parseFloat(num.toFixed(20)).toString();
-  };
 
   useEffect(() => {
-    setInputValue(formatNumber(value || 0));
-    setSliderValue(value || 0);
+    setSliderValue(value);
+    setDisplayValue(value.toString()); // Keep the full precision when value is set from outside
   }, [value]);
 
-  const handleInputChange = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
-    setInputValue(newValue || "");
+  const updateValue = (newValue: number, fromSlider: boolean = false) => {
+    const boundedValue = Math.max(0, Math.min(newValue, 1));
+    setSliderValue(boundedValue);
+    // If the update comes from the slider, round to 2 decimal places
+    setDisplayValue(fromSlider ? boundedValue.toFixed(2) : newValue.toString());
+    onChange(boundedValue);
   };
 
-  const handleInputBlur = (ev: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const regex = /^(\d+(\.\d{1,20})?)?$/;
+  const handleSliderChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = parseFloat(event.target.value);
+    updateValue(newValue, true);
+  };
 
-    if (regex.test(inputValue)) {
-      const newValue = parseFloat(inputValue);
-      if (!isNaN(newValue) && newValue >= 0 && newValue <= 1) {
-        setInputValue(formatNumber(newValue));
-        setSliderValue(newValue);
-        onChange(newValue);
-      } else {
-        setInputValue(formatNumber(sliderValue));
-      }
-    } else {
-      setInputValue(formatNumber(sliderValue));
+  const handleInputChange = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
+    if (newValue !== undefined) {
+      setDisplayValue(newValue); // Just update the display value, do not round
     }
   };
 
-  const handleSliderChange = (ev: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = parseFloat(ev.target.value);
-    setSliderValue(newValue);
-    setInputValue(newValue.toFixed(2));  // slider produces 2 decimal place value
-    onChange(newValue);
+  const handleInputBlur = () => {
+    // When the input field loses focus, validate and potentially round the number
+    let numericValue = parseFloat(displayValue);
+    if (isNaN(numericValue) || numericValue < 0 || numericValue > 1) {
+      numericValue = sliderValue; // Revert to the last valid value from the slider
+    }
+    updateValue(numericValue); // Do not round to 2 decimal places here
   };
 
   return (
@@ -64,18 +61,16 @@ export const TopPSlider = ({ className, onChange, value }: Props) => {
           data-tooltip-html={tooltipHtml}
         />
       </Label>
-
       <TextField
         className={`${styles.topPValue}`}
-        value={inputValue}
+        value={displayValue}
         onChange={handleInputChange}
         onBlur={handleInputBlur}
       />
-
       <input
         className={`${styles.topPSlider}`}
         type="range"
-        value={sliderValue.toString()}
+        value={sliderValue.toString()} // Convert to string for the input element
         step={0.01}
         min={0.00}
         max={1.00}

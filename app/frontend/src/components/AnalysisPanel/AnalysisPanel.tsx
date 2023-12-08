@@ -10,7 +10,7 @@ import DOMPurify from "dompurify";
 import styles from "./AnalysisPanel.module.css";
 
 import { SupportingContent } from "../SupportingContent";
-import { AskResponse, ActiveCitation, getCitationObj } from "../../api";
+import { ChatAppResponse, ActiveCitation, getCitationObj } from "../../api";
 import { AnalysisPanelTabs } from "./AnalysisPanelTabs";
 
 interface Props {
@@ -21,20 +21,20 @@ interface Props {
     sourceFile: string | undefined;
     pageNumber: string | undefined;
     citationHeight: string;
-    answer: AskResponse;
+    answer: ChatAppResponse;
 }
 
 const pivotItemDisabledStyle = { disabled: true, style: { color: "grey" } };
 
 export const AnalysisPanel = ({ answer, activeTab, activeCitation, sourceFile, pageNumber, citationHeight, className, onActiveTabChanged }: Props) => {
     const [activeCitationObj, setActiveCitationObj] = useState<ActiveCitation>();
-
-    const isDisabledThoughtProcessTab: boolean = !answer.thoughts;
-    const isDisabledSupportingContentTab: boolean = !answer.data_points.length;
+    const isDisabledThoughtProcessTab: boolean = !answer.choices[0].context.thoughts;
+    const isDisabledSupportingContentTab: boolean = !answer.choices[0].context.data_points.length;
     const isDisabledCitationTab: boolean = !activeCitation;
     // the first split on ? separates the file from the sas token, then the second split on . separates the file extension
     const sourceFileExt: any = sourceFile?.split("?")[0].split(".").pop();
-    const sanitizedThoughts = DOMPurify.sanitize(answer.thoughts!);
+    const sanitizedThoughts = DOMPurify.sanitize(answer.choices[0].context.thoughts!);
+
 
     async function fetchActiveCitationObj() {
         try {
@@ -69,7 +69,7 @@ export const AnalysisPanel = ({ answer, activeTab, activeCitation, sourceFile, p
                 headerText="Supporting content"
                 headerButtonProps={isDisabledSupportingContentTab ? pivotItemDisabledStyle : undefined}
             >
-                <SupportingContent supportingContent={answer.data_points} />
+                <SupportingContent supportingContent={answer.choices[0].context.data_points} />
             </PivotItem>
             <PivotItem
                 itemKey={AnalysisPanelTabs.CitationTab}

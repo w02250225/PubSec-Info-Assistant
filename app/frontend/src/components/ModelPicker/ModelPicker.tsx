@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Dropdown, IDropdownOption, Label } from "@fluentui/react";
 import { FiHelpCircle } from 'react-icons/fi';
-
 import { GptDeployment } from "../../api";
 import styles from "./ModelPicker.module.css";
 
@@ -49,7 +48,7 @@ export const ModelPicker = ({ className, deployments, selectedGptDeployment, onG
 
     const dropdownOptions: IDropdownOption[] = deployments.map((d, index) => ({
         key: d.deploymentName,
-        text: getPrettyModelName(d.modelName),
+        text: `${getPrettyModelName(d.modelName)} (${d.modelVersion})`,
         index: index,
     }));
 

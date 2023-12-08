@@ -9,32 +9,33 @@ from bs4 import BeautifulSoup
 from docx import Document
 from docx.shared import Pt
 from docx.enum.dml import MSO_THEME_COLOR_INDEX
-from azure.storage.blob import ContainerClient
-from flask import session
+from azure.storage.blob.aio import ContainerClient
+from openai import AsyncOpenAI
+from quart import session
 
 
-def export_to_blob(request: str,
+async def export_to_blob(request: str,
                    container_client: ContainerClient,
-                   azure_openai_deployment_name: str,
-                   azure_openai_model_name: str
+                   openai_client: AsyncOpenAI,
+                   gpt_deployment: str,
+                   gpt_model_name: str
                    ):
     try:
-
         user_id = session.get('user_data', {}).get('userPrincipalName') or "Unknown User"
 
-        title = generate_document_title(request["question"],
-                                        azure_openai_deployment_name,
-                                        azure_openai_model_name
-                                        )
+        title = await generate_document_title(request["question"],
+                                              openai_client,
+                                              gpt_deployment,
+                                              gpt_model_name)
 
         export = create_docx(title,
-                             request["answer"],
-                             request["citations"])
+                                   request["answer"],
+                                   request["citations"])
 
-        upload_to_blob(export,
-                       request["request_id"],
-                       user_id,
-                       container_client)
+        await upload_to_blob(export,
+                             request["request_id"],
+                             user_id,
+                             container_client)
 
         # Use title to generate file name
         # Make sure it's safe for Windows
@@ -50,35 +51,31 @@ def export_to_blob(request: str,
         return str(ex)
 
 
-def generate_document_title(question: str,
-                            azure_openai_deployment_name: str,
-                            azure_openai_model_name: str
-                            ) -> str:
-
-    azure_openai_service = os.environ.get("AZURE_OPENAI_SERVICE") or os.environ.get("AZURE_OPENAI_ACCOUNT_NAME")
-    azure_openai_key = os.environ.get("AZURE_OPENAI_SERVICE_KEY")
-    azure_openai_api_version = os.environ.get("AZURE_OPENAI_API_VERSION")
-    
-    openai.api_type = "azure"
-    openai.api_base = f"https://{azure_openai_service}.openai.azure.com"
-    openai.api_version = azure_openai_api_version
-    openai.api_key = azure_openai_key
+async def generate_document_title(question: str,
+                                  openai_client: AsyncOpenAI,
+                                  gpt_deployment: str,
+                                  gpt_model_name: str
+                                  ) -> str:
 
     messages = [
         {"role": "system", "content": "You are a helpful AI that generates document titles."},
         {"role": "user", "content": f"Generate a short (less than 10 words) document title for the following question or request: \"{question}\""},
     ]
-    
-    response = openai.ChatCompletion.create(
-        deployment_id=azure_openai_deployment_name,
-        model=azure_openai_model_name,
-        messages=messages,
-        temperature=0.4,
-        max_tokens=20
-    )
 
-    title = response['choices'][0]['message']['content'].replace("\"", "")
-    return title
+    chat_completion = await openai_client.chat.completions.create(
+                            messages = messages,
+                            # Azure Open AI takes the deployment name as the model name
+                            model = gpt_deployment if gpt_deployment else gpt_model_name,
+                            temperature = 0.4,
+                            max_tokens = 20,
+                            n = 1)
+    
+    if chat_completion.choices:
+        first_choice = chat_completion.choices[0]
+        title = first_choice.message.content.replace("\"", "")
+        return title
+    else:
+        return "No title generated"
 
 
 def add_hyperlink(paragraph, text, url):
@@ -213,15 +210,17 @@ def create_docx(title: str, answer: str, citations: str) -> io.BytesIO():
         return str(ex)
 
 
-def upload_to_blob(input_stream: io.BytesIO(),
-                   request_id: str,
-                   user_id: str,
-                   container_client: ContainerClient) -> str:
+async def upload_to_blob(input_stream: io.BytesIO(),
+                         request_id: str,
+                         user_id: str,
+                         container_client: ContainerClient) -> str:
     try:
         timestamp = time.strftime("%Y%m%d%H%M%S")
         blob_name = f"{user_id}/{timestamp}_{request_id}.docx"
-        container_client.get_blob_client(blob_name).upload_blob(
-            input_stream, blob_type="BlockBlob")
+        await container_client.get_blob_client(blob_name).upload_blob(
+            input_stream, 
+            blob_type="BlockBlob"
+            )
 
         return blob_name
 

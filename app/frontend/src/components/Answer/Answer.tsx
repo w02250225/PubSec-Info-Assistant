@@ -7,15 +7,16 @@ import DOMPurify from "dompurify";
 
 import styles from "./Answer.module.css";
 
-import { AskResponse, getCitationFilePath, ExportRequest, exportAnswer } from "../../api";
+import { ChatAppResponse, getCitationFilePath, ExportRequest, exportAnswer, stopStream } from "../../api";
 import { parseAnswerToHtml } from "./AnswerParser";
 import { AnswerIcon } from "./AnswerIcon";
 import { RAIPanel } from "../RAIPanel";
 
 interface Props {
-    question: string;
-    answer: AskResponse;
+    question?: string;
+    answer: ChatAppResponse;
     isSelected?: boolean;
+    isStreaming: boolean;
     onCitationClicked: (filePath: string, sourcePath: string, pageNumber: string) => void;
     onThoughtProcessClicked: () => void;
     onSupportingContentClicked: () => void;
@@ -23,21 +24,29 @@ interface Props {
     showFollowupQuestions?: boolean;
     onAdjustClick?: () => void;
     onRegenerateClick?: () => void;
+    onStopClick?: () => void;
 }
 
 export const Answer = ({
     question,
     answer,
     isSelected,
+    isStreaming,
     onCitationClicked,
     onThoughtProcessClicked,
     onSupportingContentClicked,
     onFollowupQuestionClicked,
     showFollowupQuestions,
     onAdjustClick,
-    onRegenerateClick
+    onRegenerateClick,
+    onStopClick
 }: Props) => {
-    const parsedAnswer = useMemo(() => parseAnswerToHtml(answer.answer, answer.citation_lookup, onCitationClicked), [answer]);
+    const followupQuestions = answer.choices[0].context.followup_questions;
+    const messageContent = answer.choices[0].message.content;
+    const citation_lookup = answer.choices[0].context.citation_lookup;
+    const request_id = answer.request_id;
+
+    const parsedAnswer = useMemo(() => parseAnswerToHtml(messageContent, isStreaming, citation_lookup, onCitationClicked), [answer]);
     const [isCopied, setIsCopied] = useState(false);
     const sanitizedAnswerHtml = DOMPurify.sanitize(parsedAnswer.answerHtml);
 
@@ -83,8 +92,8 @@ export const Answer = ({
     const onExportClick = async () => {
         try {
             const request: ExportRequest = {
-                request_id: answer.request_id,
-                question: question,
+                request_id: request_id,
+                question: question as string,
                 answer: sanitizedAnswerHtml,
                 citations: concatenatedCitationLinks,
             };
@@ -124,7 +133,6 @@ export const Answer = ({
             console.log(e);
         }
     };
-
     return (
         <Stack className={`${styles.answerContainer} ${isSelected && styles.selected}`} verticalAlign="space-between">
             <Stack.Item>
@@ -137,7 +145,7 @@ export const Answer = ({
                             title="Show thought process"
                             ariaLabel="Show thought process"
                             onClick={() => onThoughtProcessClicked()}
-                            disabled={!answer.thoughts}
+                            disabled={!answer.choices[0].context.thoughts?.length}
                         />
                         <IconButton
                             style={{ color: "black" }}
@@ -145,7 +153,7 @@ export const Answer = ({
                             title="Show supporting content"
                             ariaLabel="Show supporting content"
                             onClick={() => onSupportingContentClicked()}
-                            disabled={!answer.data_points.length}
+                            disabled={!answer.choices[0].context.data_points?.length}
                         />
                     </div>
                 </Stack>
@@ -171,11 +179,11 @@ export const Answer = ({
                 </Stack.Item>
             )}
 
-            {!!parsedAnswer.followupQuestions.length && showFollowupQuestions && onFollowupQuestionClicked && (
+            {!!followupQuestions?.length && showFollowupQuestions && onFollowupQuestionClicked && (
                 <Stack.Item>
-                    <Stack horizontal wrap className={`${!!parsedAnswer.followupQuestions.length ? styles.followupQuestionsList : ""}`} tokens={{ childrenGap: 6 }}>
+                    <Stack horizontal wrap className={`${!!followupQuestions.length ? styles.followupQuestionsList : ""}`} tokens={{ childrenGap: 6 }}>
                         <span className={styles.followupQuestionLearnMore}>Follow-up questions:</span>
-                        {parsedAnswer.followupQuestions.map((x, i) => {
+                        {followupQuestions.map((x, i) => {
                             return (
                                 <a key={i} className={styles.followupQuestion} title={x} onClick={() => onFollowupQuestionClicked(x)}>
                                     {`${x}`}
@@ -185,27 +193,35 @@ export const Answer = ({
                     </Stack>
                 </Stack.Item>
             )}
-            <Stack.Item>
-                <div className={`${styles.answerTextRequestId} ${isCopied ? styles.disabled : ''}`}
-                    onClick={() => onCopyRequestIdClick(`Request ID: ${answer.request_id}`)}>
-                    <IconButton
-                        style={{ color: "black" }}
-                        iconProps={{ iconName: "Copy" }}
-                        title="Copy Request ID"
-                        ariaLabel="Copy Request ID"
+            
+            {!isStreaming && (
+                <Stack.Item>
+                    <div className={`${styles.answerTextRequestId} ${isCopied ? styles.disabled : ''}`}
+                        onClick={() => onCopyRequestIdClick(`Request ID: ${request_id}`)}>
+                        <IconButton
+                            style={{ color: "black" }}
+                            iconProps={{ iconName: "Copy" }}
+                            title="Copy Request ID"
+                            ariaLabel="Copy Request ID"
+                        />
+                        <span>
+                            {isCopied ? 'Copied!' : 'Copy Request ID'}
+                        </span>
+                    </div>
+                </Stack.Item>
+                )}
+            
+                <Stack.Item align="center">
+                    <RAIPanel onAdjustClick={onAdjustClick}
+                        onRegenerateClick={onRegenerateClick}
+                        onExportClick={onExportClick}
+                        onCopyAnswerClick={onCopyAnswerClick}
+                        onStopClick={onStopClick}
+                        isStreaming={isStreaming}
                     />
-                    <span>
-                        {isCopied ? 'Copied!' : 'Copy Request ID'}
-                    </span>
-                </div>
-            </Stack.Item>
-            <Stack.Item align="center">
-                <RAIPanel onAdjustClick={onAdjustClick}
-                    onRegenerateClick={onRegenerateClick}
-                    onExportClick={onExportClick}
-                    onCopyAnswerClick={onCopyAnswerClick}
-                />
-            </Stack.Item>
+                </Stack.Item>
+                
+            
         </Stack>
     );
 };

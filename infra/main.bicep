@@ -805,24 +805,24 @@ module azMonitor 'core/logging/monitor.bicep' = {
   }
 }
 
-module kvModule 'core/security/keyvault.bicep' = {
-  scope: rg
-  name: 'keyvault-deployment'
-  params: {
-    name: '${prefix}-${abbrs.keyvault}${randomString}'
-    location: location
-    kvAccessObjectId: kvAccessObjectId
-    searchServiceKey: searchServices.outputs.searchServiceKey 
-    openaiServiceKey: azureOpenAIServiceKey
-    cogServicesSearchKey: searchServices.outputs.cogServiceKey
-    cosmosdbKey: cosmosdb.outputs.CosmosDBKey
-    formRecognizerKey: formrecognizer.outputs.formRecognizerAccountKey
-    blobConnectionString: storage.outputs.connectionString
-    enrichmentKey: enrichment.outputs.cognitiveServiceAccountKey
-    spClientSecret: aadMgmtClientSecret
-    blobStorageKey: storage.outputs.key
-  }
-}
+// module kvModule 'core/security/keyvault.bicep' = {
+//   scope: rg
+//   name: 'keyvault-deployment'
+//   params: {
+//     name: '${prefix}-${abbrs.keyvault}${randomString}'
+//     location: location
+//     kvAccessObjectId: kvAccessObjectId
+//     searchServiceKey: searchServices.outputs.searchServiceKey 
+//     openaiServiceKey: azureOpenAIServiceKey
+//     cogServicesSearchKey: searchServices.outputs.cogServiceKey
+//     cosmosdbKey: cosmosdb.outputs.CosmosDBKey
+//     formRecognizerKey: formrecognizer.outputs.formRecognizerAccountKey
+//     blobConnectionString: storage.outputs.connectionString
+//     enrichmentKey: enrichment.outputs.cognitiveServiceAccountKey
+//     spClientSecret: aadMgmtClientSecret
+//     blobStorageKey: storage.outputs.key
+//   }
+// }
 
 // DEPLOYMENT OF AZURE CUSTOMER ATTRIBUTION TAG
 resource customerAttribution 'Microsoft.Resources/deployments@2021-04-01' = if (cuaEnabled) {
@@ -881,4 +881,4 @@ output AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME string = azureOpenAIEmbeddingDeplo
 output USE_AZURE_OPENAI_EMBEDDINGS bool = useAzureOpenAIEmbeddings
 output EMBEDDING_DEPLOYMENT_NAME string = useAzureOpenAIEmbeddings ? azureOpenAIEmbeddingDeploymentName : sentenceTransformersModelName
 output ENRICHMENT_APPSERVICE_NAME string = enrichmentApp.outputs.name 
-output DEPLOYMENT_KEYVAULT_NAME string = kvModule.outputs.keyVaultName
+// output DEPLOYMENT_KEYVAULT_NAME string = kvModule.outputs.keyVaultName

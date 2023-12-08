@@ -15,7 +15,7 @@ interface Props {
   tags: string[];
 }
 
-const FilePicker = ({folderPath, tags}: Props) => {
+const FilePicker = ({ folderPath, tags }: Props) => {
   const [files, setFiles] = useState<any>([]);
   const [progress, setProgress] = useState(0);
   const [uploadStarted, setUploadStarted] = useState(false);
@@ -72,14 +72,14 @@ const FilePicker = ({folderPath, tags}: Props) => {
         blobClient.uploadData(file, options);
         //write status to log
         var logEntry: StatusLogEntry = {
-          path: "upload/"+filePath,
+          path: "upload/" + filePath,
           status: "File uploaded from browser to Azure Blob Storage",
           status_classification: StatusLogClassification.Info,
           state: StatusLogState.Uploaded
         }
         await logStatus(logEntry);
 
-        setProgress((counter/files.length) * 100);
+        setProgress((counter / files.length) * 100);
         counter++;
       });
 
