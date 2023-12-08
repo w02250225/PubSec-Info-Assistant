@@ -682,14 +682,14 @@ def create_app():
     bp.before_request(check_authenticated)
     app.register_blueprint(bp)
 
-    # if os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING"):
-    #     configure_azure_monitor()
-    #     # This tracks HTTP requests made by aiohttp:
-    #     AioHttpClientInstrumentor().instrument()
-    #     # This tracks HTTP requests made by httpx/openai:
-    #     HTTPXClientInstrumentor().instrument()
-    #     # This middleware tracks app route requests:
-    #     app.asgi_app = OpenTelemetryMiddleware(app.asgi_app)  # type: ignore[method-assign]
+    if os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING"):
+        configure_azure_monitor()
+        # This tracks HTTP requests made by aiohttp:
+        AioHttpClientInstrumentor().instrument()
+        # This tracks HTTP requests made by httpx/openai:
+        HTTPXClientInstrumentor().instrument()
+        # This middleware tracks app route requests:
+        app.asgi_app = OpenTelemetryMiddleware(app.asgi_app)  # type: ignore[method-assign]
 
     # Level should be one of https://docs.python.org/3/library/logging.html#logging-levels
     default_level = "DEBUG"  # In development, log more verbosely

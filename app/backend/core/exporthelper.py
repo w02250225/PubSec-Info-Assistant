@@ -3,8 +3,6 @@ import io
 import re
 import time
 import docx
-import openai
-import os
 from bs4 import BeautifulSoup
 from docx import Document
 from docx.shared import Pt

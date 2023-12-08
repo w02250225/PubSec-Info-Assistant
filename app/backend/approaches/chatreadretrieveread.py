@@ -53,11 +53,11 @@ Emphasize the use of facts listed in the above provided source documents.
 Instruct the model to use source name for each fact used in the response.
 Avoid generating speculative or generalized information, unless explicitly asked by the user.
 Each source has a file name followed by a pipe character and the actual information.
-Use square brackets to reference the source, for example [info1.txt]. Don't combine sources, list each source separately, for example [info1.txt][info2.pdf].
+Use square brackets to reference the source, for example [File0]. Don't combine sources, list each source separately, for example [File1][File2].
 
 Here is how you should answer every question:
 - Look for relevant information in the above source documents to answer the question.
-- If there is specific information related to question available in the above sources, provide an answer along with the appropriate citation.Do not forget to include the citation!
+- If there is specific information related to question available in the above sources, provide an answer along with the appropriate citation. Do not forget to include the citation!
 - Always include citation from sources listed above.
 - If there is no specific information related to the question available in the source document, respond with "I\'m not sure" without providing any citation. Do not provide personal opinions or assumptions.
 {follow_up_questions_prompt}
@@ -83,7 +83,7 @@ If you cannot generate a search query, return just the number 0."""
     system_message_override = """You are {systemPersona} who helps {userPersona} answer questions about a Government agency's data.
 {response_length_prompt}
 You may use the information included in the source documents, each source has a file name followed by a pipe character and the actual information.
-Always include citations if you reference the source documents. Use square brackets to reference the source, e.g. [info1.txt]. Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
+Always include citations if you reference the source documents. Use square brackets to reference the source, e.g. [File0]. Don't combine sources, list each source separately, e.g. [File1][File2].
 {injected_prompt}
 {follow_up_questions_prompt}"""
 
@@ -100,7 +100,7 @@ Always include citations if you reference the source documents. Use square brack
     {"role": USER ,'content': 'I am looking for information in source documents'},
     {'role': ASSISTANT, 'content': 'user is looking for information in source documents. Do not provide answers that are not in the source documents'},
     {'role': USER, 'content': 'What steps are being taken to promote energy conservation?'},
-    {'role': ASSISTANT, 'content': 'Several steps are being taken to promote energy conservation including reducing energy consumption, increasing energy efficiency, and increasing the use of renewable energy sources.Citations[File0]'}
+    {'role': ASSISTANT, 'content': 'Several steps are being taken to promote energy conservation including reducing energy consumption, increasing energy efficiency, and increasing the use of renewable energy sources [File0].'}
     ]
 
     def __init__(
