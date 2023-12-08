@@ -19,8 +19,7 @@ type CitationLookup = Record<string, {
 }>;
 
 
-export function parseAnswerToHtml(answer: string, isStreaming: boolean, citation_lookup: CitationLookup,
-    onCitationClicked: (citationFilePath: string, citationSourcePath: string, pageNumber: string) => void): HtmlParsedAnswer {
+export function parseAnswerToHtml(answer: string, isStreaming: boolean, citation_lookup: CitationLookup): HtmlParsedAnswer {
 
     const citations: string[] = [];
     const sourceFiles: Record<string, string> = {};

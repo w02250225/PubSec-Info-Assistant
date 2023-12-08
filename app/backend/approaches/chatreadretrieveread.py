@@ -58,7 +58,7 @@ Use square brackets to reference the source, for example [File0]. Don't combine 
 Here is how you should answer every question:
 - Look for relevant information in the above source documents to answer the question.
 - If there is specific information related to question available in the above sources, provide an answer along with the appropriate citation. Do not forget to include the citation!
-- Always include citation from sources listed above.
+- Always include citation from sources listed above if used in your response.
 - If there is no specific information related to the question available in the source document, respond with "I\'m not sure" without providing any citation. Do not provide personal opinions or assumptions.
 {follow_up_questions_prompt}
 {injected_prompt}"""
