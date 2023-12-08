@@ -300,106 +300,6 @@ Always include citations if you reference the source documents. Use square brack
                     "page_number": str(doc[self.page_number_field][0]) or "0",
                 }
 
-<<<<<<< HEAD
-            # create a single string of all the results to be used in the prompt
-            results_text = "".join(results)
-            if results_text == "":
-                content = "\n NONE"
-            else:
-                content = "\n " + results_text
-
-            # STEP 3: Generate the prompt to be sent to the GPT model
-            follow_up_questions_prompt = (
-                self.follow_up_questions_prompt_content
-                if overrides.get("suggest_followup_questions")
-                else ""
-            )
-
-            # Allow client to replace the entire prompt, or to inject into the existing prompt using >>>
-            prompt_override = overrides.get("prompt_template")
-
-            # Use default prompt
-            if prompt_override is None:
-                system_message = self.system_message_chat_conversation.format(
-                    injected_prompt="",
-                    follow_up_questions_prompt=follow_up_questions_prompt,
-                    response_length_prompt=self.get_response_length_prompt_text(
-                        response_length
-                    ),
-                    userPersona=user_persona,
-                    systemPersona=system_persona,
-                )
-            # Use default prompt with injected prompt
-            elif prompt_override.startswith(">>>"):
-                system_message = self.system_message_chat_conversation.format(
-                    injected_prompt=prompt_override[3:] + "\n ",
-                    follow_up_questions_prompt=follow_up_questions_prompt,
-                    response_length_prompt=self.get_response_length_prompt_text(
-                        response_length
-                    ),
-                    userPersona=user_persona,
-                    systemPersona=system_persona,
-                )
-            # Overwrite prompt completely
-            else:
-                system_message = self.system_message_override.format(
-                    injected_prompt=prompt_override,
-                    follow_up_questions_prompt=follow_up_questions_prompt,
-                    response_length_prompt=self.get_response_length_prompt_text(
-                        response_length
-                    ),
-                    userPersona=user_persona,
-                    systemPersona=system_persona,
-                )
-
-            # STEP 3: Generate a contextual and content-specific answer using the search results and chat history.
-            #Added conditional block to use different system messages for different models.
-            if self.model_name.startswith("gpt-35-turbo"):
-                messages = self.get_messages_from_history(
-                    system_message,
-                    self.model_name,
-                    history,
-                    history[-1]["user"] + "Sources:\n" + content + "\n\n",
-                    self.response_prompt_few_shots,
-                    max_tokens=self.chatgpt_token_limit - 500
-                )
-
-                chat_completion = openai.ChatCompletion.create(
-                deployment_id=self.chatgpt_deployment,
-                model=self.model_name,
-                messages=messages,
-                temperature=float(overrides.get("response_temp")) or 0.6,
-                top_p=float(overrides.get("top_p")) or 1.0,
-                n=1
-            )
-
-            elif self.model_name.startswith("gpt-4"):
-                messages = self.get_messages_from_history(
-                    "Sources:\n" + content + "\n\n" + system_message,
-                    # system_message + "\n\nSources:\n" + content,
-                    self.model_name,
-                    history,
-                    history[-1]["user"],
-                    self.response_prompt_few_shots,
-                    max_tokens=self.chatgpt_token_limit
-                )
-
-            chat_completion = openai.ChatCompletion.create(
-                deployment_id=self.chatgpt_deployment,
-                model=self.model_name,
-                messages=messages,
-                temperature=float(overrides.get("response_temp")) or 0.6,
-                top_p=float(overrides.get("top_p")) or 1.0,
-                max_tokens=response_length,
-                n=1)
-
-            msg_to_display = '\n\n'.join([str(message) for message in messages])
-            answer = urllib.parse.unquote(chat_completion.choices[0].message.content)
-            thoughts = f"Searched for:<br>{generated_query}<br><br>Conversations:<br>" + msg_to_display.replace('\n', '<br>')
-            completion_tokens = chat_completion.usage.completion_tokens
-            prompt_tokens = chat_completion.usage.prompt_tokens
-            total_tokens = chat_completion.usage.total_tokens
-=======
             idx += 1
             # End loop
 
@@ -482,7 +382,6 @@ Always include citations if you reference the source documents. Use square brack
                 }
 
             return (extra_info, chat_coroutine)
->>>>>>> streaming
 
         except Exception as error:
             extra_info = {
