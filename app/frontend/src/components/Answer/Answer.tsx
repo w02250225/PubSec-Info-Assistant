@@ -44,7 +44,7 @@ export const Answer = ({
     const messageContent = answer.choices[0].message.content;
     const citation_lookup = answer.choices[0].context.citation_lookup;
     const request_id = answer.request_id;
-    const parsedAnswer = useMemo(() => parseAnswerToHtml(messageContent, isStreaming, citation_lookup, onCitationClicked), [answer]);
+    const parsedAnswer = useMemo(() => parseAnswerToHtml(messageContent, isStreaming, citation_lookup), [answer]);
     const sanitizedAnswerHtml = DOMPurify.sanitize(parsedAnswer.answerHtml);
     const [isCopied, setIsCopied] = useState(false);
 
