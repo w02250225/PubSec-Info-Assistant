@@ -28,14 +28,8 @@ cd app/frontend
 npm install
 npm run build
 
-# copy the shared_code files from functions to the webapp
-cd ../backend
-mkdir -p ./shared_code
-cp  ../../functions/shared_code/status_log.py ./shared_code
-cp  ../../functions/shared_code/__init__.py ./shared_code
-cp ../../functions/shared_code/tags_helper.py ./shared_code
-
 # zip the webapp content from app/backend to the ./artifacts folders
+cd ../backend
 zip -r ${BINARIES_OUTPUT_PATH}/webapp.zip . 2>&1 | pv > /dev/null
 cd $DIR
 echo "Successfully zipped webapp"

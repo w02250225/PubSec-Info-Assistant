@@ -22,8 +22,8 @@ if [ "$OLD_IP_ADDR" != "$CURR_IP_ADDR" ]; then
     echo "Removing old IP address rule for IP: $OLD_IP_ADDR on CADISOPENAIAZS01"
     az cognitiveservices account network-rule remove --name CADISOPENAIAZS01 --resource-group RGDOPENAIAZS01 --ip-address $OLD_IP_ADDR || true
 
-    echo "Removing old IP address rule for IP: $OLD_IP_ADDR on CADISOPENAIEUS01"
-    az cognitiveservices account network-rule remove --name CADISOPENAIEUS01 --resource-group RGDOPENAIAZS01 --ip-address $OLD_IP_ADDR || true
+    # echo "Removing old IP address rule for IP: $OLD_IP_ADDR on CADISOPENAIEUS01"
+    # az cognitiveservices account network-rule remove --name CADISOPENAIEUS01 --resource-group RGDOPENAIAZS01 --ip-address $OLD_IP_ADDR || true
 
     # Update the ip_addr.txt file with the current IP address
     echo "Updating IP address file with new IP: $CURR_IP_ADDR..."
@@ -33,6 +33,6 @@ if [ "$OLD_IP_ADDR" != "$CURR_IP_ADDR" ]; then
     echo "Adding new IP address rule for IP: $CURR_IP_ADDR on CADISOPENAIAZS01"
     az cognitiveservices account network-rule add --name CADISOPENAIAZS01 --resource-group RGDOPENAIAZS01 --ip-address $CURR_IP_ADDR
     
-    echo "Adding new IP address rule for IP: $CURR_IP_ADDR on CADISOPENAIEUS01"
-    az cognitiveservices account network-rule add --name CADISOPENAIEUS01 --resource-group RGDOPENAIAZS01 --ip-address $CURR_IP_ADDR
+    # echo "Adding new IP address rule for IP: $CURR_IP_ADDR on CADISOPENAIEUS01"
+    # az cognitiveservices account network-rule add --name CADISOPENAIEUS01 --resource-group RGDOPENAIAZS01 --ip-address $CURR_IP_ADDR
 fi
