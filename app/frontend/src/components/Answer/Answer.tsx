@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+import { useEffect } from "react";
 import { useMemo, useState } from "react";
 import { Stack, IconButton } from "@fluentui/react";
 import DOMPurify from "dompurify";
@@ -24,7 +25,6 @@ interface Props {
     showFollowupQuestions?: boolean;
     onAdjustClick?: () => void;
     onRegenerateClick?: () => void;
-    onStopClick?: () => void;
 }
 
 export const Answer = ({
@@ -39,16 +39,14 @@ export const Answer = ({
     showFollowupQuestions,
     onAdjustClick,
     onRegenerateClick,
-    onStopClick
 }: Props) => {
     const followupQuestions = answer.choices[0].context.followup_questions;
     const messageContent = answer.choices[0].message.content;
     const citation_lookup = answer.choices[0].context.citation_lookup;
     const request_id = answer.request_id;
-
     const parsedAnswer = useMemo(() => parseAnswerToHtml(messageContent, isStreaming, citation_lookup, onCitationClicked), [answer]);
-    const [isCopied, setIsCopied] = useState(false);
     const sanitizedAnswerHtml = DOMPurify.sanitize(parsedAnswer.answerHtml);
+    const [isCopied, setIsCopied] = useState(false);
 
     interface CitationLink {
         key: number;
@@ -67,11 +65,6 @@ export const Answer = ({
             const sourceFiles = parsedAnswer.sourceFiles[x];
             const href = `${window.location.origin}/#/ViewDocument?documentName=${encodeURIComponent(originalFile)}&pageNumber=${pageNumbers}`
             const linkName = `${originalFile} ${!isNaN(pageNumbers) ? `(Page ${pageNumbers})` : ''}`;
-
-            // console.log('Answer')
-            // console.log("Path: " + path);
-            // console.log("sourcePath: " + sourceFiles);
-            // console.log("pageNumber: " + pageNumbers);
 
             citationLinks.push({
                 key: i,
@@ -133,6 +126,35 @@ export const Answer = ({
             console.log(e);
         }
     };
+
+    useEffect(() => {
+        const handleLinkClick = (event: MouseEvent) => {
+            event.preventDefault();
+            const anchorElement = event.currentTarget as HTMLAnchorElement;
+        
+            const path = anchorElement.getAttribute('data-path');
+            const sourcePath = anchorElement.getAttribute('data-source-path');
+            const pageNumber = anchorElement.getAttribute('data-page-number');
+            
+            if (path && sourcePath && pageNumber) {
+                onCitationClicked(path, sourcePath, pageNumber);
+            }
+        };
+
+        const links = document.querySelectorAll('.supContainer');
+        links.forEach(link => {
+            link.addEventListener('click', handleLinkClick as EventListener);
+        });
+
+        // Clean up event listeners
+        return () => {
+            links.forEach(link => {
+                link.removeEventListener('click', handleLinkClick as EventListener);
+            });
+        };
+    }, []); 
+
+
     return (
         <Stack className={`${styles.answerContainer} ${isSelected && styles.selected}`} verticalAlign="space-between">
             <Stack.Item>

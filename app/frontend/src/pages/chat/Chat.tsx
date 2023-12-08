@@ -189,6 +189,7 @@ const Chat = () => {
         setStreamedAnswers([]);
         setIsLoading(false);
         setIsStreaming(false);
+        stopStream();
     };
 
     useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "smooth" }), [isLoading]);
@@ -264,6 +265,9 @@ const Chat = () => {
     };
 
     const onShowCitation = (citation: string, citationSourceFile: string, citationSourceFilePageNumber: string, index: number) => {
+        console.log("onShowCitation started")
+        console.log("citation: " + citation)
+        console.log("citationSourceFile: " + citationSourceFile)
         if (activeCitation === citation && activeAnalysisPanelTab === AnalysisPanelTabs.CitationTab && selectedAnswer === index) {
             setActiveAnalysisPanelTab(undefined);
         } else {
@@ -284,6 +288,10 @@ const Chat = () => {
         }
 
         setSelectedAnswer(index);
+    };
+
+    const handleClosePanel = () => {
+        setActiveAnalysisPanelTab(undefined);
     };
 
     const onSelectedKeyChanged = (selectedFolders: string[]) => {
@@ -438,6 +446,7 @@ const Chat = () => {
                     citationHeight="760px"
                     answer={answers[selectedAnswer][1]}
                     activeTab={activeAnalysisPanelTab}
+                    onClosePanel={handleClosePanel}
                 />
             )}
 
