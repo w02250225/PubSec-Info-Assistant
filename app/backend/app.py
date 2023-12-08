@@ -275,6 +275,7 @@ async def format_response(session_id: str,
                 request_doc["response"].setdefault('followup_questions', followup_questions)
             
             if not active_sessions.get(session_id, True):
+                request_doc["response"].setdefault('cancelled', True)
                 break
 
             yield json.dumps(event, ensure_ascii=False) + "\n"

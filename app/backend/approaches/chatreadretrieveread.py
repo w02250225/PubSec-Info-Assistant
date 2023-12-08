@@ -300,7 +300,7 @@ Always include citations if you reference the source documents. Use square brack
                     "page_number": str(doc[self.page_number_field][0]) or "0",
                 }
 
-            idx += 1
+                idx += 1
             # End loop
 
             # create a single string of all the results to be used in the prompt
