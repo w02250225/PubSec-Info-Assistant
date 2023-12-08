@@ -71,7 +71,6 @@ const Chat = () => {
     const [selectedAnswer, setSelectedAnswer] = useState<number>(0);
     const [answers, setAnswers] = useState<[user: string, response: ChatAppResponse][]>([]);
     const [streamedAnswers, setStreamedAnswers] = useState<[user: string, response: ChatAppResponse][]>([]);
-    const [currentStreamingIndex, setCurrentStreamingIndex] = useState(-1); // -1 indicates no active streaming
 
     const [allGptDeployments, setAllGptDeployments] = useState<GptDeployment[]>([]);
     const [selectedGptDeployment, setSelectedGptDeployment] = useState<string | undefined>(undefined);
@@ -96,7 +95,6 @@ const Chat = () => {
         };
         try {
             setIsStreaming(true);
-            setCurrentStreamingIndex(currentStreamIndex);
             for await (const event of readNDJSONStream(responseBody)) {
                 if (event["choices"] && event["choices"][0]["context"] && event["choices"][0]["context"]["data_points"]) {
                     event["choices"][0]["message"] = event["choices"][0]["delta"];
@@ -113,7 +111,6 @@ const Chat = () => {
             }
         } finally {
             setIsStreaming(false);
-            setCurrentStreamingIndex(-1); 
         }
         const fullResponse: ChatAppResponse = {
             ...askResponse,
@@ -366,10 +363,8 @@ const Chat = () => {
                                                 onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab, index)}
                                                 onFollowupQuestionClicked={q => makeApiRequest(q)}
                                                 showFollowupQuestions={useSuggestFollowupQuestions && answers.length - 1 === index}
-                                                // Only show the stop button on the current answer
 												onAdjustClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
 												onRegenerateClick={() => makeApiRequest(answers[index][0])}
-                                                {...(currentStreamingIndex === index ? { onStopClick: onStopClick } : {})}
                                             />
                                         </div>
                                     </div>
@@ -427,6 +422,8 @@ const Chat = () => {
                         showClearChat={true}
                         onClearClick={clearChat}
                         onRegenerateClick={() => makeApiRequest(lastQuestionRef.current)}
+                        onStopClick={onStopClick}
+                        isStreaming={isStreaming}
                     />
                 </div>
             </div>

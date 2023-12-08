@@ -193,35 +193,32 @@ export const Answer = ({
                     </Stack>
                 </Stack.Item>
             )}
-            
-            {!isStreaming && (
-                <Stack.Item>
-                    <div className={`${styles.answerTextRequestId} ${isCopied ? styles.disabled : ''}`}
-                        onClick={() => onCopyRequestIdClick(`Request ID: ${request_id}`)}>
-                        <IconButton
-                            style={{ color: "black" }}
-                            iconProps={{ iconName: "Copy" }}
-                            title="Copy Request ID"
-                            ariaLabel="Copy Request ID"
-                        />
-                        <span>
-                            {isCopied ? 'Copied!' : 'Copy Request ID'}
-                        </span>
-                    </div>
-                </Stack.Item>
-                )}
-            
-                <Stack.Item align="center">
-                    <RAIPanel onAdjustClick={onAdjustClick}
-                        onRegenerateClick={onRegenerateClick}
-                        onExportClick={onExportClick}
-                        onCopyAnswerClick={onCopyAnswerClick}
-                        onStopClick={onStopClick}
-                        isStreaming={isStreaming}
+
+            <Stack.Item>
+                <div className={`${styles.answerTextRequestId} ${isCopied ? styles.disabled : ''}`}
+                    onClick={() => onCopyRequestIdClick(`Request ID: ${request_id}`)}>
+                    <IconButton
+                        style={{ color: "black" }}
+                        iconProps={{ iconName: "Copy" }}
+                        title="Copy Request ID"
+                        ariaLabel="Copy Request ID"
                     />
-                </Stack.Item>
-                
-            
+                    <span>
+                        {isCopied ? 'Copied!' : 'Copy Request ID'}
+                    </span>
+                </div>
+            </Stack.Item>
+
+            <Stack.Item align="center">
+                <RAIPanel onAdjustClick={onAdjustClick}
+                    onRegenerateClick={onRegenerateClick}
+                    onExportClick={onExportClick}
+                    onCopyAnswerClick={onCopyAnswerClick}
+                    isStreaming={isStreaming}
+                />
+            </Stack.Item>
+
+
         </Stack>
     );
 };
