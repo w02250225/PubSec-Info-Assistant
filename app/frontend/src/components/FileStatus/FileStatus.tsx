@@ -11,6 +11,8 @@ import { getAllUploadStatus, FileUploadBasicStatus, GetUploadStatusRequest, File
 
 import styles from "./FileStatus.module.css";
 
+import { UserData } from '../../api'
+
 const dropdownTimespanStyles: Partial<IDropdownStyles> = { dropdown: { width: 150 } };
 const dropdownFileStateStyles: Partial<IDropdownStyles> = { dropdown: { width: 200 } };
 
@@ -21,7 +23,7 @@ const dropdownTimespanOptions = [
     { key: '24hours', text: '24 hours' },
     { key: '7days', text: '7 days' },
     { key: '30days', text: '30 days' },
-  ];
+];
 
 const dropdownFileStateOptions = [
     { key: 'FileStates', text: 'File States', itemType: DropdownMenuItemType.Header },
@@ -30,20 +32,21 @@ const dropdownFileStateOptions = [
     { key: FileState.Error, text: 'Error' },
     { key: FileState.Processing, text: 'Processing' },
     { key: FileState.Queued, text: 'Queued' },
-    { key: FileState.Skipped, text: 'Skipped'},
-  ];
+    { key: FileState.Skipped, text: 'Skipped' },
+];
 
 interface Props {
     className?: string;
+    userData: UserData;
 }
 
-export const FileStatus = ({ className }: Props) => {
+export const FileStatus = ({ className, userData }: Props) => {
     const [selectedTimeFrameItem, setSelectedTimeFrameItem] = useState<IDropdownOption>();
     const [selectedFileStateItem, setSelectedFileStateItem] = useState<IDropdownOption>();
     const [selectedFolderItem, setSelectedFolderItem] = useState<IDropdownOption>();
 
     const [dropdownFolderOptions, setDropdownFolderOptions] = useState<IDropdownOption[]>([]);
-    
+
     const [files, setFiles] = useState<IDocument[]>();
     const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -94,27 +97,31 @@ export const FileStatus = ({ className }: Props) => {
         }
         const response = await getAllUploadStatus(request);
         const list = convertStatusToItems(response.statuses);
-        
+
         // Filter out empty folder names and create dropdown options
         const folderDropdownOptions = list.reduce<IDropdownOption[]>((acc, item) => {
             // Check if folder_name is defined and is a string before trimming
             const folderName = item.folder_name && typeof item.folder_name === 'string' ? item.folder_name.trim() : '';
-        
+
             if (folderName && !acc.some(option => option.key === folderName)) {
                 acc.push({ key: folderName, text: folderName });
             }
             return acc;
         }, [{ key: 'ALL', text: 'All' }]); // Add an "All" option
-        
+
         setDropdownFolderOptions(folderDropdownOptions);
-        
+
         setIsLoading(false);
         setFiles(list);
     }
 
     function convertStatusToItems(fileList: FileUploadBasicStatus[]) {
         const items: IDocument[] = [];
+        const userFolderPattern = /^[^@]+@[^@]+\.[^@]+$/;
+
         for (let i = 0; i < fileList.length; i++) {
+            const folderName = fileList[i].folder_name;
+
             let fileExtension = fileList[i].file_name.split('.').pop();
             fileExtension = fileExtension == undefined ? 'Folder' : fileExtension.toUpperCase()
             const stateDescription = STATE_DESCRIPTION[fileList[i].state] || fileList[i].state;
@@ -123,7 +130,7 @@ export const FileStatus = ({ className }: Props) => {
                     key: fileList[i].id,
                     name: fileList[i].file_name,
                     file_path: fileList[i].file_path,
-                    folder_name: fileList[i].folder_name,
+                    folder_name: folderName === userData.userPrincipalName ? 'My Data' : fileList[i].folder_name,
                     iconName: FILE_ICONS[fileExtension.toLowerCase() || 'txt'],
                     fileType: fileExtension,
                     state: fileList[i].state,
@@ -136,6 +143,7 @@ export const FileStatus = ({ className }: Props) => {
             catch (e) {
                 console.log(e);
             }
+
         }
         return items;
     }
@@ -153,9 +161,9 @@ export const FileStatus = ({ className }: Props) => {
         "xlsx": 'xlsx'
     };
 
-    
+
     const STATE_DESCRIPTION: { [id: string]: string } = {
-        "Processing": "File is being processed, please check back later", 
+        "Processing": "File is being processed, please check back later",
         "Skipped": "File processing was skipped",
         "Queued": "File is queued for processing, please check back later",
         "Complete": "File processing is complete",
@@ -175,7 +183,7 @@ export const FileStatus = ({ className }: Props) => {
     return (
         <div className={styles.container}>
             <div className={`${styles.options} ${className ?? ""}`} >
-            <Dropdown
+                <Dropdown
                     label="Uploaded in last:"
                     defaultSelectedKey='4hours'
                     onChange={onTimeSpanChange}
@@ -184,7 +192,7 @@ export const FileStatus = ({ className }: Props) => {
                     styles={dropdownTimespanStyles}
                     aria-label="timespan options for file statuses to be displayed"
                 />
-            <Dropdown
+                <Dropdown
                     label="File State:"
                     onChange={onFileStateChange}
                     placeholder="Select file states"
@@ -192,24 +200,24 @@ export const FileStatus = ({ className }: Props) => {
                     styles={dropdownFileStateStyles}
                     aria-label="file state options for file statuses to be displayed"
                 />
-            <Dropdown
-                        label="Folder:"
-                        defaultSelectedKey={'ALL'}
-                        selectedKey={selectedFolderItem ? selectedFolderItem.key : undefined}
-                        onChange={onFolderChange}
-                        placeholder="Select folder"
-                        options={dropdownFolderOptions}
-                        styles={dropdownFileStateStyles}
-                        aria-label="folder name options for file statuses to be displayed"
+                <Dropdown
+                    label="Folder:"
+                    defaultSelectedKey={'ALL'}
+                    selectedKey={selectedFolderItem ? selectedFolderItem.key : undefined}
+                    onChange={onFolderChange}
+                    placeholder="Select folder"
+                    options={dropdownFolderOptions}
+                    styles={dropdownFileStateStyles}
+                    aria-label="folder name options for file statuses to be displayed"
                 />
-            <div className={styles.refresharea} onClick={onGetStatusClick} aria-label="Refresh displayed file statuses">
-                <ArrowClockwise24Filled className={styles.refreshicon} />
-                <span className={styles.refreshtext}>Refresh</span>
-            </div>
+                <div className={styles.refresharea} onClick={onGetStatusClick} aria-label="Refresh displayed file statuses">
+                    <ArrowClockwise24Filled className={styles.refreshicon} />
+                    <span className={styles.refreshtext}>Refresh</span>
+                </div>
             </div>
             {isLoading ? (
                 <animated.div style={{ ...animatedStyles }}>
-                     <Stack className={styles.loadingContainer} verticalAlign="space-between">
+                    <Stack className={styles.loadingContainer} verticalAlign="space-between">
                         <Stack.Item grow>
                             <p className={styles.loadingText}>
                                 Getting file statuses
@@ -220,7 +228,7 @@ export const FileStatus = ({ className }: Props) => {
                 </animated.div>
             ) : (
                 <div className={styles.resultspanel}>
-                    <DocumentsDetailList items={files == undefined ? [] : files} onFilesSorted={onFilesSorted}/>
+                    <DocumentsDetailList items={files == undefined ? [] : files} onFilesSorted={onFilesSorted} />
                 </div>
             )}
         </div>

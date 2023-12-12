@@ -1,25 +1,23 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { Pivot, PivotItem } from "@fluentui/react";
 import { ITag } from '@fluentui/react/lib/Pickers';
 import { FilePicker } from "../../components/filepicker/file-picker";
 import { FileStatus } from "../../components/FileStatus/FileStatus";
 import { TagPickerInline } from "../../components/TagPicker/TagPicker"
 import { FolderPicker } from '../../components/FolderPicker/FolderPicker';
+import { UserData } from "../../api";
+import { UserContext } from "../../components/UserContext";
 
 import styles from "./Content.module.css";
-
-export interface IButtonExampleProps {
-    // These are set based on the toggles shown above the examples (not needed in real code)
-    disabled?: boolean;
-    checked?: boolean;
-  }
 
 const Content = () => {
     const [selectedKey, setSelectedKey] = useState<string | undefined>(undefined);
     const [selectedTags, setSelectedTags] = useState<string[] | undefined>(undefined);
+    const userContext = useContext(UserContext);
+    const userData = userContext?.userData as UserData;
 
     const onSelectedKeyChanged = (selectedFolder: string[]) => {
         setSelectedKey(selectedFolder[0]);
@@ -38,13 +36,16 @@ const Content = () => {
             <Pivot aria-label="Upload Files Section" className={styles.topPivot} onLinkClick={handleLinkClick}>
                 <PivotItem headerText="Upload Files" aria-label="Upload Files Tab">
                     <div className={styles.App} >
-                        <FolderPicker allowFolderCreation={true} onSelectedKeyChange={onSelectedKeyChanged}/>
+                        {/* Only allow admins to pick folders for upload     */}
+                        {userData.is_admin ? (
+                        <FolderPicker allowFolderCreation={true} onSelectedKeyChange={onSelectedKeyChanged} userData={userData}/>
+                        ) : null }
                         <TagPickerInline allowNewTags={true} onSelectedTagsChange={onSelectedTagsChanged}/>
-                        <FilePicker folderPath={selectedKey || "Generic"} tags={selectedTags || []}/>
+                        <FilePicker folderPath={selectedKey || userData.userPrincipalName} tags={selectedTags || []}/>
                     </div>
                 </PivotItem>
                 <PivotItem headerText="Upload Status" aria-label="Upload Status Tab">
-                    <FileStatus className=""/>
+                    <FileStatus className="" userData={userData}/>
                 </PivotItem>
             </Pivot>
         </div>

@@ -1,24 +1,26 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+import { useState, useEffect, useContext } from "react";
 import { Outlet, NavLink, Link } from "react-router-dom";
 
-// import { WarningBanner } from "../../components/WarningBanner/WarningBanner";
 import qtlogo from "../../assets/qt-logo.png";
-import { UserInfoMenu }  from "../../components/UserInfoMenu"
+import { UserInfoMenu } from "../../components/UserInfoMenu"
 
 import styles from "./Layout.module.css";
-// import { Title } from "../../components/Title/Title";
+import { UserData } from "../../api"
+import { UserContext } from "../../components/UserContext";
 
 const Layout = () => {
+    const userContext = useContext(UserContext);
+    const userData = userContext?.userData as UserData;
+
     return (
         <div className={styles.layout}>
             <header className={styles.header} role={"banner"}>
-                {/* <WarningBanner /> */}
                 <div className={styles.headerContainer}>
                     <div className={styles.headerTitleContainer}>
                         <img src={qtlogo} className={styles.headerLogo} />
-                        {/* <h3 className={styles.headerTitle}><Title/></h3> */}
                     </div>
                     <nav>
                         <ul className={styles.headerNavList}>
@@ -34,7 +36,9 @@ const Layout = () => {
                             </li>
                         </ul>
                     </nav>
-                    <UserInfoMenu />
+                    {userData && (
+                        <UserInfoMenu userData={userData} />
+                    )}
                 </div>
             </header>
             <div className={styles.raibanner}>
@@ -43,9 +47,6 @@ const Layout = () => {
 
             <Outlet />
 
-            <footer>
-                {/* <WarningBanner /> */}
-            </footer>
         </div>
     );
 };
