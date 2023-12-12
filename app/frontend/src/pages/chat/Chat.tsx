@@ -492,7 +492,7 @@ const Chat = () => {
                         <TopPSlider className={styles.chatSettingsSeparator} onChange={setTopP} value={topP} />
                         <PromptOverride className={styles.chatSettingsSeparator} defaultValue={promptTemplate} onChange={onPromptTemplateChange}/>
                         <Separator className={styles.chatSettingsSeparator}>Filter Search Results</Separator>
-                        <FolderPicker allowFolderCreation={false} onSelectedKeyChange={onSelectedKeyChanged} preSelectedKeys={selectedFolders} userData={userData}/>
+                        <FolderPicker allowFolderCreation={false} onSelectedKeyChange={onSelectedKeyChanged} selectedKeys={selectedFolders} userData={userData}/>
                         <TagPickerInline allowNewTags={false} onSelectedTagsChange={onSelectedTagsChange} preSelectedTags={selectedTags}/>
             </Panel>
 

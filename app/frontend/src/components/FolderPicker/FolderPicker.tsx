@@ -31,18 +31,18 @@ var allowNewFolders = false;
 interface Props {
     allowFolderCreation?: boolean;
     onSelectedKeyChange: (selectedFolders: string[]) => void;
-    preSelectedKeys?: string[];
+    selectedKeys: string[];
     userData: UserData;
 }
 
-export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, preSelectedKeys, userData }: Props) => {
+export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selectedKeys, userData }: Props) => {
 
     const buttonId = useId('targetButton');
     const tooltipId = useId('folderpicker-tooltip');
     const textFieldId = useId('textField');
 
     const [teachingBubbleVisible, { toggle: toggleTeachingBubbleVisible }] = useBoolean(false);
-    const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+    // const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
     const [options, setOptions] = useState<IComboBoxOption[]>([]);
     const selectableOptions = options.filter(
         option =>
@@ -75,7 +75,7 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, preSele
             const currentOptions = options;
             currentOptions.push({ key: trimVal, text: trimVal });
             setOptions(currentOptions);
-            setSelectedKeys([trimVal]);
+            // setSelectedKeys([trimVal]);
             onSelectedKeyChange([trimVal]);
             toggleTeachingBubbleVisible();
         }
@@ -122,12 +122,12 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, preSele
                     option =>
                         (option.itemType === SelectableOptionMenuItemType.Normal || option.itemType === undefined) && !option.disabled,
                 );
-                if (preSelectedKeys !== undefined && preSelectedKeys.length > 0) {
-                    setSelectedKeys(preSelectedKeys);
-                    onSelectedKeyChange(preSelectedKeys);
+                if (selectedKeys !== undefined && selectedKeys.length > 0) {
+                    // setSelectedKeys(preSelectedKeys);
+                    onSelectedKeyChange(selectedKeys);
                 }
                 else {
-                    setSelectedKeys(['selectAll', ...filteredOptions.map(o => o.key as string)]);
+                    // setSelectedKeys(['selectAll', ...filteredOptions.map(o => o.key as string)]);
                     onSelectedKeyChange(['selectAll', ...filteredOptions.map(o => o.key as string)]);
                 }
             }
@@ -146,11 +146,11 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, preSele
         // Set the default selected key based on allowFolderCreation.
         if (allowFolderCreation) {
             // Default selection the user's data folder
-            setSelectedKeys([userData.userPrincipalName]);
-        } else if (preSelectedKeys && preSelectedKeys.length > 0) {
-            setSelectedKeys(preSelectedKeys);
+            onSelectedKeyChange([userData.userPrincipalName]);
+        } else if (selectedKeys && selectedKeys.length > 0) {
+            onSelectedKeyChange(selectedKeys);
         }
-    }, [allowFolderCreation, preSelectedKeys]);
+    }, [allowFolderCreation, selectedKeys]);
 
     function getStyles(props: ITextFieldStyleProps): Partial<ITextFieldStyles> {
         const { required } = props;
@@ -184,20 +184,20 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, preSele
     ): void => {
 
         const selected = option?.selected;
-        const currentSelectedOptionKeys = selectedKeys.filter(key => key !== 'selectAll');
-        const selectAllState = currentSelectedOptionKeys.length === selectableOptions.length;
+        const currentSelectedOptionKeys = selectedKeys?.filter(key => key !== 'selectAll');
+        const selectAllState = currentSelectedOptionKeys?.length === selectableOptions.length;
 
         if (!allowNewFolders) {
             if (option) {
                 if (option.itemType === SelectableOptionMenuItemType.SelectAll) {
                     if (selectAllState) {
                         // Deselect all items, including "Select All"
-                        setSelectedKeys([]);
+                        // setSelectedKeys([]);
                         onSelectedKeyChange([]);
                     } else {
                         // Select all items, including "Select All"
                         const updatedKeys = ['selectAll', ...selectableOptions.map(o => o.key as string)];
-                        setSelectedKeys(updatedKeys);
+                        // setSelectedKeys(updatedKeys);
                         onSelectedKeyChange(updatedKeys);
                     }
 
@@ -208,12 +208,12 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, preSele
                     if (updatedKeys.length === selectableOptions.length) {
                         updatedKeys.push('selectAll');
                     }
-                    setSelectedKeys(updatedKeys);
+                    // setSelectedKeys(updatedKeys);
                     onSelectedKeyChange(updatedKeys);
                 }
             }
         } else {
-            setSelectedKeys([option!.key as string]);
+            // setSelectedKeys([option!.key as string]);
             onSelectedKeyChange([option!.key as string]);
         }
     };
@@ -231,7 +231,7 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, preSele
                 </Label>
                 <ComboBox
                     multiSelect={allowNewFolders ? false : true}
-                    selectedKey={selectedKeys.length ? selectedKeys : undefined}
+                    selectedKey={selectedKeys ? selectedKeys : undefined}
                     options={options}
                     defaultSelectedKey={allowFolderCreation && !selectedKeys.length ? userData.userPrincipalName : undefined}
                     onChange={onChange}

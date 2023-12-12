@@ -38,7 +38,7 @@ const Content = () => {
                     <div className={styles.App} >
                         {/* Only allow admins to pick folders for upload     */}
                         {userData.is_admin ? (
-                        <FolderPicker allowFolderCreation={true} onSelectedKeyChange={onSelectedKeyChanged} userData={userData}/>
+                        <FolderPicker allowFolderCreation={true} onSelectedKeyChange={onSelectedKeyChanged} selectedKeys={[selectedKey || ""]} userData={userData}/>
                         ) : null }
                         <TagPickerInline allowNewTags={true} onSelectedTagsChange={onSelectedTagsChanged}/>
                         <FilePicker folderPath={selectedKey || userData.userPrincipalName} tags={selectedTags || []}/>
