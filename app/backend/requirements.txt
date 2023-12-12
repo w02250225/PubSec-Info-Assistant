@@ -7,15 +7,15 @@ azure-search-documents == 11.4.0
 azure-storage-blob == 12.19.0
 beautifulsoup4 == 4.12.2
 langchain >= 0.0.157
-msal == 1.25.0
+msal == 1.26.0
+msal-extensions == 1.1.0
 openai[datalib] == 1.3.7
 opencensus-ext-azure == 1.1.12
 opentelemetry-instrumentation-aiohttp-client
-opentelemetry-instrumentation-flask
 opentelemetry-instrumentation-httpx
 opentelemetry-instrumentation-requests
 python-docx-ng == 0.9.7
 Quart == 0.19.4
 requests-oauthlib == 1.3.1
 tiktoken == 0.5.2
-uvicorn == 0.23.2
+uvicorn == 0.24.0

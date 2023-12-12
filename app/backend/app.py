@@ -30,6 +30,11 @@ from azure.storage.blob import (
     generate_account_sas,
     generate_blob_sas,
 )
+from openai import APIError, AsyncAzureOpenAI, AsyncOpenAI
+# from opencensus.ext.azure.log_exporter import AzureLogHandler
+from opentelemetry.instrumentation.aiohttp_client import AioHttpClientInstrumentor
+from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from quart import (
     Quart,
     Blueprint,
@@ -42,11 +47,6 @@ from quart import (
     session,
     url_for
 )
-from openai import APIError, AsyncAzureOpenAI, AsyncOpenAI
-from opencensus.ext.azure.log_exporter import AzureLogHandler
-from opentelemetry.instrumentation.aiohttp_client import AioHttpClientInstrumentor
-from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
-from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from request_log import RequestLog
 from shared_code.status_log import State, StatusClassification, StatusLog
 from shared_code.tags_helper import TagsHelper
@@ -125,44 +125,54 @@ LOGOUT_URL = os.getenv("LOGOUT_URL") or "https://treasuryqld.sharepoint.com/site
 os.environ['TZ'] = 'Australia/Brisbane'
 time.tzset()
 
-msal_client = msal.ConfidentialClientApplication(
-    CLIENT_ID, authority=AUTHORITY,
-    client_credential=CLIENT_SECRET,
-)
-
 azure_credential = DefaultAzureCredential()
 azure_search_key_credential = AzureKeyCredential(AZURE_SEARCH_SERVICE_KEY)
 
-# Set up clients for OpenAI, Cognitive Search and Storage
-OPENAI_CLIENT: AsyncOpenAI
+# Set up clients
+MSAL_CLIENT = None
+OPENAI_CLIENT = None
+SEARCH_CLIENT = None
+BLOB_CLIENT = None
+BLOB_CONTAINER = None
+EXPORT_CONTAINER = None
 
-if OPENAI_HOST == "azure":
-    token_provider = get_bearer_token_provider(azure_credential, "https://cognitiveservices.azure.com/.default")
-    OPENAI_CLIENT = AsyncAzureOpenAI(
-        api_version = AZURE_OPENAI_API_VERSION,
-        azure_endpoint = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com",
-        api_key = AZURE_OPENAI_SERVICE_KEY
-        # azure_ad_token_provider = token_provider,
-    )
-else:
-    OPENAI_CLIENT = AsyncOpenAI(
-        api_key=OPENAI_API_KEY,
-        organization=OPENAI_ORGANIZATION,
-    )
-
-SEARCH_CLIENT = SearchClient(
-    endpoint=f"https://{AZURE_SEARCH_SERVICE}.search.windows.net",
-    index_name=AZURE_SEARCH_INDEX,
-    credential=azure_search_key_credential,
+def create_msal_client():
+    return msal.ConfidentialClientApplication(
+        CLIENT_ID,
+        authority=AUTHORITY,
+        client_credential=CLIENT_SECRET
 )
 
-BLOB_CLIENT = BlobServiceClient(
+
+async def create_openai_client():
+    if OPENAI_HOST == "azure":
+        # token_provider = get_bearer_token_provider(azure_credential, "https://cognitiveservices.azure.com/.default")
+        return AsyncAzureOpenAI(
+            api_version = AZURE_OPENAI_API_VERSION,
+            azure_endpoint = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com",
+            api_key = AZURE_OPENAI_SERVICE_KEY
+            # azure_ad_token_provider = token_provider,
+        )
+    else:
+        return AsyncOpenAI(
+            api_key=OPENAI_API_KEY,
+            organization=OPENAI_ORGANIZATION,
+        )
+    
+
+async def create_blob_client():
+    return BlobServiceClient(
     account_url=f"https://{AZURE_BLOB_STORAGE_ACCOUNT}.blob.core.windows.net",
     credential=AZURE_BLOB_STORAGE_KEY,
 )
 
-blob_container = BLOB_CLIENT.get_container_client(AZURE_BLOB_STORAGE_CONTAINER)
-export_container = BLOB_CLIENT.get_container_client(AZURE_BLOB_EXPORT_CONTAINER)
+
+async def create_search_client():
+    return SearchClient(
+    endpoint=f"https://{AZURE_SEARCH_SERVICE}.search.windows.net",
+    index_name=AZURE_SEARCH_INDEX,
+    credential=azure_search_key_credential,
+)
 
 EMBEDDING_MODEL_NAME = AZURE_OPENAI_EMBEDDINGS_MODEL_NAME
 EMBEDDING_MODEL_VERSION = AZURE_OPENAI_EMBEDDINGS_MODEL_VERSION
@@ -300,7 +310,7 @@ async def format_response(session_id: str,
 @bp.route("/login")
 async def login():
     session["state"] = str(uuid.uuid4())
-    auth_url = msal_client.get_authorization_request_url(
+    auth_url = MSAL_CLIENT.get_authorization_request_url(
         scopes=SCOPES,
         state=session["state"],
         redirect_uri=url_for("routes.authorized", _external=True, _scheme=SCHEME)
@@ -317,7 +327,7 @@ async def authorized():
         return "Error: " + request.args["error_description"]
 
     if request.args.get("code"):
-        token_response = msal_client.acquire_token_by_authorization_code(
+        token_response = MSAL_CLIENT.acquire_token_by_authorization_code(
             request.args["code"],
             scopes=SCOPES,
             redirect_uri=url_for("routes.authorized", _external=True, _scheme=SCHEME)
@@ -573,7 +583,7 @@ async def get_citation():
     request_data = await request.get_json()
     citation = urllib.parse.unquote(request_data["citation"])
     try:
-        blob = blob_container.get_blob_client(citation)
+        blob = BLOB_CONTAINER.get_blob_client(citation)
         blob_data = await blob.download_blob()
         decoded_text = await blob_data.readall()
         results = json.loads(decoded_text.decode())
@@ -592,7 +602,7 @@ async def export():
         session_gpt_deployment = session.get('gpt_deployment', GPT_DEPLOYMENT)
         file_name, export_file = await exporthelper.export_to_blob(
                                     request_data,
-                                    export_container,
+                                    EXPORT_CONTAINER,
                                     OPENAI_CLIENT,
                                     session_gpt_deployment.get('deploymentName'),
                                     session_gpt_deployment.get('modelName'))
@@ -670,6 +680,16 @@ def create_app():
 
     @app.before_serving
     async def init():
+        global MSAL_CLIENT, OPENAI_CLIENT, SEARCH_CLIENT, BLOB_CLIENT, BLOB_CONTAINER, EXPORT_CONTAINER
+
+        MSAL_CLIENT = create_msal_client()
+        OPENAI_CLIENT = await create_openai_client()
+        SEARCH_CLIENT = await create_search_client()
+        BLOB_CLIENT = await create_blob_client()
+
+        BLOB_CONTAINER = BLOB_CLIENT.get_container_client(AZURE_BLOB_STORAGE_CONTAINER)
+        EXPORT_CONTAINER = BLOB_CLIENT.get_container_client(AZURE_BLOB_EXPORT_CONTAINER)
+        
         await request_log.initialize()
         await status_log.initialize()
         await tags_helper.initialize()
@@ -681,6 +701,14 @@ def create_app():
 
     bp.before_request(check_authenticated)
     app.register_blueprint(bp)
+
+    @app.after_serving
+    async def cleanup():
+        global OPENAI_CLIENT, SEARCH_CLIENT, BLOB_CLIENT
+        
+        await OPENAI_CLIENT.close()
+        await SEARCH_CLIENT.close()
+        await BLOB_CLIENT.close()
 
     if os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING"):
         configure_azure_monitor()
