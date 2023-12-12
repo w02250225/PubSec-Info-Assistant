@@ -3,6 +3,7 @@
 
 """ Library of code for status logs reused across various calling features """
 import os
+import re
 from datetime import datetime, timedelta
 import base64
 from enum import Enum
@@ -85,6 +86,8 @@ class StatusLog:
 
     async def read_files_status_by_timeframe(self, 
                                        within_n_hours: int,                       
+                                       user_id: str,
+                                       is_admin: bool,
                                        state: State = State.ALL,
                                        folder_name: str = "ALL"):
         """ 
@@ -93,6 +96,8 @@ class StatusLog:
             within_n_hours - integer representing from how many hours ago to return docs for
             folder_name - return docs within this folder
         """
+
+        user_folder_pattern = re.compile(r"^[^@]+@[^@]+\.[^@]+$")
 
         query_string = "SELECT c.id, c.file_path, c.file_name, c.folder_name, \
             c.state, c.start_timestamp, c.state_description, c.state_timestamp \
@@ -116,6 +121,10 @@ class StatusLog:
         query_string += " ORDER BY c.state_timestamp DESC"
 
         items = [item async for item in self.container.query_items(query = query_string)]
+
+        # Filter items based on user access if not admin and folder_name is 'ALL'
+        if not is_admin and folder_name == 'ALL':
+            items = [item for item in items if not user_folder_pattern.match(item['folder_name']) or item['folder_name'] == user_id]
 
         return items
     
