@@ -16,7 +16,7 @@ interface Props {
     clearOnSend?: boolean;
     onAdjustClick?: () => void;
     onInfoClick?: () => void;
-    showClearChat?: boolean;
+    clearChatDisabled?: boolean;
     onClearClick?: () => void;
     onRegenerateClick?: () => void;
     onStopClick?: () => void;
@@ -29,7 +29,7 @@ export const QuestionInput = ({
     placeholder,
     clearOnSend,
     onAdjustClick,
-    showClearChat,
+    clearChatDisabled,
     onClearClick,
     onRegenerateClick,
     onStopClick,
@@ -99,21 +99,17 @@ export const QuestionInput = ({
         <Stack>
             <Stack.Item>
                 <Stack horizontal className={styles.questionInputContainer}>
-                    {showClearChat ? (
                         <div className={styles.questionClearButtonsContainer}>
                             <div
-                                className={styles.questionClearChatButton}
+                                className={`${styles.questionClearChatButton} ${clearChatDisabled ? styles.disablePointer : ''}`}
                                 aria-label="Clear chat button"
-                                onClick={onClearClick}
-                                onMouseEnter={onMouseEnter}
-                                onMouseLeave={onMouseLeave}
-                            >
+                                onClick={clearChatDisabled ? undefined : onClearClick}
+                                onMouseEnter={clearChatDisabled ? undefined : onMouseEnter}
+                                onMouseLeave={clearChatDisabled ? undefined : onMouseLeave}>
                                 <Broom28Filled primaryFill="rgba(255, 255, 255, 1)" />
-                                <span hidden={clearChatTextEnabled}>Clear Chat</span>
+                                <span hidden={clearChatDisabled || clearChatTextEnabled}>Clear Chat</span>
                             </div>
                         </div>
-                    )
-                        : null}
                     <TextField
                         className={styles.questionInputTextArea}
                         placeholder={placeholder}

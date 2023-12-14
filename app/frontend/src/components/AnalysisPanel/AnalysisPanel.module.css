@@ -7,9 +7,3 @@
     padding-top: 12px;
     padding-bottom: 12px;
 }
-
-.closeButton {
-    position: absolute;
-    margin-left: auto;
-    z-index: 10; /* Ensure it's above other elements if needed */
-}

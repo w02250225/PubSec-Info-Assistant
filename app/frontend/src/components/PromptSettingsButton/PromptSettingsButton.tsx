@@ -1,10 +1,7 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 import { Text } from "@fluentui/react";
-import { Broom24Regular } from "@fluentui/react-icons";
+import { ChatSettings24Filled } from "@fluentui/react-icons";
 
-import styles from "./ClearChatButton.module.css";
+import styles from "./PromptSettingsButton.module.css";
 
 interface Props {
     className?: string;
@@ -12,7 +9,7 @@ interface Props {
     disabled?: boolean;
 }
 
-export const ClearChatButton = ({ className, disabled, onClick }: Props) => {
+export const PromptSettingsButton = ({ className, onClick, disabled }: Props) => {
 
     const handleClick = () => {
         if (!disabled) {
@@ -22,8 +19,8 @@ export const ClearChatButton = ({ className, disabled, onClick }: Props) => {
 
     return (
         <div className={`${styles.container} ${className ?? ""} ${disabled && styles.disabled}`} onClick={handleClick}>
-            <Broom24Regular />
-            <Text>{"Clear chat"}</Text>
+            <ChatSettings24Filled />
+            <Text>{"Prompt Settings"}</Text>
         </div>
     );
 };

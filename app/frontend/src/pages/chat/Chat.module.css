@@ -119,14 +119,6 @@
     background: #f2f2f2;
 }
 
-.chatAnalysisPanel {
-    flex: 1;
-    overflow-y: auto;
-    max-height: 89vh;
-    margin-left: 20px;
-    margin-right: 20px;
-}
-
 .chatSettingsSeparator {
     margin-top: 15px;
     font-weight: 600;
