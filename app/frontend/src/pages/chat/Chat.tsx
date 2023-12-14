@@ -84,7 +84,7 @@ const Chat = () => {
     const userContext = useContext(UserContext);
     const userData = userContext?.userData as UserData;
     const [isAdmin, setIsAdmin] = useState<boolean>(false);
-
+    
     const handleAsyncRequest = async (question: string, answers: [string, ChatAppResponse][], setAnswers: Function, responseBody: ReadableStream<any>) => {
         let answer: string = "";
         let askResponse: ChatAppResponse = {} as ChatAppResponse;

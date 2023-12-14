@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { useState, useEffect, useContext } from "react";
-import { Outlet, NavLink, Link } from "react-router-dom";
+import { useEffect, useContext } from "react";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
 
 import qtlogo from "../../assets/qt-logo.png";
 import { UserInfoMenu } from "../../components/UserInfoMenu"
@@ -14,6 +14,15 @@ import { UserContext } from "../../components/UserContext";
 const Layout = () => {
     const userContext = useContext(UserContext);
     const userData = userContext?.userData as UserData;
+    const navigate = useNavigate();
+
+    // Check if the user has accepted the terms
+    useEffect(() => {
+        if (!userData?.tou_accepted) {
+            // If the user hasn't accepted the terms, redirect them to the Terms route
+            navigate("/Terms");
+        }
+    }, [userData, navigate]);
 
     return (
         <div className={styles.layout}>
@@ -30,8 +39,13 @@ const Layout = () => {
                                 </NavLink>
                             </li>
                             <li className={styles.headerNavLeftMargin}>
-                                <NavLink to="/content" className={({ isActive }) => (isActive ? styles.headerNavPageLinkActive : styles.headerNavPageLink)}>
+                                <NavLink to="/Content" className={({ isActive }) => (isActive ? styles.headerNavPageLinkActive : styles.headerNavPageLink)}>
                                     Manage Content
+                                </NavLink>
+                            </li>
+                            <li className={styles.headerNavLeftMargin}>
+                                <NavLink to="/Terms" className={({ isActive }) => (isActive ? styles.headerNavPageLinkActive : styles.headerNavPageLink)}>
+                                    Terms of Use
                                 </NavLink>
                             </li>
                         </ul>

@@ -7,12 +7,20 @@ import Coeus from "../../assets/coeus.png";
 interface UserContextType {
     userData: UserData | null;
     setUserData: React.Dispatch<React.SetStateAction<UserData | null>>;
+    shouldRefreshContext: boolean;
+    setShouldRefreshContext: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-export const UserContext = createContext<UserContextType | null>(null);
+export const UserContext = createContext<UserContextType>({
+    userData: null,
+    setUserData: () => { },
+    shouldRefreshContext: false,
+    setShouldRefreshContext: () => { },
+});
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
     const [userData, setUserData] = useState<UserData | null>(null);
+    const [shouldRefreshContext, setShouldRefreshContext] = useState(false);
 
     async function fetchUserData() {
         try {
@@ -25,7 +33,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
     useEffect(() => {
         fetchUserData();
-    }, []);
+    }, [shouldRefreshContext]);
 
     if (!userData) {
         return (
@@ -39,7 +47,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
 
     return (
-        <UserContext.Provider value={{ userData, setUserData }}>
+        <UserContext.Provider value={{ userData, setUserData, shouldRefreshContext, setShouldRefreshContext }}>
             {children}
         </UserContext.Provider>
     );

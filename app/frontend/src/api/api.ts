@@ -9,11 +9,10 @@ import {
 
 async function fetchWithSessionCheck(url: string, options: RequestInit) {
     const response = await fetch(url, options);
+    const redirectPath = new URL(response.url).pathname;
 
-    // Check if the response URL is the login page
-    if (new URL(response.url).pathname === '/login') {
-        // Redirect to the login page
-        window.location.href = '/login';
+    if (redirectPath === '/login') {
+        window.location.href = redirectPath;
     }
 
     return response;
@@ -297,6 +296,24 @@ export async function getUserData(): Promise<UserData> {
 
 export async function stopStream(): Promise<Response> {
     return await fetchWithSessionCheck(`/stopStream`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+}
+
+export async function getTermsOfUse(): Promise<Response> {
+    return await fetchWithSessionCheck(`/termsOfUse`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+}
+
+export async function acceptTermsOfUse(): Promise<Response> {
+    return await fetchWithSessionCheck(`/termsOfUse`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"

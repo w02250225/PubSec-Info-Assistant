@@ -108,6 +108,8 @@ Error Type: {error_type}
 Error Message: {error_msg}"""
 ERROR_MESSAGE_FILTER = """Your message contains content that was flagged by the OpenAI content filter."""
 
+TERMS_OF_USE = os.environ.get("TERMS_OF_USE")
+
 # Oauth
 CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
@@ -230,8 +232,9 @@ def token_is_valid():
     return False  # Token expiration time not found in session
 
 
-def check_authenticated():
+def before_request():
     non_auth_endpoints = ['routes.authorized', 'routes.login', 'routes.logout']
+    
     if request.endpoint not in non_auth_endpoints and not token_is_valid():
         return redirect(url_for('routes.login'))
 
@@ -354,6 +357,7 @@ async def authorized():
 
         is_admin = any(group.get('displayName', '') == ADMIN_GROUP_NAME for group in group_data.get("value", []))
         user_data["is_admin"] = is_admin
+        user_data["tou_accepted"] = False
 
         session["user_data"] = user_data
 
@@ -686,6 +690,18 @@ async def set_gpt_deployment():
         # If some keys are missing, return an error
         missing_keys = [key for key in keys if key not in request_data]
         return jsonify({'error': 'Missing required information', 'missing_keys': missing_keys}), 400
+
+
+@bp.route('/termsOfUse', methods=['GET', 'POST'])
+async def terms():
+    # If it's a POST request, set tou_accepted to True
+    if request.method == 'POST':
+        # TODO Extract user_id from session and save somewhere
+        session["user_data"]["tou_accepted"] = True
+        session.modified = True
+    
+    # If it's a GET request, display the terms to the user
+    return jsonify({'content': TERMS_OF_USE})
     
 
 def create_app():
@@ -719,7 +735,7 @@ def create_app():
     app.status_log = status_log
     app.tags_helper = tags_helper
 
-    bp.before_request(check_authenticated)
+    bp.before_request(before_request)
     app.register_blueprint(bp)
 
     @app.after_serving
