@@ -1,13 +1,14 @@
 import { useRef, useEffect, useState } from "react";
 import { ContextualMenu, Persona, PersonaSize, PersonaInitialsColor, IContextualMenuItem } from '@fluentui/react';
-import { getUserData, UserData } from '../../api'
+import { UserData } from '../../api'
 
 import styles from "./UserInfoMenu.module.css";
 
-interface Props { }
+interface Props { 
+    userData: UserData;
+}
 
-export const UserInfoMenu = ({ }: Props) => {
-    const [userData, setUserData] = useState<UserData | null>(null);
+export const UserInfoMenu = ({ userData }: Props) => {
     const [showContextMenu, setShowContextMenu] = useState(false);
     const personaRef = useRef(null);
 
@@ -19,19 +20,6 @@ export const UserInfoMenu = ({ }: Props) => {
     const onHideContextMenu = () => {
         setShowContextMenu(false);
     };
-
-    async function fetchUserData() {
-        try {
-            const data: UserData = await getUserData();
-            setUserData(data);
-        } catch (error) {
-            console.log(error);
-        }
-    }
-
-    useEffect(() => {
-        fetchUserData();
-    }, []);
 
     const handleCopyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -50,7 +38,7 @@ export const UserInfoMenu = ({ }: Props) => {
             key: 'copySessionInfoToClipboard',
             iconProps: { iconName: 'Copy' },
             text: 'Copy Session Info to Clipboard',
-            onClick: () => handleCopyToClipboard(`User ID: ${userData?.id}\nSession ID: ${userData?.session_id}`),
+            onClick: () => handleCopyToClipboard(`User ID: ${userData.id}\nSession ID: ${userData.session_id}`),
         },
     ];
 

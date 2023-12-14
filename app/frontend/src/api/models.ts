@@ -150,6 +150,7 @@ export type UserData = {
     surname: string;
     userPrincipalName: string;
     base64_image?: string;
+    is_admin: boolean;
     error?: string;
 };
 

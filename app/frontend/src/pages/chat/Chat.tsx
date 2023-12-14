@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useContext } from "react";
 import Coeus from "../../assets/coeus.png";
 import { Checkbox, Panel, DefaultButton, TextField, SpinButton, Separator } from "@fluentui/react";
 import { ITag } from '@fluentui/react/lib/Pickers';
@@ -10,8 +10,9 @@ import readNDJSONStream from "ndjson-readablestream";
 import styles from "./Chat.module.css";
 import rlbgstyles from "../../components/ResponseLengthButtonGroup/ResponseLengthButtonGroup.module.css";
 
+import { UserContext } from "../../components/UserContext";
 import { chatApi, RetrievalMode, ChatAppResponse, ChatAppResponseOrError, ChatAppRequest, ResponseMessage,
-    GptDeployment, getGptDeployments, getInfoData, GetInfoResponse, setGptDeployment, stopStream } from "../../api";
+    GptDeployment, getGptDeployments, getInfoData, GetInfoResponse, setGptDeployment, stopStream, UserData } from "../../api";
 import { Answer, AnswerError, AnswerLoading } from "../../components/Answer";
 import { QuestionInput } from "../../components/QuestionInput";
 import { ExampleList } from "../../components/Example";
@@ -74,6 +75,16 @@ const Chat = () => {
 
     const [allGptDeployments, setAllGptDeployments] = useState<GptDeployment[]>([]);
     const [selectedGptDeployment, setSelectedGptDeployment] = useState<string | undefined>(undefined);
+
+    const userContext = useContext(UserContext);
+    const userData = userContext?.userData as UserData;
+    const [isAdmin, setIsAdmin] = useState<boolean>(false);
+
+    useEffect(() => {
+        if (userData) {
+            setIsAdmin(userData.is_admin);
+        }
+    }, [userData]);
 
     const handleAsyncRequest = async (question: string, answers: [string, ChatAppResponse][], setAnswers: Function, responseBody: ReadableStream<any>) => {
         let answer: string = "";
@@ -151,7 +162,7 @@ const Chat = () => {
                         ai_persona: aiPersona,
                         response_length: responseLength,
                         top_p: topP,
-                        selected_folders: selectedFolders.includes("selectAll") ? "All" : selectedFolders.length == 0 ? "All" : selectedFolders.join(","),
+                        selected_folders: selectedFolders.length == 0 ? "All" : selectedFolders.join(","),
                         selected_tags: selectedTags.map(tag => tag.name).join(",")
                     }
                 },
@@ -488,15 +499,14 @@ const Chat = () => {
                         <TopPSlider className={styles.chatSettingsSeparator} onChange={setTopP} value={topP} />
                         <PromptOverride className={styles.chatSettingsSeparator} defaultValue={promptTemplate} onChange={onPromptTemplateChange}/>
                         <Separator className={styles.chatSettingsSeparator}>Filter Search Results</Separator>
-                        <FolderPicker allowFolderCreation={false} onSelectedKeyChange={onSelectedKeyChanged} preSelectedKeys={selectedFolders}/>
+                        <FolderPicker allowFolderCreation={false} onSelectedKeyChange={onSelectedKeyChanged} selectedKeys={selectedFolders} userData={userData}/>
                         <TagPickerInline allowNewTags={false} onSelectedTagsChange={onSelectedTagsChange} preSelectedTags={selectedTags}/>
             </Panel>
-
             <Panel
                 headerText="Information"
                 isOpen={isInfoPanelOpen}
                 className={styles.resultspanel}
-                isBlocking={false}
+                isBlocking={true}
                 onDismiss={() => setIsInfoPanelOpen(false)}
                 closeButtonAriaLabel="Close"
                 onRenderFooterContent={() => <DefaultButton onClick={() => setIsInfoPanelOpen(false)}>Close</DefaultButton>}

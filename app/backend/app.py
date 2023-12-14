@@ -47,9 +47,9 @@ from quart import (
     session,
     url_for
 )
-from request_log import RequestLog
-from shared_code.status_log import State, StatusClassification, StatusLog
-from shared_code.tags_helper import TagsHelper
+from core.request_log import RequestLog
+from core.status_log import State, StatusClassification, StatusLog
+from core.tags_helper import TagsHelper
 from typing import AsyncGenerator
 
 str_to_bool = {'true': True, 'false': False}
@@ -115,6 +115,7 @@ TENANT_ID = os.getenv("TENANT_ID")
 REDIRECT_URI = os.getenv("REDIRECT_URI") or "http://localhost:5000/authorized"
 AUTHORITY = os.getenv("AUTHORITY") or f"https://login.microsoftonline.com/{TENANT_ID}"
 SCOPES = ["User.Read"]
+ADMIN_GROUP_NAME = os.getenv("ADMIN_GROUP_NAME")
 
 # Misc app settings
 APP_SECRET = os.getenv("APP_SECRET")
@@ -185,6 +186,7 @@ GPT_DEPLOYMENT = {
 
 async def fetch_deployments():
     """Set up OpenAI management client"""
+    global GPT_DEPLOYMENT, EMBEDDING_MODEL_NAME, EMBEDDING_MODEL_VERSION
     openai_mgmt_client = CognitiveServicesManagementClient(
         credential=azure_credential,
         subscription_id=AZURE_SUBSCRIPTION_ID)
@@ -338,13 +340,22 @@ async def authorized():
         session["access_token"] = token_response["access_token"]
         session["token_expires_at"] = token_response["expires_in"] + time.time()
 
-        graph_data = requests.get(
+        user_data = requests.get(
             "https://graph.microsoft.com/v1.0/me",
             timeout=30,
             headers={"Authorization": "Bearer " + session["access_token"]},
         ).json()
 
-        session["user_data"] = graph_data
+        group_data = requests.get(
+            "https://graph.microsoft.com/v1.0/me/memberOf",
+            timeout=30,
+            headers={"Authorization": "Bearer " + session["access_token"]},
+        ).json()
+
+        is_admin = any(group.get('displayName', '') == ADMIN_GROUP_NAME for group in group_data.get("value", []))
+        user_data["is_admin"] = is_admin
+
+        session["user_data"] = user_data
 
         return redirect("/")
 
@@ -424,6 +435,7 @@ async def chat():
     except Exception as error:
         return error_response(error, "/chat")
 
+
 @bp.route('/stopStream', methods=['POST'])
 async def stop_stream():
     session_id = session["state"]
@@ -488,8 +500,15 @@ async def get_all_upload_status():
     timeframe = request_data.get("timeframe")
     state = request_data.get("state")
     folder_name = request_data.get("folder_name")
+    user_id = session["user_data"].get("userPrincipalName", "Unknown User")
+    is_admin = session["user_data"].get("is_admin", False)
     try:
-        results = await current_app.status_log.read_files_status_by_timeframe(timeframe, State[state], folder_name)
+        results = await current_app.status_log.read_files_status_by_timeframe(
+            timeframe,
+            user_id,
+            is_admin,
+            State[state],
+            folder_name)
     except Exception as ex:
         logging.exception("Exception in /getAllUploadStatus")
         return jsonify({"error": str(ex)}), 500
@@ -548,16 +567,17 @@ async def get_user_data():
     try:
         user_data = session["user_data"]
         user_data["session_id"] = session["state"]
+        access_token = session["access_token"]
 
-        graph_data = requests.get(
+        photo_data = requests.get(
             "https://graph.microsoft.com/v1.0/me/photos/48x48/$value",
             timeout=30,
             stream=True,
-            headers={"Authorization": "Bearer " + session["access_token"]},
+            headers={"Authorization": f"Bearer {access_token}"},
         )
 
-        if graph_data.status_code == 200:
-            base64_image = base64.b64encode(graph_data.content).decode('utf-8')
+        if photo_data.status_code == 200:
+            base64_image = base64.b64encode(photo_data.content).decode('utf-8')
             user_data['base64_image'] = base64_image
 
         return jsonify(user_data)
