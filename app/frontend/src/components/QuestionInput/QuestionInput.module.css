@@ -63,3 +63,8 @@
     background: #0058a6;
     color: #fff;
 }
+
+.disablePointer {
+    cursor: not-allowed;
+    pointer-events: none;
+}

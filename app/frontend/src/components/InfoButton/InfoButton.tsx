@@ -8,11 +8,19 @@ import styles from "./InfoButton.module.css";
 interface Props {
     className?: string;
     onClick: () => void;
+    disabled?: boolean;
 }
 
-export const InfoButton = ({ className, onClick }: Props) => {
+export const InfoButton = ({ className, onClick, disabled }: Props) => {
+
+    const handleClick = () => {
+        if (!disabled) {
+            onClick();
+        }
+    };
+
     return (
-        <div className={`${styles.container} ${className ?? ""}`} onClick={onClick}>
+        <div className={`${styles.container} ${className ?? ""} ${disabled && styles.disabled}`} onClick={handleClick}>
             <Info24Regular />
             <Text>{"Info"}</Text>
         </div>

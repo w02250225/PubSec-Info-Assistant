@@ -9,11 +9,19 @@ import styles from "./SettingsButton.module.css";
 interface Props {
     className?: string;
     onClick: () => void;
+    disabled?: boolean;
 }
 
-export const SettingsButton = ({ className, onClick }: Props) => {
+export const SettingsButton = ({ className, onClick, disabled }: Props) => {
+
+    const handleClick = () => {
+        if (!disabled) {
+            onClick();
+        }
+    };
+
     return (
-        <div className={`${styles.container} ${className ?? ""}`} onClick={onClick}>
+        <div className={`${styles.container} ${className ?? ""} ${disabled && styles.disabled}`} onClick={handleClick}>
             <Options24Filled />
             <Text>{"Adjust"}</Text>
         </div>
