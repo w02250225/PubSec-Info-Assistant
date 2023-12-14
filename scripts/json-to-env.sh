@@ -150,11 +150,11 @@ jq -r  '
 #     az login --service-principal -u "$ARM_CLIENT_ID" -p "$ARM_CLIENT_SECRET" --tenant "$ARM_TENANT_ID" > /dev/null 2>&1
 #     az account set -s "$ARM_SUBSCRIPTION_ID" > /dev/null 2>&1
 # fi
-#TODO
+
 # # Name of your Key Vault
 # keyVaultName=$(cat infra_output.json | jq -r .properties.outputs.deploymenT_KEYVAULT_NAME.value)
 # # Names of your secrets
-# secretNames=("AZURE-SEARCH-SERVICE-KEY" "AZURE-BLOB-STORAGE-KEY" "BLOB-CONNECTION-STRING" "COSMOSDB-KEY" "COGNITIVE-SERVICES-KEY" "AZURE-OPENAI-SERVICE-KEY")
+# secretNames=("AZURE-SEARCH-SERVICE-KEY" "AZURE-BLOB-STORAGE-KEY" "BLOB-CONNECTION-STRING" "COSMOSDB-KEY" "AZURE-OPENAI-SERVICE-KEY")
 
 # # Retrieve and export each secret
 # for secretName in "${secretNames[@]}"; do

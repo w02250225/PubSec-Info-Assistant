@@ -52,9 +52,10 @@ def PartitionFile(file_extension: str, file_url: str):
     # Send a GET request to the URL to download the file
     response = requests.get(file_url)
     bytes_io = BytesIO(response.content)
-    response.close()
-    metadata = []
-    try:
+    response.close()   
+    metadata = [] 
+    elements = None
+    try:        
         if file_extension == '.csv':
             from unstructured.partition.csv import partition_csv
             elements = partition_csv(file=bytes_io)
