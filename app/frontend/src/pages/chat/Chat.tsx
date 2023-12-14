@@ -78,6 +78,13 @@ const Chat = () => {
 
     const userContext = useContext(UserContext);
     const userData = userContext?.userData as UserData;
+    const [isAdmin, setIsAdmin] = useState<boolean>(false);
+
+    useEffect(() => {
+        if (userData) {
+            setIsAdmin(userData.is_admin);
+        }
+    }, [userData]);
 
     const handleAsyncRequest = async (question: string, answers: [string, ChatAppResponse][], setAnswers: Function, responseBody: ReadableStream<any>) => {
         let answer: string = "";
@@ -495,12 +502,11 @@ const Chat = () => {
                         <FolderPicker allowFolderCreation={false} onSelectedKeyChange={onSelectedKeyChanged} selectedKeys={selectedFolders} userData={userData}/>
                         <TagPickerInline allowNewTags={false} onSelectedTagsChange={onSelectedTagsChange} preSelectedTags={selectedTags}/>
             </Panel>
-
             <Panel
                 headerText="Information"
                 isOpen={isInfoPanelOpen}
                 className={styles.resultspanel}
-                isBlocking={false}
+                isBlocking={true}
                 onDismiss={() => setIsInfoPanelOpen(false)}
                 closeButtonAriaLabel="Close"
                 onRenderFooterContent={() => <DefaultButton onClick={() => setIsInfoPanelOpen(false)}>Close</DefaultButton>}

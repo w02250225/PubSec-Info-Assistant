@@ -41,8 +41,8 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
     const tooltipId = useId('folderpicker-tooltip');
     const textFieldId = useId('textField');
 
+    const [atLeastOneOptionSelected, setAtLeastOneOptionSelected] = useState(false);
     const [teachingBubbleVisible, { toggle: toggleTeachingBubbleVisible }] = useBoolean(false);
-    // const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
     const [options, setOptions] = useState<IComboBoxOption[]>([]);
     const selectableOptions = options.filter(
         option =>
@@ -123,16 +123,13 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
                         (option.itemType === SelectableOptionMenuItemType.Normal || option.itemType === undefined) && !option.disabled,
                 );
                 if (selectedKeys !== undefined && selectedKeys.length > 0) {
-                    // setSelectedKeys(preSelectedKeys);
                     onSelectedKeyChange(selectedKeys);
                 }
                 else {
-                    // setSelectedKeys(['selectAll', ...filteredOptions.map(o => o.key as string)]);
                     onSelectedKeyChange(['selectAll', ...filteredOptions.map(o => o.key as string)]);
                 }
             }
         } catch (error) {
-            // Handle the error here
             console.log(error);
         }
     }
@@ -151,6 +148,15 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
             onSelectedKeyChange(selectedKeys);
         }
     }, [allowFolderCreation, selectedKeys]);
+
+    useEffect(() => {
+        // Check if at least one option is selected whenever selectedKeys change
+        if (selectedKeys && selectedKeys.length > 0) {
+            setAtLeastOneOptionSelected(true);
+        } else {
+            setAtLeastOneOptionSelected(false);
+        }
+    }, [selectedKeys]);
 
     function getStyles(props: ITextFieldStyleProps): Partial<ITextFieldStyles> {
         const { required } = props;
@@ -192,12 +198,10 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
                 if (option.itemType === SelectableOptionMenuItemType.SelectAll) {
                     if (selectAllState) {
                         // Deselect all items, including "Select All"
-                        // setSelectedKeys([]);
                         onSelectedKeyChange([]);
                     } else {
                         // Select all items, including "Select All"
                         const updatedKeys = ['selectAll', ...selectableOptions.map(o => o.key as string)];
-                        // setSelectedKeys(updatedKeys);
                         onSelectedKeyChange(updatedKeys);
                     }
 
@@ -208,13 +212,19 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
                     if (updatedKeys.length === selectableOptions.length) {
                         updatedKeys.push('selectAll');
                     }
-                    // setSelectedKeys(updatedKeys);
                     onSelectedKeyChange(updatedKeys);
                 }
             }
         } else {
-            // setSelectedKeys([option!.key as string]);
             onSelectedKeyChange([option!.key as string]);
+        }
+    };
+
+    const onBlur = (event: React.FocusEvent<HTMLDivElement>) => {
+        // Prevent the ComboBox from closing if no option is selected
+        if (!atLeastOneOptionSelected) {
+            event.preventDefault();
+            event.stopPropagation();
         }
     };
 
