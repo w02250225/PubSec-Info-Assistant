@@ -59,6 +59,7 @@ AZURE_BLOB_STORAGE_KEY = os.environ.get("AZURE_BLOB_STORAGE_KEY")
 AZURE_BLOB_EXPORT_CONTAINER = os.environ.get("AZURE_BLOB_EXPORT_CONTAINER") or "export"
 AZURE_BLOB_STORAGE_CONTAINER = os.environ.get("AZURE_BLOB_STORAGE_CONTAINER") or "content"
 AZURE_BLOB_UPLOAD_CONTAINER = os.environ.get("AZURE_BLOB_UPLOAD_CONTAINER") or "upload"
+AZURE_BLOB_WEBSITE_CONTAINER = os.environ.get("AZURE_BLOB_WEBSITE_CONTAINER") or "website"
 AZURE_SEARCH_SERVICE = os.environ.get("AZURE_SEARCH_SERVICE") or "gptkb"
 AZURE_SEARCH_SERVICE_ENDPOINT = os.environ.get("AZURE_SEARCH_SERVICE_ENDPOINT")
 AZURE_SEARCH_SERVICE_KEY = os.environ.get("AZURE_SEARCH_SERVICE_KEY")
@@ -690,6 +691,29 @@ async def set_gpt_deployment():
         # If some keys are missing, return an error
         missing_keys = [key for key in keys if key not in request_data]
         return jsonify({'error': 'Missing required information', 'missing_keys': missing_keys}), 400
+
+@bp.route("/getPromptTemplates", methods=["GET"])
+async def get_prompt_templates():
+    """Get a list of all Prompt Templates"""
+    try:
+        blob_name = "prompt_templates.json"
+        
+        # Setup container/blob client
+        container_client = BLOB_CLIENT.get_container_client(AZURE_BLOB_WEBSITE_CONTAINER)
+        blob_client = container_client.get_blob_client(blob_name)
+        
+        # Download the JSON file content
+        blob_data = await blob_client.download_blob()
+        json_content = await blob_data.readall()
+
+        # Convert the JSON content to a dict
+        template_data = json.loads(json_content)
+
+        return jsonify(template_data)
+    
+    except Exception as ex:
+        logging.exception("Exception in /getPromptTemplates")
+        return jsonify({"error": str(ex)}), 500
 
 
 @bp.route('/termsOfUse', methods=['GET', 'POST'])

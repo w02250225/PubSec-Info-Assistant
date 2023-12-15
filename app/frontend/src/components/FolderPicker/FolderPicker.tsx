@@ -41,7 +41,6 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
     const tooltipId = useId('folderpicker-tooltip');
     const textFieldId = useId('textField');
 
-    const [atLeastOneOptionSelected, setAtLeastOneOptionSelected] = useState(false);
     const [teachingBubbleVisible, { toggle: toggleTeachingBubbleVisible }] = useBoolean(false);
     const [options, setOptions] = useState<IComboBoxOption[]>([]);
     const selectableOptions = options.filter(
@@ -149,15 +148,6 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
         }
     }, [allowFolderCreation, selectedKeys]);
 
-    useEffect(() => {
-        // Check if at least one option is selected whenever selectedKeys change
-        if (selectedKeys && selectedKeys.length > 0) {
-            setAtLeastOneOptionSelected(true);
-        } else {
-            setAtLeastOneOptionSelected(false);
-        }
-    }, [selectedKeys]);
-
     function getStyles(props: ITextFieldStyleProps): Partial<ITextFieldStyles> {
         const { required } = props;
         return {
@@ -220,15 +210,6 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
         }
     };
 
-    const onBlur = (event: React.FocusEvent<HTMLDivElement>) => {
-        // Prevent the ComboBox from closing if no option is selected
-        if (!atLeastOneOptionSelected) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-    };
-
-
     return (
         <div className={styles.folderArea}>
             <div className={styles.folderSelection}>
@@ -246,6 +227,9 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
                     defaultSelectedKey={allowFolderCreation && !selectedKeys.length ? userData.userPrincipalName : undefined}
                     onChange={onChange}
                     styles={comboBoxStyles}
+                    errorMessage={selectedKeys && selectedKeys.length == 0 ?
+                        "Please select at least one folder"
+                        : undefined}
                 />
             </div>
             {allowNewFolders ? (

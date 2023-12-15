@@ -237,3 +237,12 @@ export type GptDeployment = {
     modelName: string;
     modelVersion: string;
 }
+
+export type PromptTemplate = {
+    displayName: string;
+    deploymentName: string;
+    promptOverride: string;
+    response_length: number;
+    temperature: number;
+    top_p: number
+}

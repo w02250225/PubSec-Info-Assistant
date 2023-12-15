@@ -30,6 +30,11 @@ export const Tooltips = () => {
         className={`${styles.tooltip}`}
         place="left"
         variant="info" />
+      <ReactTooltip
+        id="PromptTemplate-tooltip"
+        className={`${styles.tooltip}`}
+        place="left"
+        variant="info" />
     </>
   );
 };

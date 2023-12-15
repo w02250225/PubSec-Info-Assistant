@@ -10,7 +10,7 @@ import styles from "./ResponseLengthButtonGroup.module.css";
 interface Props {
     className?: string;
     onClick: (_ev: any) => void;
-    defaultValue?: number;
+    value?: number;
 }
 
 const tooltipHtml = `
@@ -19,7 +19,7 @@ This parameter determines the approximate length of the response from the model.
 <b>Standard</b> - 2048 tokens<br />
 <b>Thorough</b> - 3072 tokens`
 
-export const ResponseLengthButtonGroup = ({ className, onClick, defaultValue }: Props) => {
+export const ResponseLengthButtonGroup = ({ className, onClick, value }: Props) => {
     return (
         <div className={`${styles.container} ${className ?? ""}`}>
             <Label>Response length&nbsp;
@@ -31,9 +31,9 @@ export const ResponseLengthButtonGroup = ({ className, onClick, defaultValue }: 
             <ButtonGroup
                 className={`${styles.buttongroup ?? ""}`}
                 onClick={onClick}>
-                <Button id="Succinct" className={`${defaultValue == 1024 ? styles.buttonleftactive : styles.buttonleft ?? ""}`} size="sm" value={1024} bsPrefix='ia'>{"Succinct"}</Button>
-                <Button id="Standard" className={`${defaultValue == 2048 ? styles.buttonmiddleactive : styles.buttonmiddle ?? ""}`} size="sm" value={2048} bsPrefix='ia'>{"Standard"}</Button>
-                <Button id="Thorough" className={`${defaultValue == 3072 ? styles.buttonrightactive : styles.buttonright ?? ""}`} size="sm" value={3072} bsPrefix='ia'>{"Thorough"}</Button>
+                <Button id="Succinct" className={`${value == 1024 ? styles.buttonleftactive : styles.buttonleft ?? ""}`} size="sm" value={1024} bsPrefix='ia'>{"Succinct"}</Button>
+                <Button id="Standard" className={`${value == 2048 ? styles.buttonmiddleactive : styles.buttonmiddle ?? ""}`} size="sm" value={2048} bsPrefix='ia'>{"Standard"}</Button>
+                <Button id="Thorough" className={`${value == 3072 ? styles.buttonrightactive : styles.buttonright ?? ""}`} size="sm" value={3072} bsPrefix='ia'>{"Thorough"}</Button>
             </ButtonGroup>
         </div>
     );

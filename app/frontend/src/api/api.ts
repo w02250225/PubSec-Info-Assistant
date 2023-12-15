@@ -4,7 +4,7 @@
 import {
     ChatAppRequest, BlobClientUrlResponse, AllFilesUploadStatus, GetUploadStatusRequest,
     GetInfoResponse, ActiveCitation, GetWarningBanner, ExportRequest,
-    StatusLogEntry, StatusLogResponse, ApplicationTitle, GetTagsResponse, GptDeployment, UserData
+    StatusLogEntry, StatusLogResponse, ApplicationTitle, GetTagsResponse, GptDeployment, UserData, PromptTemplate
 } from "./models";
 
 async function fetchWithSessionCheck(url: string, options: RequestInit) {
@@ -291,6 +291,25 @@ export async function getUserData(): Promise<UserData> {
         console.log(response);
         throw Error(parsedResponse.error || "Unknown error");
     }
+    return parsedResponse;
+}
+
+export async function getPromptTemplates(): Promise<PromptTemplate[]> {
+    const response = await fetchWithSessionCheck("/getPromptTemplates", {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+
+    if (!response.ok) {
+        console.log(response);
+        const errorResponse = await response.json();
+        throw new Error(errorResponse.error || 'An unknown error occurred');
+    }
+
+    const parsedResponse: PromptTemplate[] = await response.json();
+
     return parsedResponse;
 }
 

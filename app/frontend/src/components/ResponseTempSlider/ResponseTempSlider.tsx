@@ -19,20 +19,23 @@ export const ResponseTempSlider = ({ className, onChange, value = 0 }: Props) =>
   const [sliderValue, setSliderValue] = useState<number>(value);
   const [displayValue, setDisplayValue] = useState<string>(value.toFixed(2));
 
+
   useEffect(() => {
     setSliderValue(value);
-    setDisplayValue(value.toFixed(2));
+    setDisplayValue(value.toString()); // Keep the full precision when value is set from outside
   }, [value]);
 
-  const updateValue = (newValue: number) => {
+  const updateValue = (newValue: number, fromSlider: boolean = false) => {
     const boundedValue = Math.max(0, Math.min(newValue, 1));
     setSliderValue(boundedValue);
-    setDisplayValue(boundedValue.toFixed(2));
+    // If the update comes from the slider, round to 2 decimal places
+    setDisplayValue(fromSlider ? boundedValue.toFixed(2) : newValue.toString());
     onChange(boundedValue);
   };
 
   const handleSliderChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseFloat(event.target.value);
+	updateValue(newValue, true);							
     setSliderValue(newValue);
     setDisplayValue(newValue.toFixed(2));
     onChange(newValue);
@@ -40,20 +43,17 @@ export const ResponseTempSlider = ({ className, onChange, value = 0 }: Props) =>
 
   const handleInputChange = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
     if (newValue !== undefined) {
-      setDisplayValue(newValue);
+      setDisplayValue(newValue); // Just update the display value, do not round
     }
-  };
-
-  const validateAndRound = (input: string) => {
-    let numericValue = parseFloat(input);
-    if (isNaN(numericValue)) {
-      numericValue = 0; // Default to 0 if input is not a number
-    }
-    return Math.max(0, Math.min(numericValue, 1));
   };
 
   const handleInputBlur = () => {
-    updateValue(validateAndRound(displayValue));
+    // When the input field loses focus, validate and potentially round the number
+    let numericValue = parseFloat(displayValue);
+    if (isNaN(numericValue) || numericValue < 0 || numericValue > 1) {
+      numericValue = sliderValue; // Revert to the last valid value from the slider
+    }
+    updateValue(numericValue); // Do not round to 2 decimal places here
   };
 
   return (
@@ -73,7 +73,7 @@ export const ResponseTempSlider = ({ className, onChange, value = 0 }: Props) =>
       <input
         className={`${styles.tempSlider}`}
         type="range"
-        value={sliderValue}
+        value={sliderValue.toString()} // Convert to string for the input element
         step={0.01}
         min={0.00}
         max={1.00}

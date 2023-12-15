@@ -13,7 +13,8 @@ import rlbgstyles from "../../components/ResponseLengthButtonGroup/ResponseLengt
 import { UserContext } from "../../components/UserContext";
 import {
     chatApi, RetrievalMode, ChatAppResponse, ChatAppResponseOrError, ChatAppRequest, ResponseMessage,
-    GptDeployment, getGptDeployments, getInfoData, GetInfoResponse, setGptDeployment, stopStream, UserData
+    GptDeployment, getGptDeployments, setGptDeployment, getInfoData, GetInfoResponse, PromptTemplate,
+    getPromptTemplates, stopStream, UserData
 } from "../../api";
 import { Answer, AnswerError, AnswerLoading } from "../../components/Answer";
 import { QuestionInput } from "../../components/QuestionInput";
@@ -21,7 +22,7 @@ import { ExampleList } from "../../components/Example";
 import { UserChatMessage } from "../../components/UserChatMessage";
 import { AnalysisPanel, AnalysisPanelTabs } from "../../components/AnalysisPanel";
 import { SettingsButton } from "../../components/SettingsButton";
-import { PromptSettingsButton } from "../../components/PromptSettingsButton"
+import { ModelSettingsButton } from "../../components/ModelSettingsButton"
 import { InfoButton } from "../../components/InfoButton";
 import { ClearChatButton } from "../../components/ClearChatButton";
 import { ResponseLengthButtonGroup } from "../../components/ResponseLengthButtonGroup";
@@ -33,13 +34,14 @@ import { TopPSlider } from "../../components/TopPSlider";
 import { FolderPicker } from "../../components/FolderPicker";
 import { TagPickerInline } from "../../components/TagPicker";
 import { ModelPicker } from "../../components/ModelPicker";
+import { PromptTemplatePicker } from "../../components/PromptTemplatePicker";
 
 const Chat = () => {
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
     const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
-    const [isPromptPanelOpen, setIsPromptPanelOpen] = useState(false);
+    const [isModelConfigPanelOpen, setIsModelConfigPanelOpen] = useState(false);
     const [isAnalysisPanelOpen, setIsAnalysisPanelOpen] = useState(false);
-    const [promptTemplate, setPromptTemplate] = useState<string>("");
+    const [promptOverride, setPromptOverride] = useState<string>("");
     const [retrieveCount, setRetrieveCount] = useState<number>(5);
     const [retrievalMode, setRetrievalMode] = useState<RetrievalMode>(RetrievalMode.Hybrid);
     const [useSemanticRanker, setUseSemanticRanker] = useState<boolean>(true);
@@ -79,12 +81,16 @@ const Chat = () => {
     const [streamedAnswers, setStreamedAnswers] = useState<[user: string, response: ChatAppResponse][]>([]);
 
     const [allGptDeployments, setAllGptDeployments] = useState<GptDeployment[]>([]);
+    const [defaultGptDeployment, setdefaultGptDeployment] = useState<string | undefined>(undefined);
     const [selectedGptDeployment, setSelectedGptDeployment] = useState<string | undefined>(undefined);
+
+    const [promptTemplates, setPromptTemplates] = useState<PromptTemplate[]>([]);
+    const [selectedPromptTemplate, setSelectedPromptTemplate] = useState<string | null>(null);
 
     const userContext = useContext(UserContext);
     const userData = userContext?.userData as UserData;
     const [isAdmin, setIsAdmin] = useState<boolean>(false);
-    
+
     const handleAsyncRequest = async (question: string, answers: [string, ChatAppResponse][], setAnswers: Function, responseBody: ReadableStream<any>) => {
         let answer: string = "";
         let askResponse: ChatAppResponse = {} as ChatAppResponse;
@@ -154,7 +160,7 @@ const Chat = () => {
                         exclude_category: excludeCategory.length === 0 ? undefined : excludeCategory,
                         top: retrieveCount,
                         temperature: responseTemp,
-                        prompt_template: promptTemplate.length === 0 ? undefined : promptTemplate,
+                        prompt_template: promptOverride.length === 0 ? undefined : promptOverride,
                         suggest_followup_questions: useSuggestFollowupQuestions,
                         user_persona: userPersona,
                         system_persona: systemPersona,
@@ -242,8 +248,8 @@ const Chat = () => {
         setResponseLength(_ev.target.value as number || 2048)
     };
 
-    const onPromptTemplateChange = (_ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
-        setPromptTemplate(newValue || "");
+    const onPromptOverrideChange = (_ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
+        setPromptOverride(newValue || "");
     };
 
     const onRetrieveCountChange = (_ev?: React.SyntheticEvent<HTMLElement, Event>, newValue?: string) => {
@@ -315,6 +321,28 @@ const Chat = () => {
         }
     };
 
+    const onPromptTemplatePickerChange = (promptTemplateName: string) => {
+        const template = promptTemplates.find(d => d.displayName === promptTemplateName);
+
+        if (template) {
+            setSelectedPromptTemplate(template.displayName);
+            onGptDeploymentChange(template.deploymentName);
+            setResponseLength(template.response_length);
+            setResponseTemp(template.temperature);
+            setTopP(template.top_p);
+            setPromptOverride(template.promptOverride);
+        }
+    };
+
+    const onResetModelConfig = () => {
+        setSelectedPromptTemplate(null);
+        onGptDeploymentChange(defaultGptDeployment || "Unknown");
+        setResponseLength(2048);
+        setResponseTemp(0.4);
+        setTopP(1.0);
+        setPromptOverride("");
+    }
+
     useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "smooth" }), [isLoading]);
     useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "smooth" }), [isLoading]);
     useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "auto" }), [streamedAnswers]);
@@ -323,6 +351,7 @@ const Chat = () => {
     useEffect(() => {
         getInfoData()
             .then((response: GetInfoResponse) => {
+                setdefaultGptDeployment(response.AZURE_OPENAI_CHATGPT_DEPLOYMENT);
                 setSelectedGptDeployment(response.AZURE_OPENAI_CHATGPT_DEPLOYMENT);
             })
             .catch(err => console.log(err.message));
@@ -330,13 +359,17 @@ const Chat = () => {
         getGptDeployments()
             .then(setAllGptDeployments)
             .catch(err => console.log(err.message));
+
+        getPromptTemplates()
+            .then(setPromptTemplates)
+            .catch(err => console.log(err.message));
     }, []);
 
     return (
         <div className={styles.container}>
             <div className={styles.commandsContainer}>
                 <ClearChatButton className={styles.commandButton} onClick={clearChat} disabled={!lastQuestionRef.current || isLoading || isStreaming} />
-                <PromptSettingsButton className={styles.commandButton} onClick={() => setIsPromptPanelOpen(!isPromptPanelOpen)} disabled={isLoading || isStreaming} />
+                <ModelSettingsButton className={styles.commandButton} onClick={() => setIsModelConfigPanelOpen(!isModelConfigPanelOpen)} disabled={isLoading || isStreaming} />
                 <SettingsButton className={styles.commandButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} disabled={isLoading || isStreaming} />
                 <InfoButton className={styles.commandButton} onClick={() => setIsInfoPanelOpen(!isInfoPanelOpen)} disabled={isLoading || isStreaming} />
             </div>
@@ -449,24 +482,24 @@ const Chat = () => {
                 )}
                 <Panel
                     type={PanelType.smallFixedFar}
-                    headerText="Prompt Settings"
-                    isOpen={isPromptPanelOpen}
+                    headerText="Model Settings"
+                    isOpen={isModelConfigPanelOpen}
                     isBlocking={true}
-                    onDismiss={() => setIsPromptPanelOpen(false)}
+                    onDismiss={() => setIsModelConfigPanelOpen(false)}
                     closeButtonAriaLabel="Close"
-                    onRenderFooterContent={() => <DefaultButton onClick={() => setIsPromptPanelOpen(false)}>Close</DefaultButton>}
+                    onRenderFooterContent={() =>
+                        <div>
+                            <DefaultButton onClick={() => setIsModelConfigPanelOpen(false)}>Close</DefaultButton>
+                            <DefaultButton onClick={() => onResetModelConfig()}>Reset</DefaultButton>
+                        </div>
+                    }
                     isFooterAtBottom={true}>
-                    <PromptOverride className={styles.chatSettingsSeparator} defaultValue={promptTemplate} onChange={onPromptTemplateChange} />
-                </Panel>
-                <Panel
-                    type={PanelType.smallFixedFar}
-                    headerText="Configure answer generation"
-                    isOpen={isConfigPanelOpen}
-                    isBlocking={true}
-                    onDismiss={() => setIsConfigPanelOpen(false)}
-                    closeButtonAriaLabel="Close"
-                    onRenderFooterContent={() => <DefaultButton onClick={() => setIsConfigPanelOpen(false)}>Close</DefaultButton>}
-                    isFooterAtBottom={true}>
+                    <PromptTemplatePicker
+                        className={styles.chatSettingsSeparator}
+                        promptTemplates={promptTemplates}
+                        selectedTemplate={selectedPromptTemplate}
+                        onChange={onPromptTemplatePickerChange}
+                    />
                     {selectedGptDeployment && (
                         <ModelPicker
                             className={styles.chatSettingsSeparator}
@@ -475,6 +508,36 @@ const Chat = () => {
                             onGptDeploymentChange={onGptDeploymentChange}
                         />
                     )}
+                    <ResponseLengthButtonGroup
+                        className={styles.chatSettingsSeparator}
+                        onClick={onResponseLengthChange}
+                        value={responseLength}
+                    />
+                    <ResponseTempSlider
+                        className={styles.chatSettingsSeparator}
+                        onChange={setResponseTemp}
+                        value={responseTemp}
+                    />
+                    <TopPSlider
+                        className={styles.chatSettingsSeparator}
+                        onChange={setTopP}
+                        value={topP}
+                    />
+                    <PromptOverride
+                        className={styles.chatSettingsSeparator}
+                        value={promptOverride}
+                        onChange={onPromptOverrideChange}
+                    />
+                </Panel>
+                <Panel
+                    type={PanelType.smallFixedFar}
+                    headerText="Adjust answer generation"
+                    isOpen={isConfigPanelOpen}
+                    isBlocking={true}
+                    onDismiss={() => setIsConfigPanelOpen(false)}
+                    closeButtonAriaLabel="Close"
+                    onRenderFooterContent={() => <DefaultButton onClick={() => setIsConfigPanelOpen(false)}>Close</DefaultButton>}
+                    isFooterAtBottom={true}>
                     <SpinButton
                         className={styles.chatSettingsSeparator}
                         label="Documents to retrieve from search:"
@@ -489,14 +552,35 @@ const Chat = () => {
                         label="Suggest follow-up questions"
                         onChange={onUseSuggestFollowupQuestionsChange}
                     />
-                    <TextField className={styles.chatSettingsSeparator} defaultValue={userPersona} label="User Persona" onChange={onUserPersonaChange} />
-                    <TextField className={styles.chatSettingsSeparator} defaultValue={systemPersona} label="System Persona" onChange={onSystemPersonaChange} />
-                    <ResponseLengthButtonGroup className={styles.chatSettingsSeparator} onClick={onResponseLengthChange} defaultValue={responseLength} />
-                    <ResponseTempSlider className={styles.chatSettingsSeparator} onChange={setResponseTemp} value={responseTemp} />
-                    <TopPSlider className={styles.chatSettingsSeparator} onChange={setTopP} value={topP} />
-                    <Separator className={styles.chatSettingsSeparator}>Filter Search Results</Separator>
-                    <FolderPicker allowFolderCreation={false} onSelectedKeyChange={onSelectedKeyChanged} selectedKeys={selectedFolders} userData={userData} />
-                    <TagPickerInline allowNewTags={false} onSelectedTagsChange={onSelectedTagsChange} preSelectedTags={selectedTags} />
+                    <TextField
+                        className={styles.chatSettingsSeparator}
+                        defaultValue={userPersona}
+                        label="User Persona"
+                        onChange={onUserPersonaChange}
+                        errorMessage={userPersona.length == 0 ? "Please provide a value" : undefined}
+                    />
+                    <TextField
+                        className={styles.chatSettingsSeparator}
+                        defaultValue={systemPersona}
+                        label="System Persona"
+                        onChange={onSystemPersonaChange}
+                        errorMessage={systemPersona.length == 0 ? "Please provide a value" : undefined}
+                    />
+                    <Separator
+                        className={styles.chatSettingsSeparator}>
+                        Filter Search Results
+                    </Separator>
+                    <FolderPicker
+                        allowFolderCreation={false}
+                        onSelectedKeyChange={onSelectedKeyChanged}
+                        selectedKeys={selectedFolders}
+                        userData={userData}
+                    />
+                    <TagPickerInline
+                        allowNewTags={false}
+                        onSelectedTagsChange={onSelectedTagsChange}
+                        preSelectedTags={selectedTags}
+                    />
                 </Panel>
                 <Panel
                     type={PanelType.smallFixedFar}
