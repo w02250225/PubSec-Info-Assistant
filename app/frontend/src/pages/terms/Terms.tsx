@@ -11,6 +11,7 @@ import styles from "./Terms.module.css";
 const Terms = () => {
     const userContext = useContext(UserContext);
     const { userData, setShouldRefreshContext } = userContext;
+    const [termsAccepted, setTermsAccepted] = useState(false);
     const [terms, setTerms] = useState('');
     const navigate = useNavigate();
 
@@ -31,10 +32,9 @@ const Terms = () => {
     const handleAccept = async () => {
         try {
             const success = await acceptTermsOfUse();
-
             if (success) {
+                setTermsAccepted(true);
                 setShouldRefreshContext(true);
-                navigate('/');
             } else {
                 console.error('Failed to accept terms');
             }
@@ -42,6 +42,12 @@ const Terms = () => {
             console.error('Error accepting terms:', error);
         }
     };
+
+    useEffect(() => {
+        if (termsAccepted && userData?.tou_accepted) {
+            navigate('/');
+        }
+    }, [termsAccepted, userData, navigate]);
 
     return (
         <div className={styles.contentArea}>
