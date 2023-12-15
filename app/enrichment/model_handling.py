@@ -14,7 +14,7 @@ def load_models():
     )
     print("Downloading models: ", model_names)
 
-    models_to_download = model_names.split("|")
+    models_to_download = "" # model_names.split("|")
 
     models_path = "models/"
     models = {}

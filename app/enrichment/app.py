@@ -6,6 +6,7 @@ import logging
 import os
 import re
 from datetime import datetime
+import time
 from typing import List
 import base64
 import random
@@ -29,6 +30,9 @@ from shared_code.utilities_helper import UtilitiesHelper
 from shared_code.status_log import State, StatusClassification, StatusLog
 from shared_code.tags_helper import TagsHelper
 import tiktoken
+
+os.environ['TZ'] = 'Australia/Brisbane'
+time.tzset()
 
 # === ENV Setup ===
 
@@ -56,7 +60,7 @@ ENV = {
     "AZURE_SEARCH_SERVICE_KEY": None,
     "AZURE_SEARCH_SERVICE": None,
     "BLOB_CONNECTION_STRING": None,
-    "TARGET_EMBEDDINGS_MODEL": None,
+    "TARGET_EMBEDDING_MODEL": None,
     "EMBEDDING_VECTOR_SIZE": None,
     "AZURE_SEARCH_SERVICE_ENDPOINT": None
 }
@@ -118,10 +122,10 @@ class STModel(object):
         return response
 
 # === Get Logger ===
-
 log = logging.getLogger("uvicorn")
 log.setLevel(ENV["LOG_LEVEL"])
-log.addHandler(AzureLogHandler())
+if os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING"):
+    log.addHandler(AzureLogHandler())
 log.info("Starting up")
 
 # === Azure Setup ===
@@ -335,7 +339,7 @@ def poll_queue() -> None:
     response = queue_client.receive_messages(max_messages=int(ENV["DEQUEUE_MESSAGE_BATCH_SIZE"]))
     messages = [x for x in response]
 
-    target_embeddings_model = re.sub(r'[^a-zA-Z0-9_\-.]', '_', ENV["TARGET_EMBEDDINGS_MODEL"])
+    target_embeddings_model = re.sub(r'[^a-zA-Z0-9_\-.]', '_', ENV["TARGET_EMBEDDING_MODEL"])
 
     # Remove from queue to prevent duplicate processing from any additional instances
     for message in messages:

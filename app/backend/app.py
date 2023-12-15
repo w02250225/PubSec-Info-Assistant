@@ -264,8 +264,8 @@ async def format_response(session_id: str,
     try:
         accumulated_content = ""
         request_doc.setdefault('response', {})
+        request_id = request_doc["request_id"]
         async for event in result:
-            request_id = request_doc["request_id"]
             event["request_id"] = request_id
             
             choice = event.get("choices", [{}])[0]
@@ -388,7 +388,7 @@ async def chat():
     session_id = session["state"]
     active_sessions[session_id] = True
     request_json = await request.get_json()
-    context = request_json.get("context", {})
+    request_context = request_json.get("context", {})
     request_id = str(uuid.uuid4())
     start_time = datetime.now()
 
@@ -422,11 +422,11 @@ async def chat():
         result = await approach.run(
             request_json["messages"],
             stream = request_json.get("stream", False),
-            context = context,
+            context = request_context,
             session_state = request_json.get("session_state"),
             )
+        
         if isinstance(result, dict):
-            
             if result.get("error_message"):
                 raise ValueError(result["error_message"])
             
@@ -437,8 +437,11 @@ async def chat():
             response.timeout = None
             response.mimetype = "application/json-lines"
             return response
+        
     except Exception as error:
         return error_response(error, "/chat")
+    finally:
+        active_sessions.pop(session_id, None)
 
 
 @bp.route('/stopStream', methods=['POST'])
@@ -446,9 +449,9 @@ async def stop_stream():
     session_id = session["state"]
     if session_id in active_sessions:
         active_sessions[session_id] = False
-        return json.dumps({'status': 'stopped'})
+        return json.dumps({'status': 'Stop request sent'})
     else:
-        return json.dumps({'status': 'session not found'})
+        return json.dumps({'status': f'Session ID {session_id} not found in active_sessions'})
 
 
 @bp.route("/getBlobClientUrl")
