@@ -3,9 +3,10 @@
 
 import { useRef, useState, useEffect, useContext } from "react";
 import Coeus from "../../assets/coeus.png";
-import { Checkbox, Panel, DefaultButton, TextField, SpinButton, Separator, PanelType } from "@fluentui/react";
+import { Checkbox, Panel, DefaultButton, TextField, SpinButton, Separator, PanelType, IComboBoxOption, SelectableOptionMenuItemType } from "@fluentui/react";
 import { ITag } from '@fluentui/react/lib/Pickers';
 import readNDJSONStream from "ndjson-readablestream";
+import { BlobServiceClient } from "@azure/storage-blob";
 
 import styles from "./Chat.module.css";
 import rlbgstyles from "../../components/ResponseLengthButtonGroup/ResponseLengthButtonGroup.module.css";
@@ -14,7 +15,7 @@ import { UserContext } from "../../components/UserContext";
 import {
     chatApi, RetrievalMode, ChatAppResponse, ChatAppResponseOrError, ChatAppRequest, ResponseMessage,
     GptDeployment, getGptDeployments, setGptDeployment, getInfoData, GetInfoResponse, PromptTemplate,
-    getPromptTemplates, stopStream, UserData
+    getPromptTemplates, getBlobClientUrl, stopStream, UserData
 } from "../../api";
 import { Answer, AnswerError, AnswerLoading } from "../../components/Answer";
 import { QuestionInput } from "../../components/QuestionInput";
@@ -89,7 +90,47 @@ const Chat = () => {
 
     const userContext = useContext(UserContext);
     const userData = userContext?.userData as UserData;
-    const [isAdmin, setIsAdmin] = useState<boolean>(false);
+
+    async function fetchBlobFolderData() {
+        // Populate default values for selectedFolders if !is_admin
+        if (!userData.is_admin) {
+            try {
+                const blobClientUrl = await getBlobClientUrl();
+                const blobServiceClient = new BlobServiceClient(blobClientUrl);
+                var containerClient = blobServiceClient.getContainerClient("upload");
+                const delimiter = "/";
+                const prefix = "";
+                var newSelectedFolders: string[] = ['selectAll'];
+                for await (const item of containerClient.listBlobsByHierarchy(delimiter, { prefix, })) {
+                    // Check if the item is a folder
+                    if (item.kind === "prefix") {
+                        // Get the folder name and add to the dropdown list
+                        var folderName = item.name.slice(0, -1);
+                        const userFolderPattern = /^[^@]+@[^@]+\.[^@]+$/;
+                        const isUserFolder = userFolderPattern.test(folderName);
+
+                        // Only show folders if 
+                        // - The folder is not a user folder (e.g. "Public") 
+                        // - The folder belongs to them
+                        if ( !isUserFolder || folderName === userData.userPrincipalName ) {
+                            newSelectedFolders.push(folderName);
+                        }
+                    }
+                }
+                // Check if the user folder exists in newOptions
+                const userFolderExists = newSelectedFolders.some(f => f === userData.userPrincipalName);
+
+                // If it doesn't exist, add it to newSelectedFolders
+                if (!userFolderExists) {
+                    newSelectedFolders.push(userData.userPrincipalName);
+                }
+
+                setSelectedFolders(newSelectedFolders);
+            } catch (error) {
+                console.log(error);
+            }
+        }
+    }
 
     const handleAsyncRequest = async (question: string, answers: [string, ChatAppResponse][], setAnswers: Function, responseBody: ReadableStream<any>) => {
         let answer: string = "";
@@ -109,6 +150,7 @@ const Chat = () => {
                 }, 33);
             });
         };
+
         try {
             setIsStreaming(true);
             for await (const event of readNDJSONStream(responseBody)) {
@@ -167,12 +209,11 @@ const Chat = () => {
                         ai_persona: aiPersona,
                         response_length: responseLength,
                         top_p: topP,
-                        selected_folders: selectedFolders.length == 0 ? "All" : selectedFolders.join(","),
+                        selected_folders: selectedFolders.length == 0 ? "All" : selectedFolders.filter(f => f !== 'selectAll').join(","),
                         selected_tags: selectedTags.map(tag => tag.name).join(",")
                     }
                 },
                 session_state: answers.length ? answers[answers.length - 1][1].choices[0].session_state : null
-
             };
 
             const response = await chatApi(request);
@@ -206,7 +247,6 @@ const Chat = () => {
         setIsLoading(false);
         if (isStreaming) { stopStream() };
         setIsStreaming(false);
-
     };
 
     const onResponseLengthChange = (_ev: any) => {
@@ -288,6 +328,7 @@ const Chat = () => {
     const onToggleTab = (tab: AnalysisPanelTabs, index: number) => {
         setActiveAnalysisPanelTab(tab);
         setSelectedAnswer(index);
+        setIsAnalysisPanelOpen(true);
     };
 
     const onSelectedKeyChanged = (selectedFolders: string[]) => {
@@ -344,9 +385,7 @@ const Chat = () => {
     }
 
     useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "smooth" }), [isLoading]);
-    useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "smooth" }), [isLoading]);
     useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "auto" }), [streamedAnswers]);
-    useEffect(() => setIsAdmin(userData?.is_admin), [userData]);
 
     useEffect(() => {
         getInfoData()
@@ -363,6 +402,8 @@ const Chat = () => {
         getPromptTemplates()
             .then(setPromptTemplates)
             .catch(err => console.log(err.message));
+
+        fetchBlobFolderData();
     }, []);
 
     return (
@@ -451,11 +492,9 @@ const Chat = () => {
                             placeholder="What is the Queensland Government's plan to support women in leadership roles?"
                             disabled={isLoading}
                             onSend={question => makeApiRequest(question)}
-                            onAdjustClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
                             onInfoClick={() => setIsInfoPanelOpen(!isInfoPanelOpen)}
                             clearChatDisabled={!lastQuestionRef.current || isLoading || isStreaming}
                             onClearClick={clearChat}
-                            onRegenerateClick={() => makeApiRequest(lastQuestionRef.current)}
                             onStopClick={onStopClick}
                             isStreaming={isStreaming}
                         />

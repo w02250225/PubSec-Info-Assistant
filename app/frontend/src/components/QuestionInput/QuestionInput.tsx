@@ -4,21 +4,17 @@
 import { useState } from "react";
 import { Stack, TextField } from "@fluentui/react";
 import { Send28Filled, Broom28Filled, RecordStop28Filled } from "@fluentui/react-icons";
-import { RAIPanel } from "../RAIPanel";
 
 import styles from "./QuestionInput.module.css";
-import { Button } from "react-bootstrap";
 
 interface Props {
     onSend: (question: string) => void;
     disabled: boolean;
     placeholder?: string;
     clearOnSend?: boolean;
-    onAdjustClick?: () => void;
     onInfoClick?: () => void;
     clearChatDisabled?: boolean;
     onClearClick?: () => void;
-    onRegenerateClick?: () => void;
     onStopClick?: () => void;
     isStreaming: boolean;
 }
@@ -28,10 +24,8 @@ export const QuestionInput = ({
     disabled,
     placeholder,
     clearOnSend,
-    onAdjustClick,
     clearChatDisabled,
     onClearClick,
-    onRegenerateClick,
     onStopClick,
     isStreaming
 }: Props) => {
@@ -99,17 +93,17 @@ export const QuestionInput = ({
         <Stack>
             <Stack.Item>
                 <Stack horizontal className={styles.questionInputContainer}>
-                        <div className={styles.questionClearButtonsContainer}>
-                            <div
-                                className={`${styles.questionClearChatButton} ${clearChatDisabled ? styles.disablePointer : ''}`}
-                                aria-label="Clear chat button"
-                                onClick={clearChatDisabled ? undefined : onClearClick}
-                                onMouseEnter={clearChatDisabled ? undefined : onMouseEnter}
-                                onMouseLeave={clearChatDisabled ? undefined : onMouseLeave}>
-                                <Broom28Filled primaryFill="rgba(255, 255, 255, 1)" />
-                                <span hidden={clearChatDisabled || clearChatTextEnabled}>Clear Chat</span>
-                            </div>
+                    <div className={styles.questionClearButtonsContainer}>
+                        <div
+                            className={`${styles.questionClearChatButton} ${clearChatDisabled ? styles.disablePointer : ''}`}
+                            aria-label="Clear chat button"
+                            onClick={clearChatDisabled ? undefined : onClearClick}
+                            onMouseEnter={clearChatDisabled ? undefined : onMouseEnter}
+                            onMouseLeave={clearChatDisabled ? undefined : onMouseLeave}>
+                            <Broom28Filled primaryFill="rgba(255, 255, 255, 1)" />
+                            <span hidden={clearChatDisabled || clearChatTextEnabled}>Clear Chat</span>
                         </div>
+                    </div>
                     <TextField
                         className={styles.questionInputTextArea}
                         placeholder={placeholder}
@@ -136,9 +130,6 @@ export const QuestionInput = ({
                         )}
                     </div>
                 </Stack>
-            </Stack.Item>
-            <Stack.Item align="center">
-                <RAIPanel onAdjustClick={onAdjustClick} onRegenerateClick={onRegenerateClick} />
             </Stack.Item>
         </Stack>
     );

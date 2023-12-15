@@ -74,7 +74,6 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
             const currentOptions = options;
             currentOptions.push({ key: trimVal, text: trimVal });
             setOptions(currentOptions);
-            // setSelectedKeys([trimVal]);
             onSelectedKeyChange([trimVal]);
             toggleTeachingBubbleVisible();
         }
@@ -95,9 +94,7 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
             var newOptions: IComboBoxOption[] = allowNewFolders ? [] : [
                 { key: 'selectAll', text: 'Select All', itemType: SelectableOptionMenuItemType.SelectAll },
                 { key: 'FolderHeader', text: 'Folders', itemType: SelectableOptionMenuItemType.Header }];
-            for await (const item of containerClient.listBlobsByHierarchy(delimiter, {
-                prefix,
-            })) {
+            for await (const item of containerClient.listBlobsByHierarchy(delimiter, { prefix, })) {
                 // Check if the item is a folder
                 if (item.kind === "prefix") {
                     // Get the folder name and add to the dropdown list
@@ -113,18 +110,27 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
                         const textValue = folderName === userData.userPrincipalName ? "My Data" : folderName;
                         newOptions.push({ key: folderName, text: textValue });
                     }
-                    setOptions(newOptions);
                 }
             }
+            // Check if the user folder exists in newOptions
+            const userFolderExists = newOptions.some(option => option.key === userData.userPrincipalName);
+
+            // If it doesn't exist, add it to newOptions
+            if (!userFolderExists) {
+                newOptions.push({ key: userData.userPrincipalName, text: "My Data" });
+            }
+
+            setOptions(newOptions);
+
             if (!allowNewFolders) {
                 var filteredOptions = newOptions.filter(
                     option =>
                         (option.itemType === SelectableOptionMenuItemType.Normal || option.itemType === undefined) && !option.disabled,
                 );
+
                 if (selectedKeys !== undefined && selectedKeys.length > 0) {
                     onSelectedKeyChange(selectedKeys);
-                }
-                else {
+                } else {
                     onSelectedKeyChange(['selectAll', ...filteredOptions.map(o => o.key as string)]);
                 }
             }

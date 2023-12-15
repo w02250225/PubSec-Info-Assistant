@@ -53,7 +53,11 @@ const Terms = () => {
         <div className={styles.contentArea}>
             <div dangerouslySetInnerHTML={{ __html: terms }}></div>
             {!userData?.tou_accepted && (
-                <PrimaryButton onClick={handleAccept}>Accept Terms</PrimaryButton>
+                <PrimaryButton
+                    className={styles.acceptButton}
+                    onClick={handleAccept}>
+                    Accept Terms
+                </PrimaryButton>
             )}
         </div>
     );
