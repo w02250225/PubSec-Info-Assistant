@@ -28,7 +28,6 @@ from tenacity import retry, stop_after_attempt, wait_random_exponential, retry_i
 from sentence_transformers import SentenceTransformer
 from shared_code.utilities_helper import UtilitiesHelper
 from shared_code.status_log import State, StatusClassification, StatusLog
-from shared_code.tags_helper import TagsHelper
 import tiktoken
 
 os.environ['TZ'] = 'Australia/Brisbane'
@@ -49,8 +48,6 @@ ENV = {
     "COSMOSDB_KEY": None,
     "COSMOSDB_LOG_DATABASE_NAME": None,
     "COSMOSDB_LOG_CONTAINER_NAME": None,
-    "COSMOSDB_TAGS_DATABASE_NAME": None,
-    "COSMOSDB_TAGS_CONTAINER_NAME": None,
     "MAX_EMBEDDING_REQUEUE_COUNT": 5,
     "EMBEDDING_REQUEUE_BACKOFF": 60,
     "AZURE_OPENAI_SERVICE": None,
@@ -138,7 +135,6 @@ utilities_helper = UtilitiesHelper(
 
 statusLog = StatusLog(ENV["COSMOSDB_URL"], ENV["COSMOSDB_KEY"], ENV["COSMOSDB_LOG_DATABASE_NAME"], ENV["COSMOSDB_LOG_CONTAINER_NAME"])
 
-tagsHelper = TagsHelper(ENV["COSMOSDB_URL"], ENV["COSMOSDB_KEY"], ENV["COSMOSDB_TAGS_DATABASE_NAME"], ENV["COSMOSDB_TAGS_CONTAINER_NAME"])
 # === API Setup ===
 
 start_time = datetime.now()
@@ -301,13 +297,13 @@ def index_sections(chunks):
     log.debug(f"\tIndexed {len(results)} chunks, {succeeded} succeeded")
 
 
-def get_tags_and_upload_to_cosmos(blob_service_client, blob_path):
+def get_tags(blob_service_client, blob_path):
     """ Gets the tags from the blob metadata and uploads them to cosmos db"""
     file_name, file_extension, file_directory = utilities_helper.get_filename_and_extension(blob_path)
     path = file_directory + file_name + file_extension
     blob_client = blob_service_client.get_blob_client(
-        container=ENV["AZURE_BLOB_STORAGE_UPLOAD_CONTAINER"],
-        blob=path)
+        container = ENV["AZURE_BLOB_STORAGE_UPLOAD_CONTAINER"],
+        blob = path)
     blob_properties = blob_client.get_blob_properties()
     tags = blob_properties.metadata.get("tags")
     if tags is not None:
@@ -317,8 +313,7 @@ def get_tags_and_upload_to_cosmos(blob_service_client, blob_path):
             tags_list = [unquote(tag) for tag in tags.split(",")]
     else:
         tags_list = []
-    # Write the tags to cosmos db
-    tagsHelper.upsert_document(blob_path, tags_list)
+
     return tags_list
 
         
@@ -394,7 +389,7 @@ def poll_queue() -> None:
                 embedding = embed_texts(target_embeddings_model, [text])
                 embedding_data = embedding['data']
 
-                tag_list = get_tags_and_upload_to_cosmos(blob_service_client, chunk_dict["file_name"])
+                tag_list = get_tags(blob_service_client, chunk_dict["file_name"])
 
                 index_chunk = {}
                 index_chunk['id'] = statusLog.encode_document_id(chunk.name)

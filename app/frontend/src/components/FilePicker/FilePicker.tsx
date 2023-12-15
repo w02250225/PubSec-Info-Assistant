@@ -5,9 +5,9 @@ import { BlobServiceClient } from "@azure/storage-blob";
 import classNames from "classnames";
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { DropZone } from "./drop-zone"
-import styles from "./file-picker.module.css";
-import { FilesList } from "./files-list";
+import { DropZone } from "./DropZone"
+import styles from "./FilePicker.module.css";
+import { FilesList } from "./FilesList";
 import { getBlobClientUrl, logStatus, StatusLogClassification, StatusLogEntry, StatusLogState } from "../../api"
 
 interface Props {

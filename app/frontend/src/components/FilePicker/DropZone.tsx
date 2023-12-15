@@ -3,7 +3,7 @@
 
 import { array, func } from "prop-types";
 import React from "react";
-import styles from "./drop-zone.module.css";
+import styles from "./DropZone.module.css";
 
 const Banner = ({ onClick, onDrop }: {onClick: any, onDrop: any}) => {
   const handleDragOver = (ev: any) => {

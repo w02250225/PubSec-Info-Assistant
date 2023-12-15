@@ -13,6 +13,7 @@ export interface IDocument {
     name: string;
     file_path: string;
     folder_name: string;
+    tags: string;
     value: string;
     iconName: string;
     fileType: string;
@@ -116,6 +117,18 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
         },
         {
             key: 'column4',
+            name: 'Tags',
+            fieldName: 'tags',
+            minWidth: 100,
+            maxWidth: 200,
+            isRowHeader: true,
+            isResizable: true,
+            ariaLabel: 'Tags',
+            data: 'string',
+            isPadded: true,
+        },
+        {
+            key: 'column5',
             name: 'State',
             fieldName: 'state',
             minWidth: 70,
@@ -132,7 +145,7 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
             isPadded: true,
         },
         {
-            key: 'column5',
+            key: 'column6',
             name: 'Submitted On',
             fieldName: 'upload_timestamp',
             minWidth: 90,
@@ -148,7 +161,7 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
             isPadded: true,
         },
         {
-            key: 'column6',
+            key: 'column7',
             name: 'Last Updated',
             fieldName: 'modified_timestamp',
             minWidth: 90,

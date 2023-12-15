@@ -6,8 +6,10 @@ import os
 import json
 import random
 import time
+from urllib.parse import unquote
 from shared_code.status_log import StatusLog, State, StatusClassification
 import azure.functions as func
+from azure.storage.blob import BlobServiceClient
 from azure.storage.queue import QueueClient, TextBase64EncodePolicy
 
 azure_blob_connection_string = os.environ["BLOB_CONNECTION_STRING"]
@@ -28,8 +30,25 @@ def main(myblob: func.InputStream):
 
     try:
         time.sleep(random.randint(1, 2))  # add a random delay
+        container_name, blob_name = myblob.name.split('/', 1)
+
+        # Fetch the blob's metadata
+        blob_service_client = BlobServiceClient.from_connection_string(azure_blob_connection_string)
+        blob_client = blob_service_client.get_blob_client(container = container_name, blob = blob_name)
+        blob_properties = blob_client.get_blob_properties()
+        tags = blob_properties.metadata.get("tags")
+        
+        # Extract tags
+        if tags is not None:
+            if isinstance(tags, str):
+                tags_list = [unquote(tags)]
+            else:
+                tags_list = [unquote(tag) for tag in tags.split(",")]
+        else:
+            tags_list = []
+
         statusLog = StatusLog(cosmosdb_url, cosmosdb_key, cosmosdb_log_database_name, cosmosdb_log_container_name)
-        statusLog.upsert_document(myblob.name, 'Pipeline triggered by Blob Upload', StatusClassification.INFO, State.PROCESSING, False)
+        statusLog.upsert_document(myblob.name, 'Pipeline triggered by Blob Upload', StatusClassification.INFO, State.PROCESSING, False, tags_list)
         statusLog.upsert_document(myblob.name, f'{function_name} - FileUploadedFunc function started', StatusClassification.DEBUG)
 
         # Create message structure to send to queue

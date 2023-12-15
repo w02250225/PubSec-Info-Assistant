@@ -49,7 +49,6 @@ from quart import (
 )
 from core.request_log import RequestLog
 from core.status_log import State, StatusClassification, StatusLog
-from core.tags_helper import TagsHelper
 from typing import AsyncGenerator
 
 str_to_bool = {'true': True, 'false': False}
@@ -99,8 +98,6 @@ COSMOSDB_REQUESTLOG_DATABASE_NAME = os.environ.get("COSMOSDB_REQUESTLOG_DATABASE
 COSMOSDB_REQUESTLOG_CONTAINER_NAME = os.environ.get("COSMOSDB_REQUESTLOG_CONTAINER_NAME")
 COSMOSDB_LOG_DATABASE_NAME = os.environ.get("COSMOSDB_LOG_DATABASE_NAME") or "statusdb"
 COSMOSDB_LOG_CONTAINER_NAME = os.environ.get("COSMOSDB_LOG_CONTAINER_NAME") or "statuscontainer"
-COSMOSDB_TAGS_DATABASE_NAME = os.environ.get("COSMOSDB_TAGS_DATABASE_NAME") or "tagdb"
-COSMOSDB_TAGS_CONTAINER_NAME = os.environ.get("COSMOSDB_TAGS_CONTAINER_NAME") or "tagcontainer"
 
 QUERY_TERM_LANGUAGE = os.environ.get("QUERY_TERM_LANGUAGE") or "English"
 
@@ -501,22 +498,13 @@ async def get_blob_sas():
     return jsonify({"url": f"{BLOB_CLIENT.url}{AZURE_BLOB_UPLOAD_CONTAINER}/{file_name}?{sas_token}"})
 
 
-@bp.route("/getAllUploadStatus", methods=["POST"])
+@bp.route("/getAllUploadStatus", methods=["GET"])
 async def get_all_upload_status():
     """Get the status of all file uploads in the last N hours"""
-    request_data = await request.json
-    timeframe = request_data.get("timeframe")
-    state = request_data.get("state")
-    folder_name = request_data.get("folder_name")
     user_id = session["user_data"].get("userPrincipalName", "Unknown User")
     is_admin = session["user_data"].get("is_admin", False)
     try:
-        results = await current_app.status_log.read_files_status_by_timeframe(
-            timeframe,
-            user_id,
-            is_admin,
-            State[state],
-            folder_name)
+        results = await current_app.status_log.read_files_status_by_timeframe(user_id, is_admin)
     except Exception as ex:
         logging.exception("Exception in /getAllUploadStatus")
         return jsonify({"error": str(ex)}), 500
@@ -659,7 +647,7 @@ async def get_application_title():
 async def get_all_tags():
     """Get the status of all tags in the system"""
     try:
-        results = await current_app.tags_helper.get_all_tags()
+        results = await current_app.status_log.get_all_tags()
     except Exception as ex:
         logging.exception("Exception in /getAllTags")
         return jsonify({"error": str(ex)}), 500
@@ -739,7 +727,6 @@ def create_app():
     
     request_log = RequestLog(COSMOSDB_URL, COSMODB_KEY, COSMOSDB_REQUESTLOG_DATABASE_NAME, COSMOSDB_REQUESTLOG_CONTAINER_NAME)
     status_log = StatusLog(COSMOSDB_URL, COSMODB_KEY, COSMOSDB_LOG_DATABASE_NAME, COSMOSDB_LOG_CONTAINER_NAME)
-    tags_helper = TagsHelper(COSMOSDB_URL, COSMODB_KEY, COSMOSDB_TAGS_DATABASE_NAME, COSMOSDB_TAGS_CONTAINER_NAME)
 
     @app.before_serving
     async def init():
@@ -755,12 +742,10 @@ def create_app():
         
         await request_log.initialize()
         await status_log.initialize()
-        await tags_helper.initialize()
         await fetch_deployments()
 
     app.request_log = request_log
     app.status_log = status_log
-    app.tags_helper = tags_helper
 
     bp.before_request(before_request)
     app.register_blueprint(bp)

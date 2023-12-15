@@ -3,11 +3,11 @@
 
 import { useEffect, useState } from "react";
 import { Dropdown, DropdownMenuItemType, IDropdownOption, IDropdownStyles } from '@fluentui/react/lib/Dropdown';
-import { Stack } from "@fluentui/react";
+import { ComboBox, IComboBox, IComboBoxOption, IComboBoxStyles, SelectableOptionMenuItemType, Stack } from "@fluentui/react";
 import { DocumentsDetailList, IDocument } from "./DocumentsDetailList";
-import { ArrowClockwise24Filled } from "@fluentui/react-icons";
+import { ArrowClockwise24Filled, FilterDismiss24Filled } from "@fluentui/react-icons";
 import { animated, useSpring } from "@react-spring/web";
-import { getAllUploadStatus, FileUploadBasicStatus, GetUploadStatusRequest, FileState } from "../../api";
+import { getAllUploadStatus, FileUploadBasicStatus, FileState } from "../../api";
 
 import styles from "./FileStatus.module.css";
 
@@ -15,6 +15,7 @@ import { UserData } from '../../api'
 
 const dropdownTimespanStyles: Partial<IDropdownStyles> = { dropdown: { width: 150 } };
 const dropdownFileStateStyles: Partial<IDropdownStyles> = { dropdown: { width: 200 } };
+const comboBoxStyles: Partial<IComboBoxStyles> = { root: { maxWidth: 300 }, input: { cursor: 'pointer' } };
 
 const dropdownTimespanOptions = [
     { key: 'Time Range', text: 'End time range', itemType: DropdownMenuItemType.Header },
@@ -33,10 +34,10 @@ const dropdownFileStateOptions = [
     { key: FileState.Processing, text: 'Processing' },
     { key: FileState.Indexing, text: 'Indexing' },
     { key: FileState.Queued, text: 'Queued' },
-    { key: FileState.Skipped, text: 'Skipped'},
-    { key: FileState.UPLOADED, text: 'Uploaded'},
-    { key: FileState.THROTTLED, text: 'Throttled'},    
-  ];
+    { key: FileState.Skipped, text: 'Skipped' },
+    { key: FileState.UPLOADED, text: 'Uploaded' },
+    { key: FileState.THROTTLED, text: 'Throttled' },
+];
 
 interface Props {
     className?: string;
@@ -45,82 +46,96 @@ interface Props {
 
 export const FileStatus = ({ className, userData }: Props) => {
     const [selectedTimeFrameItem, setSelectedTimeFrameItem] = useState<IDropdownOption>();
-    const [selectedFileStateItem, setSelectedFileStateItem] = useState<IDropdownOption>();
-    const [selectedFolderItem, setSelectedFolderItem] = useState<IDropdownOption>();
+    const [selectedFileStates, setSelectedFileStates] = useState<string[]>([]);
+    const [selectableFileStateOptions, setSelectableFileStateOptions] = useState<IComboBoxOption[]>([]);
+    const [selectedFolders, setSelectedFolders] = useState<string[]>([]);
+    const [selectableFolderOptions, setSelectableFolderOptions] = useState<IComboBoxOption[]>([]);
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
+    const [selectableTagOptions, setSelectableTagOptions] = useState<IComboBoxOption[]>([]);
 
-    const [dropdownFolderOptions, setDropdownFolderOptions] = useState<IDropdownOption[]>([]);
-
-    const [files, setFiles] = useState<IDocument[]>();
+    const [allFiles, setAllFiles] = useState<IDocument[]>([]);
+    const [filteredFiles, setFilteredFiles] = useState<IDocument[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
 
     const onTimeSpanChange = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption<any> | undefined): void => {
         setSelectedTimeFrameItem(item);
     };
 
-    const onFileStateChange = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption<any> | undefined): void => {
-        setSelectedFileStateItem(item);
-    };
-
-    const onFolderChange = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption<any> | undefined): void => {
-        setSelectedFolderItem(item);
-    };
-
     const onFilesSorted = (items: IDocument[]): void => {
-        setFiles(items);
+        setFilteredFiles(items);
     };
 
-    const onGetStatusClick = async () => {
-        setIsLoading(true);
-        var timeframe = 4;
-        switch (selectedTimeFrameItem?.key as string) {
-            case "4hours":
-                timeframe = 4;
-                break;
-            case "12hours":
-                timeframe = 12;
-                break;
-            case "24hours":
-                timeframe = 24;
-                break;
-            case "7days":
-                timeframe = 10080;
-                break;
-            case "30days":
-                timeframe = 43200;
-                break;
-            default:
-                timeframe = 4;
-                break;
-        }
+    const onRefreshClicked = () => {
+        fetchAllData();
+    };
 
-        const request: GetUploadStatusRequest = {
-            timeframe: timeframe,
-            state: selectedFileStateItem?.key == undefined ? FileState.All : selectedFileStateItem?.key as FileState,
-            folder_name: selectedFolderItem ? selectedFolderItem.key as string : "ALL"
-        }
-        const response = await getAllUploadStatus(request);
+    const onClearFiltersClicked = () => {
+        setSelectedFileStates([]);
+        setSelectedFolders([]);
+        setSelectedTags([]);
+        // setSelectedTags(selectableTagOptions.map(option => option.key.toString()));
+        // fetchAllData();
+    };
+
+    const fetchAllData = async () => {
+        setIsLoading(true);
+
+        const response = await getAllUploadStatus();
         const list = convertStatusToItems(response.statuses);
 
         // Filter out empty folder names and create dropdown options
-        const folderDropdownOptions = list.reduce<IDropdownOption[]>((acc, item) => {
-            // Check if folder_name is defined and is a string before trimming
+        let uniqueTags: string[] = [];
+
+        const fileStateDropdownOptions: IComboBoxOption[] = [
+            { key: 'selectAll', text: 'Select All', itemType: SelectableOptionMenuItemType.SelectAll }];
+
+        const folderDropdownOptions: IComboBoxOption[] = [
+            { key: 'selectAll', text: 'Select All', itemType: SelectableOptionMenuItemType.SelectAll }];
+
+        const tagDropdownOptions: IComboBoxOption[] = [
+            { key: 'selectAll', text: 'Select All', itemType: SelectableOptionMenuItemType.SelectAll }
+        ];
+
+        list.forEach(item => {
+            // File state
+            const fileState = item.state && typeof item.state === 'string' ? item.folder_name.trim() : '';
+
+            if (fileState && !fileStateDropdownOptions.some(o => o.key === fileState)) {
+                fileStateDropdownOptions.push({ key: fileState, text: fileState });
+            }
+
+            // Folder names
             const folderName = item.folder_name && typeof item.folder_name === 'string' ? item.folder_name.trim() : '';
 
-            if (folderName && !acc.some(option => option.key === folderName)) {
-                acc.push({ key: folderName, text: folderName });
+            if (folderName && !folderDropdownOptions.some(o => o.key === folderName)) {
+                folderDropdownOptions.push({ key: folderName, text: folderName });
             }
-            return acc;
-        }, [{ key: 'ALL', text: 'All' }]); // Add an "All" option
 
-        setDropdownFolderOptions(folderDropdownOptions);
+            // Tags
+            if (item.tags) {
+                const tagsArray = item.tags.split(',').map(tag => tag.trim());
+                tagsArray.forEach(tag => {
+                    if (tag && !uniqueTags.includes(tag)) {
+                        uniqueTags.push(tag);
+                    }
+                });
+            }
+        });
 
+        uniqueTags.forEach(tag => {
+            tagDropdownOptions.push({ key: tag, text: tag });
+        });
+
+        setSelectableFileStateOptions(fileStateDropdownOptions);
+        setSelectableFolderOptions(folderDropdownOptions);
+        setSelectableTagOptions(tagDropdownOptions);
+        setAllFiles(list);
+        setFilteredFiles(list);
         setIsLoading(false);
-        setFiles(list);
-    }
+    };
 
     function convertStatusToItems(fileList: FileUploadBasicStatus[]) {
         const items: IDocument[] = [];
-        const userFolderPattern = /^[^@]+@[^@]+\.[^@]+$/;
 
         for (let i = 0; i < fileList.length; i++) {
             const folderName = fileList[i].folder_name;
@@ -128,12 +143,14 @@ export const FileStatus = ({ className, userData }: Props) => {
             let fileExtension = fileList[i].file_name.split('.').pop();
             fileExtension = fileExtension == undefined ? 'Folder' : fileExtension.toUpperCase()
             const stateDescription = STATE_DESCRIPTION[fileList[i].state] || fileList[i].state;
+            const tagsString = fileList[i].tags.join(",") || '';
             try {
                 items.push({
                     key: fileList[i].id,
                     name: fileList[i].file_name,
                     file_path: fileList[i].file_path,
                     folder_name: folderName === userData.userPrincipalName ? 'My Data' : fileList[i].folder_name,
+                    tags: tagsString,
                     iconName: FILE_ICONS[fileExtension.toLowerCase() || 'txt'],
                     fileType: fileExtension,
                     state: fileList[i].state,
@@ -146,10 +163,129 @@ export const FileStatus = ({ className, userData }: Props) => {
             catch (e) {
                 console.log(e);
             }
-
         }
         return items;
-    }
+    };
+
+    const filterData = () => {
+        let filtered = allFiles;
+
+        if (selectedFileStates.length > 0 && !selectedFileStates.includes('selectAll')) {
+            filtered = filtered.filter(file => selectedFileStates.includes(file.state));
+        }
+
+        if (selectedFolders.length > 0 && !selectedFolders.includes('selectAll')) {
+            filtered = filtered.filter(file => selectedFolders.includes(file.folder_name));
+        }
+
+        if (selectedTags.length > 0 && !selectedTags.includes('selectAll')) {
+            filtered = filtered.filter(file => selectedTags.some(tag => file.tags.includes(tag)));
+        }
+
+        setFilteredFiles(filtered);
+    };
+
+    const onSelectedFileStateChange = (
+        event: React.FormEvent<IComboBox>,
+        option?: IComboBoxOption,
+        index?: number,
+        value?: string,
+    ): void => {
+
+        const selected = option?.selected;
+        const currentSelectedOptionKeys = selectedFileStates?.filter(key => key !== 'selectAll');
+        const selectAllState = currentSelectedOptionKeys?.length === selectableFileStateOptions.length;
+
+        if (option) {
+            if (option.itemType === SelectableOptionMenuItemType.SelectAll) {
+                if (selectAllState) {
+                    // Deselect all items, including "Select All"
+                    setSelectedFileStates([]);
+                } else {
+                    // Select all items, including "Select All"
+                    const updatedKeys = ['selectAll', ...selectableFileStateOptions.map(o => o.key as string)];
+                    setSelectedFileStates(updatedKeys);
+                }
+
+            } else {
+                const updatedKeys = selected
+                    ? [...currentSelectedOptionKeys, option!.key as string]
+                    : currentSelectedOptionKeys.filter(k => k !== option.key);
+                if (updatedKeys.length === selectableFileStateOptions.length) {
+                    updatedKeys.push('selectAll');
+                }
+                setSelectedFileStates(updatedKeys);
+            }
+        }
+    };
+
+    const onSelectedFoldersChange = (
+        event: React.FormEvent<IComboBox>,
+        option?: IComboBoxOption,
+        index?: number,
+        value?: string,
+    ): void => {
+
+        const selected = option?.selected;
+        const currentSelectedOptionKeys = selectedFolders?.filter(key => key !== 'selectAll');
+        const selectAllState = currentSelectedOptionKeys?.length === selectableFolderOptions.length;
+
+        if (option) {
+            if (option.itemType === SelectableOptionMenuItemType.SelectAll) {
+                if (selectAllState) {
+                    // Deselect all items, including "Select All"
+                    setSelectedFolders([]);
+                } else {
+                    // Select all items, including "Select All"
+                    const updatedKeys = ['selectAll', ...selectableFolderOptions.map(o => o.key as string)];
+                    setSelectedFolders(updatedKeys);
+                }
+
+            } else {
+                const updatedKeys = selected
+                    ? [...currentSelectedOptionKeys, option!.key as string]
+                    : currentSelectedOptionKeys.filter(k => k !== option.key);
+                if (updatedKeys.length === selectableFolderOptions.length) {
+                    updatedKeys.push('selectAll');
+                }
+                setSelectedFolders(updatedKeys);
+            }
+        }
+    };
+
+    const onSelectedTagsChange = (
+        event: React.FormEvent<IComboBox>,
+        option?: IComboBoxOption,
+        index?: number,
+        value?: string,
+    ): void => {
+
+        const selected = option?.selected;
+        const currentSelectedOptionKeys = selectedTags?.filter(key => key !== 'selectAll');
+        const selectAllState = currentSelectedOptionKeys?.length === selectableTagOptions.length;
+
+        if (option) {
+            if (option.itemType === SelectableOptionMenuItemType.SelectAll) {
+                if (selectAllState) {
+                    // Deselect all items, including "Select All"
+                    setSelectedTags([]);
+                } else {
+                    // Select all items, including "Select All"
+                    const updatedKeys = ['selectAll', ...selectableTagOptions.map(o => o.key as string)];
+                    setSelectedTags(updatedKeys);
+                }
+
+            } else {
+                const updatedKeys = selected
+                    ? [...currentSelectedOptionKeys, option!.key as string]
+                    : currentSelectedOptionKeys.filter(k => k !== option.key);
+                if (updatedKeys.length === selectableTagOptions.length) {
+                    updatedKeys.push('selectAll');
+                }
+                setSelectedTags(updatedKeys);
+            }
+        }
+    };
 
     const FILE_ICONS: { [id: string]: string } = {
         "csv": 'csv',
@@ -178,15 +314,21 @@ export const FileStatus = ({ className, userData }: Props) => {
         to: { opacity: 1 }
     });
 
-    // Refresh file list on filter change
+    // Refresh file list from API on mount
+    // or when time frame filter changes
     useEffect(() => {
-        onGetStatusClick();
-    }, [selectedTimeFrameItem, selectedFileStateItem, selectedFolderItem]);
+        fetchAllData();
+    }, []);
+
+    // Filter locally if any other filter changes
+    useEffect(() => {
+        filterData();
+    }, [selectedFileStates, selectedFolders, selectedTags]);
 
     return (
         <div className={styles.container}>
             <div className={`${styles.options} ${className ?? ""}`} >
-                <Dropdown
+                {/* <Dropdown
                     label="Uploaded in last:"
                     defaultSelectedKey='4hours'
                     onChange={onTimeSpanChange}
@@ -194,28 +336,46 @@ export const FileStatus = ({ className, userData }: Props) => {
                     options={dropdownTimespanOptions}
                     styles={dropdownTimespanStyles}
                     aria-label="timespan options for file statuses to be displayed"
-                />
-                <Dropdown
+                /> */}
+                <ComboBox
                     label="File State:"
-                    onChange={onFileStateChange}
-                    placeholder="Select file states"
-                    options={dropdownFileStateOptions}
-                    styles={dropdownFileStateStyles}
+                    multiSelect
+                    placeholder="Select file state(s)"
+                    selectedKey={selectedFileStates ? selectedFileStates : undefined}
+                    options={selectableFileStateOptions}
+                    onChange={onSelectedFileStateChange}
+                    styles={comboBoxStyles}
                     aria-label="file state options for file statuses to be displayed"
                 />
-                <Dropdown
+                <ComboBox
                     label="Folder:"
-                    defaultSelectedKey={'ALL'}
-                    selectedKey={selectedFolderItem ? selectedFolderItem.key : undefined}
-                    onChange={onFolderChange}
-                    placeholder="Select folder"
-                    options={dropdownFolderOptions}
-                    styles={dropdownFileStateStyles}
+                    multiSelect
+                    placeholder="Select folder(s)"
+                    selectedKey={selectedFolders ? selectedFolders : undefined}
+                    options={selectableFolderOptions}
+                    onChange={onSelectedFoldersChange}
+                    styles={comboBoxStyles}
                     aria-label="folder name options for file statuses to be displayed"
                 />
-                <div className={styles.refresharea} onClick={onGetStatusClick} aria-label="Refresh displayed file statuses">
-                    <ArrowClockwise24Filled className={styles.refreshicon} />
-                    <span className={styles.refreshtext}>Refresh</span>
+                <ComboBox
+                    label="Tags:"
+                    multiSelect
+                    placeholder="Select file tag(s)"
+                    selectedKey={selectedTags ? selectedTags : undefined}
+                    options={selectableTagOptions}
+                    onChange={onSelectedTagsChange}
+                    styles={comboBoxStyles}
+                    aria-label="tag options for file statuses to be displayed"
+                />
+                <div className={styles.buttonArea}>
+                    <div className={styles.button} onClick={onRefreshClicked} aria-label="Refresh displayed file statuses">
+                        <ArrowClockwise24Filled className={styles.buttonIcon} />
+                        <span className={styles.buttonText}>Refresh</span>
+                    </div>
+                    <div className={styles.button} onClick={onClearFiltersClicked} aria-label="Clear filters">
+                        <FilterDismiss24Filled className={styles.buttonIcon} />
+                        <span className={styles.buttonText}>Clear Filters</span>
+                    </div>
                 </div>
             </div>
             {isLoading ? (
@@ -231,7 +391,7 @@ export const FileStatus = ({ className, userData }: Props) => {
                 </animated.div>
             ) : (
                 <div className={styles.resultspanel}>
-                    <DocumentsDetailList items={files == undefined ? [] : files} onFilesSorted={onFilesSorted} />
+                    <DocumentsDetailList items={filteredFiles == undefined ? [] : filteredFiles} onFilesSorted={onFilesSorted} />
                 </div>
             )}
         </div>

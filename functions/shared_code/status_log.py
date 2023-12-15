@@ -132,7 +132,7 @@ class StatusLog:
         return items
 
     def upsert_document(self, document_path, status, status_classification: StatusClassification,
-                        state=State.PROCESSING, fresh_start=False):
+                        state=State.PROCESSING, fresh_start=False, tags_list=[]):
         """ Function to upsert a status item for a specified id """
         base_name = os.path.basename(document_path)
         document_id = self.encode_document_id(document_path)
@@ -185,6 +185,7 @@ class StatusLog:
                 "file_path": document_path,
                 "file_name": base_name,
                 "folder_name" : folder_name,
+                "tags": tags_list,
                 "state": str(state.value),
                 "start_timestamp": str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
                 "state_description": status,
@@ -204,6 +205,7 @@ class StatusLog:
                 "file_path": document_path,
                 "file_name": base_name,
                 "folder_name" : folder_name,
+                "tags": tags_list,
                 "state": str(state.value),
                 "start_timestamp": str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
                 "state_description": status,

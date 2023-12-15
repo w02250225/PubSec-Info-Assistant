@@ -2,9 +2,9 @@
 // Licensed under the MIT license.
 
 import { useCallback } from "react";
-import CheckIcon from "./check";
-import ClearIcon from "./clear";
-import styles from "./files-list.module.css";
+import CheckIcon from "./Check";
+import ClearIcon from "./Clear";
+import styles from "./FilesList.module.css";
 
 const FilesListItem = ({ name, id, onClear, uploadComplete }: {name: any, id: any, onClear: any, uploadComplete: any}) => {
   const handleClear = useCallback(() => {

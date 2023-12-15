@@ -107,6 +107,7 @@ export type FileUploadBasicStatus = {
     file_path: string;
     file_name: string;
     folder_name: string;
+    tags: string[];
     state: string;
     start_timestamp: string;
     state_description: string;
@@ -115,12 +116,6 @@ export type FileUploadBasicStatus = {
 
 export type AllFilesUploadStatus = {
     statuses: FileUploadBasicStatus[];
-}
-
-export type GetUploadStatusRequest = {
-    timeframe: number;
-    state: FileState;
-    folder_name: string;
 }
 
 // These keys need to match case with the defined Enum in the

@@ -4,7 +4,7 @@
 import { useState, useContext } from 'react';
 import { Pivot, PivotItem } from "@fluentui/react";
 import { ITag } from '@fluentui/react/lib/Pickers';
-import { FilePicker } from "../../components/filepicker/file-picker";
+import { FilePicker } from "../../components/FilePicker/FilePicker";
 import { FileStatus } from "../../components/FileStatus/FileStatus";
 import { TagPickerInline } from "../../components/TagPicker/TagPicker"
 import { FolderPicker } from '../../components/FolderPicker/FolderPicker';

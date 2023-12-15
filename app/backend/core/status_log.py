@@ -84,12 +84,7 @@ class StatusLog:
         return items
 
 
-    async def read_files_status_by_timeframe(self, 
-                                       within_n_hours: int,                       
-                                       user_id: str,
-                                       is_admin: bool,
-                                       state: State = State.ALL,
-                                       folder_name: str = "ALL"):
+    async def read_files_status_by_timeframe(self, user_id: str, is_admin: bool):
         """ 
         Function to issue a query and return resulting docs          
         args
@@ -97,157 +92,46 @@ class StatusLog:
             folder_name - return docs within this folder
         """
 
-        user_folder_pattern = re.compile(r"^[^@]+@[^@]+\.[^@]+$")
-
-        query_string = "SELECT c.id, c.file_path, c.file_name, c.folder_name, \
+        query_string = "SELECT c.id, c.file_path, c.file_name, c.folder_name, c.tags, \
             c.state, c.start_timestamp, c.state_description, c.state_timestamp \
             FROM c"
 
-        conditions = []    
-        if within_n_hours != -1:
-            from_time = datetime.utcnow() - timedelta(hours=within_n_hours)
-            from_time_string = str(from_time.strftime('%Y-%m-%d %H:%M:%S'))
-            conditions.append(f"c.start_timestamp > '{from_time_string}'")
+        # conditions = []    
+        # if within_n_hours != -1:
+        #     from_time = datetime.utcnow() - timedelta(hours=within_n_hours)
+        #     from_time_string = str(from_time.strftime('%Y-%m-%d %H:%M:%S'))
+        #     conditions.append(f"c.start_timestamp > '{from_time_string}'")
 
-        if state != State.ALL:
-            conditions.append(f"c.state = '{state.value}'")
+        # if state != State.ALL:
+        #     conditions.append(f"c.state = '{state.value}'")
 
-        if folder_name != 'ALL':
-            conditions.append(f"c.folder_name = '{folder_name}'")
+        # if folders != 'ALL':
+        #     conditions.append(f"udf.folderMatch(c.folder_name, '{folders}')")
 
-        if conditions:
-            query_string += " WHERE " + " AND ".join(conditions)
+        # if tags != 'ALL':
+        #     conditions.append(f"udf.tagMatch(c.tags, '{tags}')")
+
+        # if conditions:
+        #     query_string += " WHERE " + " AND ".join(conditions)
 
         query_string += " ORDER BY c.state_timestamp DESC"
 
         items = [item async for item in self.container.query_items(query = query_string)]
 
-        # Filter items based on user access if not admin and folder_name is 'ALL'
-        if not is_admin and folder_name == 'ALL':
+        # Filter items based on user access
+        if not is_admin:
+            user_folder_pattern = re.compile(r"^[^@]+@[^@]+\.[^@]+$")
             items = [item for item in items if not user_folder_pattern.match(item['folder_name']) or item['folder_name'] == user_id]
 
         return items
+
+
+    async def get_all_tags(self):
+        """ Returns all tags in the database """
+        query_string = "SELECT DISTINCT VALUE t FROM c JOIN t IN c.tags"
+        tag_array = [item async for item in self.container.query_items(query = query_string)]
+        return ",".join(tag_array)
     
-
-    async def upsert_document(self, document_path, status, status_classification: StatusClassification,
-                              state=State.PROCESSING, fresh_start=False):
-        """ Asynchronous function to upsert a status item for a specified id """
-        base_name = os.path.basename(document_path)
-        document_id = self.encode_document_id(document_path)
-        document_path_parts = document_path.split('/')
-        folder_name = document_path_parts[1] if len(document_path_parts) > 2 else None
-
-        # add status to standard logger
-        logging.info(f"{status} DocumentID - {document_id}")
-
-        # If this event is the start of an upload, remove any existing status files for this path
-        if fresh_start:
-            try:
-                await self.container.delete_item(item=document_id, partition_key=document_path)
-            except exceptions.CosmosResourceNotFoundError:
-                pass
-
-        json_document = ""
-        try:
-            # if the document exists and if this is the first call to the function from the parent,
-            # then retrieve the stored document from cosmos, otherwise, use the log stored in self
-            if self._log_document.get(document_id, "") == "":
-                json_document = await self.container.read_item(item=document_id, partition_key=document_path)
-            else:
-                json_document = self._log_document[document_id]
-
-            # Check if there has been a state change, and therefore to update state
-            if json_document['state'] != state.value:
-                json_document['state'] = state.value
-                json_document['state_timestamp'] = str(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-
-            # Append a new item to the array
-            status_updates = json_document["status_updates"]
-            new_item = {
-                "status": status,
-                "status_timestamp": str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-                "status_classification": str(status_classification.value)
-            }
-
-            if status_classification == StatusClassification.ERROR:
-                new_item["stack_trace"] = self.get_stack_trace()
-
-            status_updates.append(new_item)
-        except exceptions.CosmosResourceNotFoundError:
-            # this is a new document
-            json_document = self._create_new_json_document(document_id, document_path, base_name, folder_name, state, status, status_classification)
-        except Exception:
-            # log the exception with stack trace to the status log
-            json_document = self._create_error_json_document(document_id, document_path, base_name, folder_name, state, status, status_classification)
-
-        self._log_document[document_id] = json_document
-
-
-    def _create_new_json_document(self, document_id, document_path, base_name, folder_name, state, status, status_classification):
-        return {
-            "id": document_id,
-            "file_path": document_path,
-            "file_name": base_name,
-            "folder_name": folder_name,
-            "state": str(state.value),
-            "start_timestamp": str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-            "state_description": "",
-            "state_timestamp": str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-            "status_updates": [
-                {
-                    "status": status,
-                    "status_timestamp": str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-                    "status_classification": str(status_classification.value)
-                }
-            ]
-        }
-    
-
-    def _create_error_json_document(self, document_id, document_path, base_name, folder_name, state, status, status_classification):
-        return {
-            "id": document_id,
-            "file_path": document_path,
-            "file_name": base_name,
-            "folder_name": folder_name,
-            "state": str(state.value),
-            "start_timestamp": str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-            "state_description": "",
-            "state_timestamp": str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-            "status_updates": [
-                {
-                    "status": status,
-                    "status_timestamp": str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-                    "status_classification": str(status_classification.value),
-                    "stack_trace": self.get_stack_trace()
-                }
-            ]
-        }
-
-
-    async def update_document_state(self, document_path, state_str):
-        """Asynchronously updates the state of the document in the storage"""
-        try:
-            document_id = self.encode_document_id(document_path)
-            logging.info(f"{state_str} DocumentID - {document_id}")
-
-            if self._log_document.get(document_id, "") != "":
-                json_document = self._log_document[document_id]
-                json_document['state'] = state_str
-                json_document['state_timestamp'] = str(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-                await self.save_document(document_path)
-                self._log_document[document_id] = json_document
-            else:
-                logging.warning(f"Document with ID {document_id} not found.")
-        except Exception as err:
-            logging.error(f"An error occurred while updating the document state: {str(err)}")
-     
-
-    async def save_document(self, document_path):
-        """Asynchronously saves the document in the storage"""
-        document_id = self.encode_document_id(document_path)
-        await self.container.upsert_item(body=self._log_document[document_id])
-        self._log_document[document_id] = ""
-
 
     def get_stack_trace(self):
         """ Returns the stack trace of the current exception"""

@@ -320,11 +320,6 @@ def main(msg: func.QueueMessage) -> None:
                 tags_list = tags.split(",")
         else:
             tags_list = []
-        # Write the tags to cosmos db
-        tags_helper = TagsHelper(
-            cosmosdb_url, cosmosdb_key, cosmosdb_tags_database_name, cosmosdb_tags_container_name
-        )
-        tags_helper.upsert_document(blob_path, tags_list)
 
         # Only one chunk per image currently.
         chunk_file=utilities.build_chunk_filepath(file_directory, file_name, file_extension, '0')

@@ -69,7 +69,7 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
             alert('Please enter a folder name.');
         } else {
             // add the folder to the dropdown list and select it
-            // This will be passed to the file-picker component to determine the folder to upload to
+            // This will be passed to the FilePicker component to determine the folder to upload to
             const trimVal = textField.defaultValue.trim()
             const currentOptions = options;
             currentOptions.push({ key: trimVal, text: trimVal });
