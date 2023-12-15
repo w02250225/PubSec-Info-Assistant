@@ -1,7 +1,7 @@
 import { Text } from "@fluentui/react";
 import { ChatSettings24Filled } from "@fluentui/react-icons";
 
-import styles from "./PromptSettingsButton.module.css";
+import styles from "./ModelSettingsButton.module.css";
 
 interface Props {
     className?: string;
@@ -9,7 +9,7 @@ interface Props {
     disabled?: boolean;
 }
 
-export const PromptSettingsButton = ({ className, onClick, disabled }: Props) => {
+export const ModelSettingsButton = ({ className, onClick, disabled }: Props) => {
 
     const handleClick = () => {
         if (!disabled) {
@@ -20,7 +20,7 @@ export const PromptSettingsButton = ({ className, onClick, disabled }: Props) =>
     return (
         <div className={`${styles.container} ${className ?? ""} ${disabled && styles.disabled}`} onClick={handleClick}>
             <ChatSettings24Filled />
-            <Text>{"Prompt Settings"}</Text>
+            <Text>{"Model Settings"}</Text>
         </div>
     );
 };
