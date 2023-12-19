@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { Link } from '@fluentui/react/lib/Link';
-import { ShimmeredDetailsList, DetailsListLayoutMode, SelectionMode, IColumn } from "@fluentui/react";
+import { DetailsList, DetailsListLayoutMode, SelectionMode, IColumn } from "@fluentui/react";
 import { TooltipHost } from '@fluentui/react';
 
 import styles from "./DocumentsDetailList.module.css";
@@ -25,10 +25,10 @@ export interface IDocument {
 
 interface Props {
     items: IDocument[];
-    onFilesSorted?: (items: IDocument[]) => void;
+    onFilesSorted: (items: IDocument[]) => void;
 }
 
-export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
+export const DocumentsDetailList = ({ items, onFilesSorted }: Props) => {
 
     const onColumnClick = (ev: React.MouseEvent<HTMLElement>, column: IColumn): void => {
         const newColumns: IColumn[] = columns.slice();
@@ -42,10 +42,11 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
                 newCol.isSortedDescending = true;
             }
         });
-        const newItems = copyAndSort(items, currColumn.fieldName!, currColumn.isSortedDescending);
-        items = newItems as IDocument[];
+
+        const newItems: IDocument[] = copyAndSort(items, currColumn.fieldName!, currColumn.isSortedDescending);
+
+        onFilesSorted(newItems);
         setColumns(newColumns);
-        onFilesSorted == undefined ? console.log("onFileSorted event undefined") : onFilesSorted(items);
     };
 
     function copyAndSort<T>(items: T[], columnKey: string, isSortedDescending?: boolean): T[] {
@@ -61,7 +62,24 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
         return `${window.location.origin}/#/ViewDocument?documentName=${encodeURIComponent(item.folder_name)}/${encodeURIComponent(item.name)}`;
     }
 
-    const [columns, setColumns] = useState<IColumn[]> ([
+    function renderTagsColumn(item: IDocument): JSX.Element {
+        const tags = item.tags;
+    
+        if (tags.length > 20) { // Adjust the threshold as needed
+            // Display a truncated version of the tags with a tooltip for the full content
+            const truncatedTags = tags.substring(0, 20) + '...';
+            return (
+                <TooltipHost content={tags}>
+                    <span>{truncatedTags}</span>
+                </TooltipHost>
+            );
+        } else {
+            // If the text is not too long, display it without truncation or tooltip
+            return <span>{tags}</span>;
+        }
+    }
+
+    const [columns, setColumns] = useState<IColumn[]>([
         {
             key: 'column1',
             name: 'File Type',
@@ -88,7 +106,9 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
             maxWidth: 400,
             isRowHeader: true,
             isResizable: true,
-            ariaLabel: 'File name',
+            isSorted: false,
+            isSortedDescending: false,
+            ariaLabel: 'Click to sort by file name',
             sortAscendingAriaLabel: 'Sorted A to Z',
             sortDescendingAriaLabel: 'Sorted Z to A',
             onColumnClick: onColumnClick,
@@ -104,11 +124,13 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
             key: 'column3',
             name: 'Folder',
             fieldName: 'folder_name',
-            minWidth: 100,
+            minWidth: 50,
             maxWidth: 200,
             isRowHeader: true,
             isResizable: true,
-            ariaLabel: 'Folder name',
+            isSorted: false,
+            isSortedDescending: false,
+            ariaLabel: 'Click to sort by folder name',
             sortAscendingAriaLabel: 'Sorted A to Z',
             sortDescendingAriaLabel: 'Sorted Z to A',
             onColumnClick: onColumnClick,
@@ -123,8 +145,11 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
             maxWidth: 200,
             isRowHeader: true,
             isResizable: true,
+            isSorted: false,
+            isSortedDescending: false,
             ariaLabel: 'Tags',
             data: 'string',
+            onRender: renderTagsColumn,
             isPadded: true,
         },
         {
@@ -134,7 +159,9 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
             minWidth: 70,
             maxWidth: 90,
             isResizable: true,
-            ariaLabel: 'Column operations for state, Press to sort by states',
+            isSorted: false,
+            isSortedDescending: false,
+            ariaLabel: 'Click to sort by state',
             onColumnClick: onColumnClick,
             data: 'string',
             onRender: (item: IDocument) => (
@@ -149,8 +176,10 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
             name: 'Submitted On',
             fieldName: 'upload_timestamp',
             minWidth: 70,
-            maxWidth: 90,
+            maxWidth: 120,
             isResizable: true,
+            isSorted: false,
+            isSortedDescending: false,
             isCollapsible: true,
             ariaLabel: 'Column operations for submitted on date, Press to sort by submitted date',
             data: 'string',
@@ -165,10 +194,10 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
             name: 'Last Updated',
             fieldName: 'modified_timestamp',
             minWidth: 70,
-            maxWidth: 90,
+            maxWidth: 120,
             isResizable: true,
             isSorted: true,
-            isSortedDescending: false,
+            isSortedDescending: true,
             sortAscendingAriaLabel: 'Sorted Oldest to Newest',
             sortDescendingAriaLabel: 'Sorted Newest to Oldest',
             isCollapsible: true,
@@ -184,9 +213,8 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
     return (
         <div>
             <span className={styles.footer}>{"(" + items.length as string + ") records."}</span>
-            <ShimmeredDetailsList
+            <DetailsList
                 items={items}
-                enableShimmer={!items}
                 compact={true}
                 columns={columns}
                 selectionMode={SelectionMode.none}
