@@ -157,6 +157,10 @@ class StatusLog:
             else:
                 json_document = self._log_document[document_id]
 
+            # Check if we need to set tags
+            if tags_list is not None and len(tags_list) > 0:
+                json_document["tags"] = tags_list
+            
             # Check if there has been a state change, and therefore to update state
             if json_document['state'] != state.value:
                 json_document['state'] = state.value
@@ -216,7 +220,6 @@ class StatusLog:
                 ]
             }
 
-        #self.container.upsert_item(body=json_document)
         self._log_document[document_id] = json_document
 
     def update_document_state(self, document_path, state_str):
