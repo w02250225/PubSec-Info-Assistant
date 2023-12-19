@@ -80,10 +80,6 @@ jq -r  '
             "env_var": "COSMOSDB_TAGS_DATABASE_NAME"
         },
         {
-            "path": "azurE_COSMOSDB_TAGS_CONTAINER_NAME",
-            "env_var": "COSMOSDB_TAGS_CONTAINER_NAME"
-        },
-        {
             "path": "azurE_CLIENT_ID",
             "env_var": "AZURE_CLIENT_ID"
         },

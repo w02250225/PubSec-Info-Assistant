@@ -11,9 +11,9 @@ help: ## Show this help
 
 deploy: build infrastructure extract-env deploy-enrichments deploy-search-indexes deploy-webapp deploy-functions ## Deploy infrastructure and application code
  
-build-deploy-webapp: build extract-env deploy-webapp ##Build and Deploy the Webapp
-build-deploy-enrichments: build extract-env deploy-enrichments ##Build and Deploy the Enrichment Webapp
-build-deploy-functions: build extract-env deploy-functions ##Build and Deploy the Functions
+build-deploy-webapp: build-webapp extract-env deploy-webapp ##Build and Deploy the Webapp
+build-deploy-enrichments: build-enrichment extract-env deploy-enrichments ##Build and Deploy the Enrichment Webapp
+build-deploy-functions: build-functions extract-env deploy-functions ##Build and Deploy the Functions
 
 build: ## Build application code
 	@./scripts/build.sh

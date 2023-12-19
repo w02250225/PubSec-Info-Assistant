@@ -221,8 +221,6 @@ module enrichmentApp 'core/host/enrichmentappservice.bicep' = {
       COSMOSDB_KEY: cosmoslogdb.outputs.CosmosDBKey
       COSMOSDB_LOG_DATABASE_NAME: cosmoslogdb.outputs.CosmosDBDatabaseName
       COSMOSDB_LOG_CONTAINER_NAME: cosmoslogdb.outputs.CosmosDBContainerName
-      COSMOSDB_TAGS_DATABASE_NAME: cosmostagdb.outputs.CosmosDBDatabaseName
-      COSMOSDB_TAGS_CONTAINER_NAME: cosmostagdb.outputs.CosmosDBContainerName
       MAX_EMBEDDING_REQUEUE_COUNT: 5
       EMBEDDING_REQUEUE_BACKOFF: 60
       AZURE_OPENAI_SERVICE: useExistingAOAIService ? azureOpenAIServiceName : cognitiveServices.outputs.name
@@ -285,8 +283,6 @@ module backend 'core/host/appservice.bicep' = {
       COSMOSDB_REQUESTLOG_CONTAINER_NAME: cosmosrequestsdb.outputs.CosmosDBContainerName
       COSMOSDB_LOG_DATABASE_NAME: cosmoslogdb.outputs.CosmosDBDatabaseName
       COSMOSDB_LOG_CONTAINER_NAME: cosmoslogdb.outputs.CosmosDBContainerName
-      COSMOSDB_TAGS_DATABASE_NAME: cosmostagdb.outputs.CosmosDBDatabaseName
-      COSMOSDB_TAGS_CONTAINER_NAME: cosmostagdb.outputs.CosmosDBContainerName
       QUERY_TERM_LANGUAGE: queryTermLanguage
       AZURE_SUBSCRIPTION_ID: subscriptionId
       IS_GOV_CLOUD_DEPLOYMENT: isGovCloudDeployment
@@ -551,21 +547,6 @@ module cosmoslogdb 'core/db/cosmosdb.bicep' = {
   }
 }
 
-module cosmostagdb 'core/db/cosmosdb.bicep' = {
-  name: 'cosmostagdb'
-  scope: rg
-  params: {
-    name: !empty(cosmosdbName) ? cosmosdbName : '${prefix}-${abbrs.cosmosDBAccounts}${randomString}'
-    location: location
-    tags: tags
-    databaseName: 'tagdb'
-    containerName: 'tagcontainer'
-    partitionKeyPath: ['/file_path']
-    partitionKeyVersion: 1
-  }
-  dependsOn: [cosmoslogdb] // Cosmos doesn't like parallel deployments
-}
-
 module cosmosrequestsdb 'core/db/cosmosdb.bicep' =  {
   name: 'cosmosrequestsdb'
   scope: rg
@@ -579,7 +560,7 @@ module cosmosrequestsdb 'core/db/cosmosdb.bicep' =  {
     partitionKeyVersion: 2
     autoscaleMaxThroughput: 2000
   }
-  dependsOn: [cosmostagdb] // Cosmos doesn't like parallel deployments
+  dependsOn: [cosmoslogdb] // Cosmos doesn't like parallel deployments
 }
 
 // Function App
@@ -607,8 +588,6 @@ module functions 'core/function/function.bicep' = {
     CosmosDBKey: cosmoslogdb.outputs.CosmosDBKey
     CosmosDBLogDatabaseName: cosmoslogdb.outputs.CosmosDBDatabaseName
     CosmosDBLogContainerName: cosmoslogdb.outputs.CosmosDBContainerName
-    CosmosDBTagsDatabaseName: cosmostagdb.outputs.CosmosDBDatabaseName
-    CosmosDBTagsContainerName: cosmostagdb.outputs.CosmosDBContainerName
     chunkTargetSize: chunkTargetSize
     targetPages: targetPages
     formRecognizerApiVersion: formRecognizerApiVersion
@@ -645,7 +624,6 @@ module functions 'core/function/function.bicep' = {
     appServicePlan
     storage
     cosmoslogdb
-    cosmostagdb
   ]
 }
 
@@ -857,8 +835,6 @@ output AZURE_OPENAI_RESOURCE_GROUP string = azureOpenAIResourceGroup
 output AZURE_FUNCTION_APP_NAME string = functions.outputs.name
 output AZURE_COSMOSDB_LOG_DATABASE_NAME string = cosmoslogdb.outputs.CosmosDBDatabaseName
 output AZURE_COSMOSDB_LOG_CONTAINER_NAME string = cosmoslogdb.outputs.CosmosDBContainerName
-output AZURE_COSMOSDB_TAGS_DATABASE_NAME string = cosmostagdb.outputs.CosmosDBDatabaseName
-output AZURE_COSMOSDB_TAGS_CONTAINER_NAME string = cosmostagdb.outputs.CosmosDBContainerName
 output AZURE_FORM_RECOGNIZER_ENDPOINT string = formrecognizer.outputs.formRecognizerAccountEndpoint
 output AZURE_BLOB_DROP_STORAGE_CONTAINER string = uploadContainerName
 output AZURE_BLOB_LOG_STORAGE_CONTAINER string = functionLogsContainerName

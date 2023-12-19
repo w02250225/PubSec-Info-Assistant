@@ -285,10 +285,6 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
           value: CosmosDBTagsDatabaseName
         }
         {
-          name: 'COSMOSDB_TAGS_CONTAINER_NAME'
-          value: CosmosDBTagsContainerName
-        }
-        {
           name: 'PDF_SUBMIT_QUEUE'
           value: pdfSubmitQueue
         }
