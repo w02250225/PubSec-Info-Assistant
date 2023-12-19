@@ -4,6 +4,7 @@
 import json
 import re
 import logging
+import time
 import urllib.parse
 from datetime import datetime, timedelta
 from typing import Any, Sequence
@@ -93,6 +94,8 @@ class ChatReadRetrieveReadApproach(Approach):
     
     # # Define a class variable for the base URL
     # EMBEDDING_SERVICE_BASE_URL = 'https://infoasst-cr-{}.azurewebsites.net'
+
+
     
     def __init__(
         self,
@@ -142,6 +145,10 @@ class ChatReadRetrieveReadApproach(Approach):
 
     # def run(self, history: list[dict], overrides: dict) -> any:
     def run(self, history: Sequence[dict[str, str]], overrides: dict[str, Any]) -> Any:
+
+        log = logging.getLogger("uvicorn")
+        # log.setLevel(logging.DEBUG)
+
         use_semantic_captions = True if overrides.get("semantic_captions") else False
         top = overrides.get("top") or 3
         user_persona = overrides.get("user_persona", "")
@@ -186,12 +193,16 @@ class ChatReadRetrieveReadApproach(Approach):
                 'Content-Type': 'application/json',
             }
 
+        start_time_embed = time.time()
         response = requests.post(url, json=data,headers=headers,timeout=60)
+        end_time_embed = time.time()
+        elapsed_time_embed = end_time_embed - start_time_embed
+        print(f"The embed took {elapsed_time_embed} seconds to complete.")
         if response.status_code == 200:
             response_data = response.json()
             embedded_query_vector =response_data.get('data')          
         else:
-            logging.error(f"Error generating embedding:: {response.status_code}")
+            print(f"Error generating embedding:: {response.status_code}")
             raise Exception('Error generating embedding:', response.status_code)
 
         #vector set up for pure vector search & Hybrid search & Hybrid semantic
@@ -220,7 +231,7 @@ class ChatReadRetrieveReadApproach(Approach):
         # r=self.search_client.search(search_text=None, vectors=[vector], filter="search.ismatch('upload/ospolicydocs/China, climate change and the energy transition.pdf', 'file_name')", top=top)
 
         #  hybrid semantic search using semantic reranker
-       
+        start_time_search = time.time()
         if (not self.is_gov_cloud_deployment and overrides.get("semantic_ranker")):
             r = self.search_client.search(
                 generated_query,
@@ -264,7 +275,9 @@ class ChatReadRetrieveReadApproach(Approach):
                 "page_number": str(doc[self.page_number_field][0]) or "0",
              }
             
-
+        end_time_search = time.time()
+        elapsed_time_search = end_time_search - start_time_search
+        print(f"The Search took {elapsed_time_search} seconds to complete.")
         # create a single string of all the results to be used in the prompt
         results_text = "".join(results)
         if results_text == "":
@@ -316,7 +329,7 @@ class ChatReadRetrieveReadApproach(Approach):
             )
         # STEP 3: Generate a contextual and content-specific answer using the search results and chat history.
         #Added conditional block to use different system messages for different models.
-
+        start_time = time.time()
         if self.model_name.startswith("gpt-35-turbo"):
             messages = self.get_messages_from_history(
                 system_message,
@@ -337,7 +350,6 @@ class ChatReadRetrieveReadApproach(Approach):
             #print("System Message Tokens: ", self.num_tokens_from_string(system_message, "cl100k_base"))
             #print("Few Shot Tokens: ", self.num_tokens_from_string(self.response_prompt_few_shots[0]['content'], "cl100k_base"))
             #print("Message Tokens: ", self.num_tokens_from_string(message_string, "cl100k_base"))
-
             chat_completion = openai.ChatCompletion.create(
             deployment_id=self.chatgpt_deployment,
             model=self.model_name,
@@ -376,7 +388,9 @@ class ChatReadRetrieveReadApproach(Approach):
             max_tokens=1024,
             n=1
         )
-
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        print(f"The Chat took {elapsed_time} seconds to complete.")
         # STEP 4: Format the response
         msg_to_display = '\n\n'.join([str(message) for message in messages])
 
@@ -458,5 +472,5 @@ class ChatReadRetrieveReadApproach(Approach):
             )
             return source_file + "?" + sas_token
         except Exception as error:
-            logging.error(f"Unable to parse source file name: {str(error)}")
+            print(f"Unable to parse source file name: {str(error)}")
             return ""
