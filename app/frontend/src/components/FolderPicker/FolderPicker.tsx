@@ -141,18 +141,9 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
 
     useEffect(() => {
         fetchBlobFolderData();
+        onSelectedKeyChange([userData.userPrincipalName]);
     }, []);
 
-    useEffect(() => {
-        // This effect runs once on component mount and whenever allowFolderCreation changes.
-        // Set the default selected key based on allowFolderCreation.
-        if (allowFolderCreation) {
-            // Default selection the user's data folder
-            onSelectedKeyChange([userData.userPrincipalName]);
-        } else if (selectedKeys && selectedKeys.length > 0) {
-            onSelectedKeyChange(selectedKeys);
-        }
-    }, [allowFolderCreation, selectedKeys]);
 
     function getStyles(props: ITextFieldStyleProps): Partial<ITextFieldStyles> {
         const { required } = props;
