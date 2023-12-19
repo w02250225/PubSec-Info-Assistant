@@ -148,8 +148,8 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
             key: 'column6',
             name: 'Submitted On',
             fieldName: 'upload_timestamp',
-            minWidth: 90,
-            maxWidth: 120,
+            minWidth: 70,
+            maxWidth: 90,
             isResizable: true,
             isCollapsible: true,
             ariaLabel: 'Column operations for submitted on date, Press to sort by submitted date',
@@ -164,8 +164,8 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
             key: 'column7',
             name: 'Last Updated',
             fieldName: 'modified_timestamp',
-            minWidth: 90,
-            maxWidth: 120,
+            minWidth: 70,
+            maxWidth: 90,
             isResizable: true,
             isSorted: true,
             isSortedDescending: false,
@@ -178,6 +178,7 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
             onRender: (item: IDocument) => {
                 return <span>{item.modified_timestamp}</span>;
             },
+<<<<<<< HEAD
         // },
         // {
         //     key: 'column6',
@@ -191,6 +192,9 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
         //     data: 'string',
         //     onColumnClick: onColumnClick
         }
+=======
+        },
+>>>>>>> refs/remotes/origin/main
     ]);
 
     return (
