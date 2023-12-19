@@ -104,9 +104,7 @@ COSMOSDB_USER_CONTAINER_NAME = os.environ.get("COSMOSDB_USER_CONTAINER_NAME") or
 
 QUERY_TERM_LANGUAGE = os.environ.get("QUERY_TERM_LANGUAGE") or "English"
 
-ERROR_MESSAGE = """The application encountered an error processing your request.
-Error Type: {error_type}
-Error Message: {error_msg}"""
+ERROR_MESSAGE = "The application encountered an error processing your request."
 ERROR_MESSAGE_FILTER = """Your message contains content that was flagged by the OpenAI content filter."""
 
 TERMS_OF_USE = os.environ.get("TERMS_OF_USE")
@@ -237,17 +235,19 @@ def before_request():
     non_auth_endpoints = ['routes.authorized', 'routes.login', 'routes.logout']
     
     if request.endpoint not in non_auth_endpoints and not token_is_valid():
-        return redirect(url_for('routes.login'))
+        if request.accept_mimetypes.best == 'application/json':
+            # Return a JSON response for API calls
+            return jsonify({'error': 'Unauthorized'}), 401
+        else:
+            # Return a redirect for regular web requests
+            return redirect(url_for('routes.login'))
 
 
 def error_dict(error: Exception) -> dict:
     if isinstance(error, APIError) and error.code == "content_filter":
         return {"error": ERROR_MESSAGE_FILTER}
     
-    return {"error": ERROR_MESSAGE.format(
-            error_type=type(error).__name__, 
-            error_msg=str(error))
-            }
+    return { "error": ERROR_MESSAGE }
 
         
 def error_response(error: Exception, route: str, status_code: int = 500):
@@ -280,7 +280,7 @@ async def format_response(session_id: str,
                     request_doc["response"][key] = value
 
             if context.get("error_message"):
-                raise ValueError(context["error_message"])
+                raise Exception(context["error_message"])
 
             content = delta.get("content")
             if content:

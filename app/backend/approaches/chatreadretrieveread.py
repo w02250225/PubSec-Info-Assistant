@@ -13,6 +13,7 @@ from openai.types.chat import (
     ChatCompletionChunk,
     ChatCompletionMessageParam,
 )
+from quart import jsonify
 
 from approaches.approach import Approach
 from azure.search.documents.aio import SearchClient
@@ -384,13 +385,13 @@ Always include citations if you reference the source documents. Use square brack
             return (extra_info, chat_coroutine)
 
         except Exception as error:
-            extra_info = {
+            extra_info = jsonify({
                 "error_message": str(error),
-                "generated_query" : generated_query,
+                "generated_query": generated_query,
                 "data_points": data_points,
-                "thoughts":  thoughts,
+                "thoughts": thoughts,
                 "citation_lookup": citation_lookup,
-                }
+            })
         return (extra_info, None)
 
 
