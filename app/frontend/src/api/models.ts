@@ -237,3 +237,9 @@ export type PromptTemplate = {
     temperature: number;
     top_p: number
 }
+
+export type TermsOfUse = {
+    content: string;
+    version: string;
+    error?: string;
+}

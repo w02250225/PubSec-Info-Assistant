@@ -9,6 +9,7 @@ import json
 import logging
 import mimetypes
 import os
+import re
 import time
 import urllib.parse
 import uuid
@@ -106,8 +107,6 @@ QUERY_TERM_LANGUAGE = os.environ.get("QUERY_TERM_LANGUAGE") or "English"
 
 ERROR_MESSAGE = "The application encountered an error processing your request."
 ERROR_MESSAGE_FILTER = """Your message contains content that was flagged by the OpenAI content filter."""
-
-TERMS_OF_USE = os.environ.get("TERMS_OF_USE")
 
 # Oauth
 CLIENT_ID = os.getenv("CLIENT_ID")
@@ -415,6 +414,7 @@ async def chat():
             BLOB_CLIENT,
             session_gpt_deployment.get("deploymentName"),
             session_gpt_deployment.get("modelName"),
+            session_gpt_deployment.get("modelVersion"),
             KB_FIELDS_SOURCEFILE,
             KB_FIELDS_CONTENT,
             KB_FIELDS_PAGENUMBER,
@@ -446,8 +446,6 @@ async def chat():
         
     except Exception as error:
         return error_response(error, "/chat")
-    finally:
-        active_sessions.pop(session_id, None)
 
 
 @bp.route('/stopStream', methods=['POST'])
@@ -717,16 +715,52 @@ async def get_prompt_templates():
 
 @bp.route('/termsOfUse', methods=['GET', 'POST'])
 async def terms():
-    # If it's a POST request, set tou_accepted to True
-    if request.method == 'POST':
-        timestamp = str(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        session["user_data"]["tou_accepted"] = True
-        session["user_data"]["tou_accepted_timestamp"] = timestamp
-        session.modified = True
-        await current_app.userdata_log.upsert_user_session()
+    try:
+        # If it's a POST request, set tou_accepted to True
+        if request.method == 'POST':
+            request_data = await request.json
+            timestamp = str(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            version_pattern = r'^\d+(\.\d+)*$'
+            tou_version = request_data["tou_version"]
+
+            if re.match(version_pattern, tou_version):
+                session["user_data"]["tou_version"] = tou_version
+            else:
+                return jsonify({'error': 'Invalid tou_version format'}), 400
+
+            session["user_data"]["tou_accepted"] = True
+            session["user_data"]["tou_accepted_timestamp"] = timestamp
+            session.modified = True
+            
+            await current_app.userdata_log.upsert_user_session()
+
+            return jsonify({'message': 'Terms of Use acceptance recorded successfully'}), 200
+        
+        # If it's a GET request, display the terms to the user
+        elif request.method == 'GET':
+            blob_name = "terms.json"
+            
+            # Setup container/blob client
+            container_client = BLOB_CLIENT.get_container_client(AZURE_BLOB_WEBSITE_CONTAINER)
+            blob_client = container_client.get_blob_client(blob_name)
+            
+            # Download the JSON file content
+            blob_data = await blob_client.download_blob()
+            json_content = await blob_data.readall()
+
+            # Convert the JSON content to a dict
+            tou_data = json.loads(json_content)
+
+            return jsonify(tou_data)
+        
+        else:
+            return jsonify({'error': 'Method not allowed'}), 405
     
-    # If it's a GET request, display the terms to the user
-    return jsonify({'content': TERMS_OF_USE})
+    except json.JSONDecodeError:
+        return jsonify({'error': 'Invalid JSON format'}), 400
+    except Exception as ex:
+        logging.exception("Exception in /termsOfUse")
+        return jsonify({"error": str(ex)}), 500
     
 
 def create_app():

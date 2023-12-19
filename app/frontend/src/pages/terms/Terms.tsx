@@ -3,7 +3,7 @@ import { PrimaryButton } from '@fluentui/react';
 import { useNavigate } from "react-router-dom";
 import DOMPurify from "dompurify";
 
-import { getTermsOfUse, acceptTermsOfUse } from "../../api";
+import { getTermsOfUse, acceptTermsOfUse, TermsOfUse } from "../../api";
 import { UserContext } from "../../components/UserContext";
 
 import styles from "./Terms.module.css";
@@ -13,15 +13,16 @@ const Terms = () => {
     const { userData, setShouldRefreshContext } = userContext;
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [terms, setTerms] = useState('');
+    const [termsVersion, setTermsVersion] = useState('');
     const navigate = useNavigate();
 
     useEffect(() => {
         async function fetchTerms() {
             try {
-                const response = await getTermsOfUse();
-                const termsData = await response.json();
-                const sanitizedTerms = DOMPurify.sanitize(termsData.content);
+                const response: TermsOfUse = await getTermsOfUse();
+                const sanitizedTerms = DOMPurify.sanitize(response.content);
                 setTerms(sanitizedTerms);
+                setTermsVersion(response.version);
             } catch (error) {
                 console.error('Error fetching terms:', error);
             }
@@ -31,7 +32,7 @@ const Terms = () => {
 
     const handleAccept = async () => {
         try {
-            const success = await acceptTermsOfUse();
+            const success = await acceptTermsOfUse(termsVersion);
             if (success) {
                 setTermsAccepted(true);
                 setShouldRefreshContext(true);

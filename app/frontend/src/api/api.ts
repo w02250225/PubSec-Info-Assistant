@@ -3,7 +3,7 @@
 
 import {
     ChatAppRequest, BlobClientUrlResponse, AllFilesUploadStatus, GetInfoResponse, ActiveCitation, GetWarningBanner, ExportRequest,
-    StatusLogEntry, StatusLogResponse, ApplicationTitle, GetTagsResponse, GptDeployment, UserData, PromptTemplate
+    StatusLogEntry, StatusLogResponse, ApplicationTitle, GetTagsResponse, GptDeployment, UserData, PromptTemplate, TermsOfUse
 } from "./models";
 
 async function fetchWithSessionCheck(url: string, options: RequestInit) {
@@ -315,20 +315,29 @@ export async function stopStream(): Promise<Response> {
     });
 }
 
-export async function getTermsOfUse(): Promise<Response> {
-    return await fetchWithSessionCheck(`/termsOfUse`, {
+export async function getTermsOfUse(): Promise<TermsOfUse> {
+    const response = await fetchWithSessionCheck(`/termsOfUse`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json"
         }
     });
+    const parsedResponse: TermsOfUse = await response.json();
+    if (response.status > 299 || !response.ok) {
+        console.log(response);
+        throw Error(parsedResponse.error || "Unknown error");
+    }
+    return parsedResponse;
 }
 
-export async function acceptTermsOfUse(): Promise<Response> {
+export async function acceptTermsOfUse(tou_version: string): Promise<Response> {
     return await fetchWithSessionCheck(`/termsOfUse`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
-        }
+        },
+        body: JSON.stringify({
+            "tou_version": tou_version
+        })
     });
 }
