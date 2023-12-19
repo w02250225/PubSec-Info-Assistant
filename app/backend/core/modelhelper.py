@@ -1,14 +1,22 @@
 import tiktoken
 
-#Values from https://platform.openai.com/docs/models/gpt-3-5
+#Values from https://platform.openai.com/docs/models/overview
 
 MODELS_2_TOKEN_LIMITS = {
-    "gpt-35-turbo": 4097,
-    "gpt-3.5-turbo": 4097,
-    "gpt-35-turbo-16k": 16385,
-    "gpt-3.5-turbo-16k": 16385,
-    "gpt-4": 8192,
-    "gpt-4-32k": 32768
+    "gpt-3.5-turbo": {
+        "default": 4096,
+    },
+    "gpt-3.5-turbo-16k": {
+        "default": 16385,
+    },
+    "gpt-4": {
+        "default": 8192,
+        "1106-preview": 128000,
+        "vision-preview": 128000
+    },
+    "gpt-4-32k": {
+        "default": 32768,
+    },
 }
 
 AOAI_2_OAI = {
@@ -17,10 +25,18 @@ AOAI_2_OAI = {
 }
 
 
-def get_token_limit(model_id: str) -> int:
-    if model_id not in MODELS_2_TOKEN_LIMITS:
+def get_token_limit(model_id: str, model_version: str = "default") -> int:
+    model = get_oai_chatmodel_tiktok(model_id)
+
+    if model not in MODELS_2_TOKEN_LIMITS:
         raise ValueError("Expected model gpt-35-turbo and above. Got: " + model_id)
-    return MODELS_2_TOKEN_LIMITS.get(model_id)
+    
+    model_data = MODELS_2_TOKEN_LIMITS[model]
+    
+    # Use "default" version if the specified version is not found
+    token_limit = model_data.get(model_version.lower(), model_data.get("default"))
+    
+    return token_limit
 
 
 def num_tokens_from_messages(message: dict[str, str], model: str) -> int:
@@ -38,7 +54,7 @@ def num_tokens_from_messages(message: dict[str, str], model: str) -> int:
         output: 11
     """
     encoding = tiktoken.encoding_for_model(get_oai_chatmodel_tiktok(model))
-    num_tokens = 2  # For "role" and "content" keys
+    num_tokens = 4  # For "role" and "content" keys
     for key, value in message.items():
         num_tokens += len(encoding.encode(value))
     return num_tokens

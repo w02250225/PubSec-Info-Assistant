@@ -47,7 +47,6 @@ class ChatReadRetrieveReadApproach(Approach):
     system_message_chat_conversation = """You are {systemPersona} who helps {userPersona} answer questions about a Government agency's data.
 {response_length_prompt}
 User persona is {userPersona}.
-Try to provide answer using the facts listed in the list of sources documents provided.
 Your goal is to provide accurate and relevant answers based on the facts listed in the provided source documents.
 Make sure to reference the above source documents if you use them and avoid making assumptions or adding personal opinions.
 Emphasize the use of facts listed in the above provided source documents.
@@ -55,7 +54,6 @@ Instruct the model to use source name for each fact used in the response.
 Avoid generating speculative or generalized information, unless explicitly asked by the user.
 Each source has a file name followed by a pipe character and the actual information.
 Use square brackets to reference the source, for example [File0]. Don't combine sources, list each source separately, for example [File1][File2].
-
 Here is how you should answer every question:
 - Look for relevant information in the above source documents to answer the question.
 - If there is specific information related to question available in the above sources, provide an answer along with the appropriate citation. Do not forget to include the citation!
@@ -69,7 +67,6 @@ Generate three very brief follow-up questions that the user would likely ask nex
 Use triple angle brackets to reference the questions. Example:
 <<<What are the key initiatives of the Queensland Budget?>>>
 <<<What is the Empowered and Safe Communities project?>>>
-
 Do no repeat questions that have already been asked.
 Make sure the last question ends with ">>>"."""
 
@@ -111,6 +108,7 @@ Always include citations if you reference the source documents. Use square brack
         blob_client: BlobServiceClient,
         gpt_deployment: Optional[str],
         gpt_model_name: Optional[str],
+        gpt_model_version: Optional[str],
         source_file_field: str,
         content_field: str,
         page_number_field: str,
@@ -125,13 +123,14 @@ Always include citations if you reference the source documents. Use square brack
         self.blob_client = blob_client
         self.gpt_deployment = gpt_deployment
         self.gpt_model_name = gpt_model_name
+        self.gpt_model_version = gpt_model_version
         self.source_file_field = source_file_field
         self.content_field = content_field
         self.page_number_field = page_number_field
         self.chunk_file_field = chunk_file_field
         self.content_storage_container = content_storage_container
         self.query_term_language = query_term_language
-        self.chatgpt_token_limit = get_token_limit(gpt_model_name)
+        self.chatgpt_token_limit = get_token_limit(gpt_model_name, gpt_model_version)
         self.escaped_target_model = re.sub(r'[^a-zA-Z0-9_\-.]', '_', target_embedding_model) #escape target embedding model name
         self.embedding_service_url = f'https://{enrichment_appservice_name}.azurewebsites.net'
 
@@ -511,7 +510,8 @@ Always include citations if you reference the source documents. Use square brack
         """
         message_builder = MessageBuilder(system_prompt, model_id)
 
-        # Few Shot prompting. Add examples to show the chat what responses we want. It will try to mimic any responses and make sure they match the rules laid out in the system message.
+        # Few Shot prompting. Add examples to show the chat what responses we want. 
+        # It will try to mimic any responses and make sure they match the rules laid out in the system message.
         for shot in reversed(few_shots):
             message_builder.insert_message(shot.get("role"), shot.get("content"))
 
@@ -523,7 +523,7 @@ Always include citations if you reference the source documents. Use square brack
         newest_to_oldest = list(reversed(history[:-1]))
         for message in newest_to_oldest:
             potential_message_count = message_builder.count_tokens_for_message(message)
-            if (total_token_count + potential_message_count) > max_tokens:
+            if (total_token_count + potential_message_count) >= max_tokens:
                 logging.debug("Reached max tokens of %d, history will be truncated", max_tokens)
                 break
             message_builder.insert_message(message["role"], message["content"], index=append_index)
