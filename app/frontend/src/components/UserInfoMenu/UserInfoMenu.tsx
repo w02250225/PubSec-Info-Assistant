@@ -38,7 +38,7 @@ export const UserInfoMenu = ({ userData }: Props) => {
             key: 'copySessionInfoToClipboard',
             iconProps: { iconName: 'Copy' },
             text: 'Copy Session Info to Clipboard',
-            onClick: () => handleCopyToClipboard(`User ID: ${userData.id}\nSession ID: ${userData.session_id}`),
+            onClick: () => handleCopyToClipboard(`User ID: ${userData.user_id}\nSession ID: ${userData.session_id}`),
         },
     ];
 

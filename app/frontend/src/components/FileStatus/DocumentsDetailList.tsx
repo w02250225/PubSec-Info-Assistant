@@ -178,23 +178,7 @@ export const DocumentsDetailList = ({ items, onFilesSorted}: Props) => {
             onRender: (item: IDocument) => {
                 return <span>{item.modified_timestamp}</span>;
             },
-<<<<<<< HEAD
-        // },
-        // {
-        //     key: 'column6',
-        //     name: 'Status Detail',
-        //     fieldName: 'state_description',
-        //     minWidth: 90,
-        //     maxWidth: 200,
-        //     isResizable: true,
-        //     isCollapsible: true,
-        //     ariaLabel: 'Column operations for status detail',
-        //     data: 'string',
-        //     onColumnClick: onColumnClick
-        }
-=======
         },
->>>>>>> refs/remotes/origin/main
     ]);
 
     return (

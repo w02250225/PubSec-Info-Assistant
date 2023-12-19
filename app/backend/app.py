@@ -49,6 +49,7 @@ from quart import (
 )
 from core.request_log import RequestLog
 from core.status_log import State, StatusClassification, StatusLog
+from core.userdata_log import UserDataLog
 from typing import AsyncGenerator
 
 str_to_bool = {'true': True, 'false': False}
@@ -98,6 +99,8 @@ COSMOSDB_REQUESTLOG_DATABASE_NAME = os.environ.get("COSMOSDB_REQUESTLOG_DATABASE
 COSMOSDB_REQUESTLOG_CONTAINER_NAME = os.environ.get("COSMOSDB_REQUESTLOG_CONTAINER_NAME")
 COSMOSDB_LOG_DATABASE_NAME = os.environ.get("COSMOSDB_LOG_DATABASE_NAME") or "statusdb"
 COSMOSDB_LOG_CONTAINER_NAME = os.environ.get("COSMOSDB_LOG_CONTAINER_NAME") or "statuscontainer"
+COSMOSDB_USER_DATABASE_NAME = os.environ.get("COSMOSDB_USER_DATABASE_NAME") or "userdatadb"
+COSMOSDB_USER_CONTAINER_NAME = os.environ.get("COSMOSDB_USER_CONTAINER_NAME") or "userdatacontainer"
 
 QUERY_TERM_LANGUAGE = os.environ.get("QUERY_TERM_LANGUAGE") or "English"
 
@@ -338,6 +341,7 @@ async def authorized():
         if "error" in token_response:
             return "Error: " + token_response["error_description"]
 
+        session_timestamp = str(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         session["access_token"] = token_response["access_token"]
         session["token_expires_at"] = token_response["expires_in"] + time.time()
 
@@ -346,6 +350,7 @@ async def authorized():
             timeout=30,
             headers={"Authorization": "Bearer " + session["access_token"]},
         ).json()
+        user_data['user_id'] = user_data.pop('id')
 
         group_data = requests.get(
             "https://graph.microsoft.com/v1.0/me/memberOf",
@@ -354,11 +359,15 @@ async def authorized():
         ).json()
 
         is_admin = any(group.get('displayName', '') == ADMIN_GROUP_NAME for group in group_data.get("value", []))
+        
         user_data["is_admin"] = is_admin
         user_data["tou_accepted"] = False
+        user_data["session_id"] = session["state"]
+        user_data["session_timestamp"] = session_timestamp
 
         session["user_data"] = user_data
-
+        await current_app.userdata_log.upsert_user_session()
+        
         return redirect("/")
 
     return redirect(url_for("routes.login"))
@@ -562,7 +571,6 @@ async def get_info_data():
 async def get_user_data():
     try:
         user_data = session["user_data"]
-        user_data["session_id"] = session["state"]
         access_token = session["access_token"]
 
         photo_data = requests.get(
@@ -711,9 +719,11 @@ async def get_prompt_templates():
 async def terms():
     # If it's a POST request, set tou_accepted to True
     if request.method == 'POST':
-        # TODO Extract user_id from session and save somewhere
+        timestamp = str(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         session["user_data"]["tou_accepted"] = True
+        session["user_data"]["tou_accepted_timestamp"] = timestamp
         session.modified = True
+        await current_app.userdata_log.upsert_user_session()
     
     # If it's a GET request, display the terms to the user
     return jsonify({'content': TERMS_OF_USE})
@@ -727,6 +737,7 @@ def create_app():
     
     request_log = RequestLog(COSMOSDB_URL, COSMODB_KEY, COSMOSDB_REQUESTLOG_DATABASE_NAME, COSMOSDB_REQUESTLOG_CONTAINER_NAME)
     status_log = StatusLog(COSMOSDB_URL, COSMODB_KEY, COSMOSDB_LOG_DATABASE_NAME, COSMOSDB_LOG_CONTAINER_NAME)
+    userdata_log = UserDataLog(COSMOSDB_URL, COSMODB_KEY, COSMOSDB_USER_DATABASE_NAME, COSMOSDB_USER_CONTAINER_NAME)
 
     @app.before_serving
     async def init():
@@ -742,10 +753,12 @@ def create_app():
         
         await request_log.initialize()
         await status_log.initialize()
+        await userdata_log.initialize()
         await fetch_deployments()
 
     app.request_log = request_log
     app.status_log = status_log
+    app.userdata_log = userdata_log
 
     bp.before_request(before_request)
     app.register_blueprint(bp)

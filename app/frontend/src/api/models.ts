@@ -130,7 +130,7 @@ export const enum FileState {
 }
 
 export type UserData = {
-    id: string;
+    user_id: string;
     session_id: string;
     displayName: string;
     givenName: string;
