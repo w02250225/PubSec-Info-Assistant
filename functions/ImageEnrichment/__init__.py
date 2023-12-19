@@ -37,8 +37,6 @@ cosmosdb_url = os.environ["COSMOSDB_URL"]
 cosmosdb_key = os.environ["COSMOSDB_KEY"]
 cosmosdb_log_database_name = os.environ["COSMOSDB_LOG_DATABASE_NAME"]
 cosmosdb_log_container_name = os.environ["COSMOSDB_LOG_CONTAINER_NAME"]
-cosmosdb_tags_database_name = os.environ["COSMOSDB_TAGS_DATABASE_NAME"]
-cosmosdb_tags_container_name = os.environ["COSMOSDB_TAGS_CONTAINER_NAME"]
 
 # Cognitive Services
 cognitive_services_key = os.environ["ENRICHMENT_KEY"]
