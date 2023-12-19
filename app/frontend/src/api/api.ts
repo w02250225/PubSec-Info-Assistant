@@ -8,12 +8,11 @@ import {
 
 async function fetchWithSessionCheck(url: string, options: RequestInit) {
     const response = await fetch(url, options);
-    const redirectPath = new URL(response.url).pathname;
 
-    if (redirectPath === '/login') {
-        window.location.href = redirectPath;
+    if (response.status === 401) {
+        window.location.href = '/login';
+        throw new Error('Session timeout, redirecting to login');
     }
-
     return response;
 }
 
