@@ -147,7 +147,8 @@ class ChatReadRetrieveReadApproach(Approach):
     def run(self, history: Sequence[dict[str, str]], overrides: dict[str, Any]) -> Any:
 
         log = logging.getLogger("uvicorn")
-        # log.setLevel(logging.DEBUG)
+        log.setLevel('DEBUG')
+        log.propagate = True
 
         use_semantic_captions = True if overrides.get("semantic_captions") else False
         top = overrides.get("top") or 3
@@ -197,12 +198,12 @@ class ChatReadRetrieveReadApproach(Approach):
         response = requests.post(url, json=data,headers=headers,timeout=60)
         end_time_embed = time.time()
         elapsed_time_embed = end_time_embed - start_time_embed
-        print(f"The embed took {elapsed_time_embed} seconds to complete.")
+        log.info(f"The embed took {elapsed_time_embed} seconds to complete.")
         if response.status_code == 200:
             response_data = response.json()
             embedded_query_vector =response_data.get('data')          
         else:
-            print(f"Error generating embedding:: {response.status_code}")
+            log.error(f"Error generating embedding:: {response.status_code}")
             raise Exception('Error generating embedding:', response.status_code)
 
         #vector set up for pure vector search & Hybrid search & Hybrid semantic
@@ -277,7 +278,7 @@ class ChatReadRetrieveReadApproach(Approach):
             
         end_time_search = time.time()
         elapsed_time_search = end_time_search - start_time_search
-        print(f"The Search took {elapsed_time_search} seconds to complete.")
+        log.info(f"The Search took {elapsed_time_search} seconds to complete.")
         # create a single string of all the results to be used in the prompt
         results_text = "".join(results)
         if results_text == "":
@@ -390,7 +391,7 @@ class ChatReadRetrieveReadApproach(Approach):
         )
         end_time = time.time()
         elapsed_time = end_time - start_time
-        print(f"The Chat took {elapsed_time} seconds to complete.")
+        log.info(f"The Chat took {elapsed_time} seconds to complete.")
         # STEP 4: Format the response
         msg_to_display = '\n\n'.join([str(message) for message in messages])
 

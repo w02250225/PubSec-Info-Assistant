@@ -24,7 +24,7 @@ from azure.storage.blob import (
     ResourceTypes,
     generate_account_sas,
 )
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify
 from shared_code.status_log import State, StatusClassification, StatusLog
 from shared_code.tags_helper import TagsHelper
 from typing import List
@@ -81,7 +81,8 @@ for key, value in ENV.items():
 str_to_bool = {'true': True, 'false': False}
 
 log = logging.getLogger("uvicorn")
-# log.setLevel(logging.DEBUG)
+log.setLevel('DEBUG')
+log.propagate = True
 
 # embedding_service_suffix = "xyoek"
 
@@ -205,7 +206,7 @@ async def chat(request: Request):
 
         end_time_req = time.time()
         elapsed_time_req = end_time_req - start_time_req
-        print(f"The request took {elapsed_time_req} seconds to complete.")
+        log.debug(f"The request took {elapsed_time_req} seconds to complete.")
         # To fix citation bug,below code is added.aparmar
         return {
                 "data_points": r["data_points"],
@@ -216,7 +217,7 @@ async def chat(request: Request):
         
 
     except Exception as ex:
-        print(f"Error in chat:: {ex}")
+        log.error(f"Error in chat:: {ex}")
         traceback.print_exc()
         return {"error": str(ex)}, 500
 
@@ -242,10 +243,11 @@ async def get_blob_client_url():
     return {"url": f"{blob_client.url}?{sas_token}"}
 
 @app.post("/getalluploadstatus")
-async def get_all_upload_status():
+async def get_all_upload_status(request: Request):
     """Get the status of all file uploads in the last N hours"""
-    timeframe = request.json["timeframe"]
-    state = request.json["state"]
+    json_body = await request.json()
+    timeframe = json_body.get("timeframe")
+    state = json_body.get("state")
     try:
         results = statusLog.read_files_status_by_timeframe(timeframe, State[state])
     except Exception as ex:
@@ -254,13 +256,14 @@ async def get_all_upload_status():
     return results
 
 @app.post("/logstatus")
-async def logstatus():
+async def logstatus(request: Request):
     """Log the status of a file upload to CosmosDB"""
     try:
-        path = request.json["path"]
-        status = request.json["status"]
-        status_classification = StatusClassification[request.json["status_classification"].upper()]
-        state = State[request.json["state"].upper()]
+        json_body = await request.json()
+        path = json_body.get("path")
+        status = json_body.get("status")
+        status_classification = StatusClassification[json_body.get("status_classification").upper()]
+        state = State[json_body.get("state").upper()]
 
         statusLog.upsert_document(document_path=path,
                                   status=status,
@@ -303,10 +306,12 @@ async def get_warning_banner():
     return response
 
 @app.post("/getcitation")
-async def get_citation():
+async def get_citation(request: Request):
     """Get the citation for a given file"""
-    citation = urllib.parse.unquote(request.json["citation"])
     try:
+        json_body = await request.json()
+        citation = urllib.parse.unquote(json_body.get("citation"))
+    
         blob = blob_container.get_blob_client(citation).download_blob()
         decoded_text = blob.readall().decode()
         results = json.loads(decoded_text)
