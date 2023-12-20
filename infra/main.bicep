@@ -249,7 +249,7 @@ module backend 'core/host/appservice.bicep' = {
     applicationInsightsName: logging.outputs.applicationInsightsName
     logAnalyticsWorkspaceName: logging.outputs.logAnalyticsName
     isGovCloudDeployment: isGovCloudDeployment
-    appCommandLine: 'gunicorn --workers 4 --worker-class uvicorn.workers.UvicornWorker app:app --timeout 600'
+    appCommandLine: 'gunicorn --workers 10 --worker-class uvicorn.workers.UvicornWorker app:app --timeout 600'
     appSettings: {
       AZURE_BLOB_STORAGE_ACCOUNT: storage.outputs.name
       AZURE_BLOB_STORAGE_ENDPOINT: storage.outputs.primaryEndpoints.blob

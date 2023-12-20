@@ -144,7 +144,7 @@ class ChatReadRetrieveReadApproach(Approach):
         
 
     # def run(self, history: list[dict], overrides: dict) -> any:
-    def run(self, history: Sequence[dict[str, str]], overrides: dict[str, Any]) -> Any:
+    async def run(self, history: Sequence[dict[str, str]], overrides: dict[str, Any]) -> Any:
 
         log = logging.getLogger("uvicorn")
         log.setLevel('DEBUG')
@@ -248,7 +248,7 @@ class ChatReadRetrieveReadApproach(Approach):
                 filter=search_filter
             )
         else:
-            r = self.search_client.search(
+            r = await self.search_client.search(
                 generated_query, top=top,vector_queries =[vector], filter=search_filter
             )
 
@@ -381,7 +381,7 @@ class ChatReadRetrieveReadApproach(Approach):
             #print("Few Shot Tokens: ", self.num_tokens_from_string(self.response_prompt_few_shots[0]['content'], "cl100k_base"))
             #print("Message Tokens: ", self.num_tokens_from_string(message_string, "cl100k_base"))
 
-            chat_completion = openai.ChatCompletion.create(
+            chat_completion = await openai.ChatCompletion.create(
             deployment_id=self.chatgpt_deployment,
             model=self.model_name,
             messages=messages,

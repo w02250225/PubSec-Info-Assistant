@@ -202,7 +202,7 @@ async def chat(request: Request):
         impl = chat_approaches.get(approach)
         if not impl:
             return {"error": "unknown approach"}, 400
-        r = impl.run(json_body.get("history", []), json_body.get("overrides", {}))
+        r = await impl.run(json_body.get("history", []), json_body.get("overrides", {}))
 
         end_time_req = time.time()
         elapsed_time_req = end_time_req - start_time_req
