@@ -182,7 +182,7 @@ chat_approaches = {
 # Create API
 app = FastAPI(
     title="IA Web API",
-    description="A simple API",
+    description="A Python API to serve as Backend For the Information Assistant Web App",
     version="0.1.0",
     docs_url="/docs",
 )
@@ -194,7 +194,17 @@ async def root():
 
 @app.post("/chat")
 async def chat(request: Request):
-    """Chat with the bot using a given approach"""
+    """Chat with the bot using a given approach
+
+    Args:
+        request (Request): The incoming request object
+
+    Returns:
+        dict: The response containing the chat results
+
+    Raises:
+        dict: The error response if an exception occurs during the chat
+    """
     start_time_req = time.time()
     json_body = await request.json()
     approach = json_body.get("approach")
@@ -214,16 +224,22 @@ async def chat(request: Request):
                 "thoughts": r["thoughts"],
                 "citation_lookup": r["citation_lookup"],
             }
-        
 
     except Exception as ex:
         log.error(f"Error in chat:: {ex}")
         traceback.print_exc()
-        return {"error": str(ex)}, 500
+        raise HTTPException(status_code=500, detail=str(ex))
 
 @app.get("/getblobclienturl")
 async def get_blob_client_url():
-    """Get a URL for a file in Blob Storage with SAS token"""
+    """Get a URL for a file in Blob Storage with SAS token.
+
+    This function generates a Shared Access Signature (SAS) token for accessing a file in Blob Storage.
+    The generated URL includes the SAS token as a query parameter.
+
+    Returns:
+        dict: A dictionary containing the URL with the SAS token.
+    """
     sas_token = generate_account_sas(
         ENV["AZURE_BLOB_STORAGE_ACCOUNT"],
         ENV["AZURE_BLOB_STORAGE_KEY"],
@@ -244,7 +260,15 @@ async def get_blob_client_url():
 
 @app.post("/getalluploadstatus")
 async def get_all_upload_status(request: Request):
-    """Get the status of all file uploads in the last N hours"""
+    """
+    Get the status of all file uploads in the last N hours.
+
+    Parameters:
+    - request: The HTTP request object.
+
+    Returns:
+    - results: The status of all file uploads in the specified timeframe.
+    """
     json_body = await request.json()
     timeframe = json_body.get("timeframe")
     state = json_body.get("state")
@@ -252,12 +276,20 @@ async def get_all_upload_status(request: Request):
         results = statusLog.read_files_status_by_timeframe(timeframe, State[state])
     except Exception as ex:
         log.exception("Exception in /getalluploadstatus")
-        return {"error": str(ex)}, 500
+        raise HTTPException(status_code=500, detail=str(ex))
     return results
 
 @app.post("/logstatus")
 async def logstatus(request: Request):
-    """Log the status of a file upload to CosmosDB"""
+    """
+    Log the status of a file upload to CosmosDB.
+
+    Parameters:
+    - request: Request object containing the HTTP request data.
+
+    Returns:
+    - A dictionary with the status code 200 if successful, or an error message with status code 500 if an exception occurs.
+    """
     try:
         json_body = await request.json()
         path = json_body.get("path")
@@ -274,26 +306,42 @@ async def logstatus(request: Request):
         
     except Exception as ex:
         log.exception("Exception in /logstatus")
-        return {"error": str(ex)}, 500
-    return {"status": 200}
+        raise HTTPException(status_code=500, detail=str(ex))
+    raise HTTPException(status_code=200, detail="Success")
 
 # Return AZURE_OPENAI_CHATGPT_DEPLOYMENT
 @app.get("/getInfoData")
 async def get_info_data():
-    """Get the info data for the app"""
+    """
+    Get the info data for the app.
+
+    Returns:
+        dict: A dictionary containing various information data for the app.
+            - "AZURE_OPENAI_CHATGPT_DEPLOYMENT": The deployment information for Azure OpenAI ChatGPT.
+            - "AZURE_OPENAI_MODEL_NAME": The name of the Azure OpenAI model.
+            - "AZURE_OPENAI_MODEL_VERSION": The version of the Azure OpenAI model.
+            - "AZURE_OPENAI_SERVICE": The Azure OpenAI service information.
+            - "AZURE_SEARCH_SERVICE": The Azure search service information.
+            - "AZURE_SEARCH_INDEX": The Azure search index information.
+            - "TARGET_LANGUAGE": The target language for query terms.
+            - "USE_AZURE_OPENAI_EMBEDDINGS": Flag indicating whether to use Azure OpenAI embeddings.
+            - "EMBEDDINGS_DEPLOYMENT": The deployment information for embeddings.
+            - "EMBEDDINGS_MODEL_NAME": The name of the embeddings model.
+            - "EMBEDDINGS_MODEL_VERSION": The version of the embeddings model.
+    """
     response = {
-            "AZURE_OPENAI_CHATGPT_DEPLOYMENT": ENV["AZURE_OPENAI_CHATGPT_DEPLOYMENT"],
-            "AZURE_OPENAI_MODEL_NAME": f"{model_name}",
-            "AZURE_OPENAI_MODEL_VERSION": f"{model_version}",
-            "AZURE_OPENAI_SERVICE": ENV["AZURE_OPENAI_SERVICE"],
-            "AZURE_SEARCH_SERVICE": ENV["AZURE_SEARCH_SERVICE"],
-            "AZURE_SEARCH_INDEX": ENV["AZURE_SEARCH_INDEX"],
-            "TARGET_LANGUAGE": ENV["QUERY_TERM_LANGUAGE"],
-            "USE_AZURE_OPENAI_EMBEDDINGS": ENV["USE_AZURE_OPENAI_EMBEDDINGS"],
-            "EMBEDDINGS_DEPLOYMENT": ENV["EMBEDDING_DEPLOYMENT_NAME"],
-            "EMBEDDINGS_MODEL_NAME": f"{embedding_model_name}",
-            "EMBEDDINGS_MODEL_VERSION": f"{embedding_model_version}",
-        }
+        "AZURE_OPENAI_CHATGPT_DEPLOYMENT": ENV["AZURE_OPENAI_CHATGPT_DEPLOYMENT"],
+        "AZURE_OPENAI_MODEL_NAME": f"{model_name}",
+        "AZURE_OPENAI_MODEL_VERSION": f"{model_version}",
+        "AZURE_OPENAI_SERVICE": ENV["AZURE_OPENAI_SERVICE"],
+        "AZURE_SEARCH_SERVICE": ENV["AZURE_SEARCH_SERVICE"],
+        "AZURE_SEARCH_INDEX": ENV["AZURE_SEARCH_INDEX"],
+        "TARGET_LANGUAGE": ENV["QUERY_TERM_LANGUAGE"],
+        "USE_AZURE_OPENAI_EMBEDDINGS": ENV["USE_AZURE_OPENAI_EMBEDDINGS"],
+        "EMBEDDINGS_DEPLOYMENT": ENV["EMBEDDING_DEPLOYMENT_NAME"],
+        "EMBEDDINGS_MODEL_NAME": f"{embedding_model_name}",
+        "EMBEDDINGS_MODEL_VERSION": f"{embedding_model_version}",
+    }
     return response
 
 # Return AZURE_OPENAI_CHATGPT_DEPLOYMENT
@@ -307,7 +355,15 @@ async def get_warning_banner():
 
 @app.post("/getcitation")
 async def get_citation(request: Request):
-    """Get the citation for a given file"""
+    """
+    Get the citation for a given file
+
+    Parameters:
+        request (Request): The HTTP request object
+
+    Returns:
+        dict: The citation results in JSON format
+    """
     try:
         json_body = await request.json()
         citation = urllib.parse.unquote(json_body.get("citation"))
@@ -317,13 +373,17 @@ async def get_citation(request: Request):
         results = json.loads(decoded_text)
     except Exception as ex:
         log.exception("Exception in /getalluploadstatus")
-        return {"error": str(ex)}, 500
-    return results.json
+        raise HTTPException(status_code=500, detail=str(ex))
+    return results
 
 # Return APPLICATION_TITLE
 @app.get("/getApplicationTitle")
 async def get_application_title():
-    """Get the application title text"""
+    """Get the application title text
+    
+    Returns:
+        dict: A dictionary containing the application title.
+    """
     response = {
             "APPLICATION_TITLE": ENV["APPLICATION_TITLE"]
         }
@@ -331,12 +391,17 @@ async def get_application_title():
 
 @app.get("/getalltags")
 async def get_all_tags():
-    """Get the status of all tags in the system"""
+    """
+    Get the status of all tags in the system
+
+    Returns:
+        dict: A dictionary containing the status of all tags
+    """
     try:
         results = tagsHelper.get_all_tags()
     except Exception as ex:
         log.exception("Exception in /getalltags")
-        return {"error": str(ex)}, 500
+        raise HTTPException(status_code=500, detail=str(ex))
     return results
 
 app.mount("/", StaticFiles(directory="static"), name="static")
