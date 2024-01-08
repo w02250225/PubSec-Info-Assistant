@@ -163,8 +163,8 @@ module funcServicePlan 'core/host/funcserviceplan.bicep' = {
     location: location
     tags: tags
     sku: {
-      name: 'S3'
-      capacity: 5
+      name: 'S2'
+      capacity: 2
     }
     kind: 'linux'
   }
@@ -183,11 +183,10 @@ module enrichmentAppServicePlan 'core/host/enrichmentappserviceplan.bicep' = {
       tier: 'PremiumV3'
       size: 'P1v3'
       family: 'Pv3'
-      capacity: 3
+      capacity: 1
     }
     kind: 'linux'
     reserved: true
-    storageAccountId: '/subscriptions/${subscriptionId}/resourceGroups/${rg.name}/providers/Microsoft.Storage/storageAccounts/${storage.outputs.name}/services/queue/queues/${embeddingsQueue}'
   }
 }
 
@@ -208,11 +207,11 @@ module enrichmentApp 'core/host/enrichmentappservice.bicep' = {
     applicationInsightsName: logging.outputs.applicationInsightsName
     healthCheckPath: '/health'
     appCommandLine: 'gunicorn -w 4 -k uvicorn.workers.UvicornWorker app:app'
+    keyVaultName: kvModule.outputs.keyVaultName
     appSettings: {
-      AZURE_BLOB_STORAGE_KEY: storage.outputs.key
       EMBEDDINGS_QUEUE: embeddingsQueue
       LOG_LEVEL: 'DEBUG'
-      DEQUEUE_MESSAGE_BATCH_SIZE: 1
+      DEQUEUE_MESSAGE_BATCH_SIZE: 3
       AZURE_BLOB_STORAGE_ACCOUNT: storage.outputs.name
       AZURE_BLOB_STORAGE_CONTAINER: containerName
       AZURE_BLOB_STORAGE_UPLOAD_CONTAINER: uploadContainerName
@@ -224,19 +223,18 @@ module enrichmentApp 'core/host/enrichmentappservice.bicep' = {
       MAX_EMBEDDING_REQUEUE_COUNT: 5
       EMBEDDING_REQUEUE_BACKOFF: 60
       AZURE_OPENAI_SERVICE: useExistingAOAIService ? azureOpenAIServiceName : cognitiveServices.outputs.name
-      AZURE_OPENAI_SERVICE_KEY: useExistingAOAIService ? azureOpenAIServiceKey : cognitiveServices.outputs.key
       AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME: azureOpenAIEmbeddingDeploymentName
       AZURE_SEARCH_INDEX: searchIndexName
-      AZURE_SEARCH_SERVICE_KEY: searchServices.outputs.searchServiceKey
       AZURE_SEARCH_SERVICE: searchServices.outputs.name
-      BLOB_CONNECTION_STRING: storage.outputs.connectionString
-      AZURE_STORAGE_CONNECTION_STRING: storage.outputs.connectionString
       TARGET_EMBEDDINGS_MODEL: useAzureOpenAIEmbeddings ? '${abbrs.openAIEmbeddingModel}${azureOpenAIEmbeddingDeploymentName}' : sentenceTransformersModelName
       EMBEDDING_VECTOR_SIZE: useAzureOpenAIEmbeddings ? 1536 : sentenceTransformerEmbeddingVectorSize
       AZURE_SEARCH_SERVICE_ENDPOINT: searchServices.outputs.endpoint
       WEBSITES_CONTAINER_START_TIME_LIMIT: 600
     }
   }
+  dependsOn: [
+    kvModule
+  ]
 }
 
 // The application frontend
@@ -256,18 +254,17 @@ module backend 'core/host/appservice.bicep' = {
     applicationInsightsName: logging.outputs.applicationInsightsName
     logAnalyticsWorkspaceName: logging.outputs.logAnalyticsName
     isGovCloudDeployment: isGovCloudDeployment
+    keyVaultName: kvModule.outputs.keyVaultName
     appSettings: {
       AZURE_BLOB_STORAGE_ACCOUNT: storage.outputs.name
       AZURE_BLOB_STORAGE_ENDPOINT: storage.outputs.primaryEndpoints.blob
       AZURE_BLOB_STORAGE_CONTAINER: containerName
       AZURE_BLOB_STORAGE_UPLOAD_CONTAINER: uploadContainerName
-      AZURE_BLOB_STORAGE_KEY: storage.outputs.key
       AZURE_OPENAI_SERVICE: useExistingAOAIService ? azureOpenAIServiceName : cognitiveServices.outputs.name
       AZURE_OPENAI_RESOURCE_GROUP: useExistingAOAIService ? azureOpenAIResourceGroup : rg.name
       AZURE_SEARCH_INDEX: searchIndexName
       AZURE_SEARCH_SERVICE: searchServices.outputs.name
       AZURE_SEARCH_SERVICE_ENDPOINT: searchServices.outputs.endpoint
-      AZURE_SEARCH_SERVICE_KEY: searchServices.outputs.searchServiceKey
       AZURE_OPENAI_CHATGPT_DEPLOYMENT: !empty(chatGptDeploymentName) ? chatGptDeploymentName : !empty(chatGptModelName) ? chatGptModelName : 'gpt-35-turbo-16k'
       AZURE_OPENAI_CHATGPT_MODEL_NAME: chatGptModelName
       AZURE_OPENAI_CHATGPT_MODEL_VERSION: chatGptModelVersion
@@ -275,7 +272,6 @@ module backend 'core/host/appservice.bicep' = {
       EMBEDDING_DEPLOYMENT_NAME: useAzureOpenAIEmbeddings ? azureOpenAIEmbeddingDeploymentName : sentenceTransformersModelName
       AZURE_OPENAI_EMBEDDINGS_MODEL_NAME: azureOpenAIEmbeddingsModelName
       AZURE_OPENAI_EMBEDDINGS_MODEL_VERSION: azureOpenAIEmbeddingsModelVersion
-      AZURE_OPENAI_SERVICE_KEY: useExistingAOAIService ? azureOpenAIServiceKey : cognitiveServices.outputs.key
       APPINSIGHTS_INSTRUMENTATIONKEY: logging.outputs.applicationInsightsInstrumentationKey
       COSMOSDB_URL: cosmoslogdb.outputs.CosmosDBEndpointURL
       COSMOSDB_KEY: cosmoslogdb.outputs.CosmosDBKey
@@ -297,10 +293,11 @@ module backend 'core/host/appservice.bicep' = {
       REDIRECT_URI: 'https://infoasst-web-kr839.azurewebsites.net/authorized'
       APPLICATION_TITLE: applicationtitle
     }
-
-
     aadClientId: aadWebClientId
   }
+  dependsOn: [
+    kvModule
+  ]
 }
 
 module cognitiveServices 'core/ai/cognitiveservices.bicep' = if (!useExistingAOAIService) {
@@ -355,6 +352,7 @@ module formrecognizer 'core/ai/formrecognizer.bicep' = {
       name: formRecognizerSkuName
     }
     isGovCloudDeployment: isGovCloudDeployment
+    keyVaultName: kvModule.outputs.keyVaultName
   }
 }
 
@@ -375,6 +373,7 @@ module searchServices 'core/search/search-services.bicep' = {
   name: 'search-services'
   params: {
     name: !empty(searchServicesName) ? searchServicesName : '${prefix}-${abbrs.searchSearchServices}${randomString}'
+    keyVaultName: kvModule.outputs.keyVaultName
     location: location
     tags: tags
     authOptions: {
@@ -401,6 +400,8 @@ module storage 'core/storage/storage-account.bicep' = {
     name: !empty(storageAccountName) ? storageAccountName : '${prefix}${abbrs.storageStorageAccounts}${randomString}'
     location: location
     tags: tags
+    keyVaultName: kvModule.outputs.keyVaultName
+    storeSecretsInKeyVault: true
     publicNetworkAccess: 'Enabled'
     sku: {
       name: 'Standard_LRS'
@@ -520,6 +521,8 @@ module storageMedia 'core/storage/storage-account.bicep' = {
   scope: rg
   params: {
     name: !empty(storageAccountName) ? storageAccountName : '${prefix}${abbrs.storageStorageAccounts}media${randomString}'
+    keyVaultName: kvModule.outputs.keyVaultName
+    storeSecretsInKeyVault: false //Not needed for media service
     location: location
     tags: tags
     publicNetworkAccess: 'Enabled'
@@ -531,6 +534,9 @@ module storageMedia 'core/storage/storage-account.bicep' = {
       days: 7
     }
   }
+  dependsOn: [
+    kvModule
+  ]
 }
 
 module cosmoslogdb 'core/db/cosmosdb.bicep' = {
@@ -545,6 +551,9 @@ module cosmoslogdb 'core/db/cosmosdb.bicep' = {
     partitionKeyPath: ['/file_path']
     partitionKeyVersion: 1
   }
+  dependsOn: [
+    kvModule
+  ]
 }
 
 module cosmosrequestsdb 'core/db/cosmosdb.bicep' =  {
@@ -573,12 +582,11 @@ module functions 'core/function/function.bicep' = {
     tags: tags
     appServicePlanId: funcServicePlan.outputs.id
     runtime: 'python'
+    keyVaultName: kvModule.outputs.keyVaultName
     appInsightsConnectionString: logging.outputs.applicationInsightsConnectionString
     appInsightsInstrumentationKey: logging.outputs.applicationInsightsInstrumentationKey
-    blobStorageAccountKey: storage.outputs.key
     blobStorageAccountName: storage.outputs.name
     blobStorageAccountEndpoint: storage.outputs.primaryEndpoints.blob
-    blobStorageAccountConnectionString: storage.outputs.connectionString
     blobStorageAccountOutputContainerName: containerName
     blobStorageAccountUploadContainerName: uploadContainerName
     blobStorageAccountLogContainerName: functionLogsContainerName
@@ -617,7 +625,6 @@ module functions 'core/function/function.bicep' = {
     EMBEDDINGS_QUEUE: embeddingsQueue
     azureSearchIndex: searchIndexName
     azureSearchServiceEndpoint: searchServices.outputs.endpoint
-    azureSearchServiceKey: searchServices.outputs.searchServiceKey
 
   }
   dependsOn: [

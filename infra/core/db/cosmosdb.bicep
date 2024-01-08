@@ -1,6 +1,7 @@
 param name string
 param location string = resourceGroup().location
 param tags object = {}
+param keyVaultName string = ''
 
 
 @description('The default consistency level of the Cosmos DB account.')
@@ -124,6 +125,18 @@ resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/container
   }
 }
 
+
+resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = if (!(empty(keyVaultName))) {
+  name: keyVaultName
+}
+
+resource cosmosdbKeySecret 'Microsoft.KeyVault/vaults/secrets@2019-09-01' = {
+  parent: keyVault
+  name: 'COSMOSDB-KEY'
+  properties: {
+    value: cosmosDBAccount.listKeys().primaryMasterKey 
+  }
+}
 
 output CosmosDBEndpointURL string = cosmosDBAccount.properties.documentEndpoint
 #disable-next-line outputs-should-not-contain-secrets

@@ -4,6 +4,8 @@
 import json
 import logging
 import os
+import threading
+import time
 import re
 from datetime import datetime
 import time
@@ -316,9 +318,17 @@ def get_tags(blob_service_client, blob_path):
 
     return tags_list
 
-        
 @app.on_event("startup") 
-@repeat_every(seconds=5, logger=log, raise_exceptions=True)
+def startup_event():
+    poll_thread = threading.Thread(target=poll_queue_thread)
+    poll_thread.daemon = True
+    poll_thread.start()
+
+def poll_queue_thread():
+    while True:
+        poll_queue()
+        time.sleep(5)     
+        
 def poll_queue() -> None:
     """Polls the queue for messages and embeds them"""
 
@@ -334,7 +344,12 @@ def poll_queue() -> None:
     response = queue_client.receive_messages(max_messages=int(ENV["DEQUEUE_MESSAGE_BATCH_SIZE"]))
     messages = [x for x in response]
 
-    target_embeddings_model = re.sub(r'[^a-zA-Z0-9_\-.]', '_', ENV["TARGET_EMBEDDING_MODEL"])
+    if not messages:
+        log.debug("No messages to process. Waiting for a couple of minutes...")
+        time.sleep(120)  # Sleep for 2 minutes
+        return
+
+    target_embeddings_model = re.sub(r'[^a-zA-Z0-9_\-.]', '_', ENV["TARGET_EMBEDDINGS_MODEL"])
 
     # Remove from queue to prevent duplicate processing from any additional instances
     for message in messages:

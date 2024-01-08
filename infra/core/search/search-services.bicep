@@ -16,6 +16,7 @@ param isGovCloudDeployment bool
 param cogServicesSku object = {
   name: 'S0'
 }
+param keyVaultName string = ''
 
 resource search 'Microsoft.Search/searchServices@2021-04-01-preview' = {
   name: name
