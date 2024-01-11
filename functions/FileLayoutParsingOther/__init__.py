@@ -132,11 +132,11 @@ def main(msg: func.QueueMessage) -> None:
         blob_name =  message_json['blob_name']
         blob_uri =  message_json['blob_uri']
         statusLog.upsert_document(blob_name, f'{function_name} - Starting to parse the non-PDF file', StatusClassification.INFO, State.PROCESSING)
-        statusLog.upsert_document(blob_name, f'{function_name} - Message received from non-pdf submit queue', StatusClassification.DEBUG)
+        statusLog.upsert_document(blob_name, f'{function_name} - Message received from non-pdf submit queue', StatusClassification.DEBUG, State.PROCESSING)
 
         # construct blob url
         blob_path_plus_sas = utilities.get_blob_and_sas(blob_name)
-        statusLog.upsert_document(blob_name, f'{function_name} - SAS token generated to access the file', StatusClassification.DEBUG)
+        statusLog.upsert_document(blob_name, f'{function_name} - SAS token generated to access the file', StatusClassification.DEBUG, State.PROCESSING)
 
         file_name, file_extension, file_directory  = utilities.get_filename_and_extension(blob_name)
 
@@ -148,7 +148,7 @@ def main(msg: func.QueueMessage) -> None:
         metdata_text = ''
         for metadata_value in metadata:
             metdata_text += metadata_value + '\n'
-        statusLog.upsert_document(blob_name, f'{function_name} - partitioning complete', StatusClassification.DEBUG)
+        statusLog.upsert_document(blob_name, f'{function_name} - partitioning complete', StatusClassification.DEBUG, State.PROCESSING)
 
         title = ''
         # Capture the file title
@@ -165,7 +165,7 @@ def main(msg: func.QueueMessage) -> None:
         # Chunk the file
         from unstructured.chunking.title import chunk_by_title
         chunks = chunk_by_title(elements, multipage_sections=True, new_after_n_chars=NEW_AFTER_N_CHARS, combine_text_under_n_chars=COMBINE_UNDER_N_CHARS, max_characters=MAX_CHARACTERS)
-        statusLog.upsert_document(blob_name, f'{function_name} - chunking complete. {str(len(chunks))} chunks created', StatusClassification.DEBUG)
+        statusLog.upsert_document(blob_name, f'{function_name} - chunking complete. {str(len(chunks))} chunks created', StatusClassification.DEBUG, State.PROCESSING)
 
         subtitle_name = ''
         section_name = ''
@@ -190,7 +190,7 @@ def main(msg: func.QueueMessage) -> None:
                                 MediaType.TEXT
                                 )
         
-        statusLog.upsert_document(blob_name, f'{function_name} - chunking stored.', StatusClassification.DEBUG)   
+        statusLog.upsert_document(blob_name, f'{function_name} - chunking stored.', StatusClassification.DEBUG, State.PROCESSING)
         
         # submit message to the text enrichment queue to continue processing                
         queue_client = QueueClient.from_connection_string(azure_blob_connection_string, queue_name=text_enrichment_queue, message_encode_policy=TextBase64EncodePolicy())

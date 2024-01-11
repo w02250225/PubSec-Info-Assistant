@@ -41,15 +41,15 @@ def main(myblob: func.InputStream):
         # Extract tags
         if tags is not None:
             if isinstance(tags, str):
-                tags_list = [unquote(tags)]
-            else:
                 tags_list = [unquote(tag) for tag in tags.split(",")]
+            else:
+                tags_list = [unquote(tags)]
         else:
             tags_list = []
 
         statusLog = StatusLog(cosmosdb_url, cosmosdb_key, cosmosdb_log_database_name, cosmosdb_log_container_name)
         statusLog.upsert_document(myblob.name, 'Pipeline triggered by Blob Upload', StatusClassification.INFO, State.PROCESSING, False, tags_list)
-        statusLog.upsert_document(myblob.name, f'{function_name} - FileUploadedFunc function started', StatusClassification.DEBUG)
+        statusLog.upsert_document(myblob.name, f'{function_name} - FileUploadedFunc function started', StatusClassification.DEBUG, State.PROCESSING)
 
         # Create message structure to send to queue
 

@@ -67,6 +67,7 @@ def main(msg: func.QueueMessage) -> None:
             blob_path,
             f"{FUNCTION_NAME} - Submitting to Form Recognizer",
             StatusClassification.INFO,
+            State.PROCESSING,
         )
 
         # construct blob url
@@ -75,6 +76,7 @@ def main(msg: func.QueueMessage) -> None:
             blob_path,
             f"{FUNCTION_NAME} - SAS token generated",
             StatusClassification.DEBUG,
+            State.PROCESSING,
         )
 
         # Construct and submmit the message to FR
@@ -100,6 +102,7 @@ def main(msg: func.QueueMessage) -> None:
                 blob_path,
                 f"{FUNCTION_NAME} - PDF submitted to FR successfully",
                 StatusClassification.DEBUG,
+                State.PROCESSING,
             )
             result_id = response.headers.get("apim-request-id")
             message_json["FR_resultId"] = result_id
@@ -134,6 +137,7 @@ def main(msg: func.QueueMessage) -> None:
                     blob_path,
                     f"{FUNCTION_NAME} - Throttled on PDF submission to FR, requeuing. Back off of {backoff} seconds",
                     StatusClassification.DEBUG,
+                    State.PROCESSING,
                 )
                 queue_client = QueueClient.from_connection_string(
                     azure_blob_connection_string,

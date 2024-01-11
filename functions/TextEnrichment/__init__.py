@@ -303,7 +303,8 @@ def requeue(response, message_json):
         statusLog.upsert_document(
             blob_path,
             f"{FUNCTION_NAME} - Error on language detection - {response.status_code} - {response.reason}",
-            StatusClassification.ERROR
+            StatusClassification.ERROR,
+            State.PROCESSING
         )     
         
 

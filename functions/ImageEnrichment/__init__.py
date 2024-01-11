@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from urllib.parse import unquote
 
 import azure.ai.vision as visionsdk
 import azure.functions as func
@@ -8,7 +9,6 @@ import requests
 from azure.storage.blob import BlobServiceClient
 from shared_code.status_log import State, StatusClassification, StatusLog
 from shared_code.utilities import Utilities, MediaType
-from shared_code.tags_helper import TagsHelper
 from azure.search.documents import SearchClient
 from azure.core.credentials import AzureKeyCredential
 from datetime import datetime
@@ -311,11 +311,12 @@ def main(msg: func.QueueMessage) -> None:
         blob_client = blob_service_client.get_blob_client(container=azure_blob_drop_storage_container, blob=path)
         blob_properties = blob_client.get_blob_properties()
         tags = blob_properties.metadata.get("tags")
+
         if tags is not None:
             if isinstance(tags, str):
-                tags_list = [tags]
+                tags_list = [unquote(tag) for tag in tags.split(",")]
             else:
-                tags_list = tags.split(",")
+                tags_list = [unquote(tags)]
         else:
             tags_list = []
 

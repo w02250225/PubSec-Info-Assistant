@@ -3,12 +3,16 @@
 
 """ Library of code for status logs reused across various calling features """
 import os
+import time
 from datetime import datetime, timedelta
 import base64
 from enum import Enum
 import logging
 from azure.cosmos import CosmosClient, PartitionKey, exceptions
 import traceback, sys
+
+os.environ['TZ'] = 'Australia/Brisbane'
+time.tzset()
 
 class State(Enum):
     """ Enum for state of a process """
@@ -130,8 +134,13 @@ class StatusLog:
 
         return items
 
-    def upsert_document(self, document_path, status, status_classification: StatusClassification,
-                        state=State.PROCESSING, fresh_start=False, tags_list=[]):
+    def upsert_document(self,
+                        document_path,
+                        status,
+                        status_classification: StatusClassification,
+                        state = State,
+                        fresh_start = False,
+                        tags_list=[]):
         """ Function to upsert a status item for a specified id """
         base_name = os.path.basename(document_path)
         document_id = self.encode_document_id(document_path)
@@ -158,7 +167,7 @@ class StatusLog:
                 json_document = self._log_document[document_id]
 
             # Check if we need to set tags
-            if tags_list is not None and len(tags_list) > 0:
+            if tags_list is not None and ("tags" not in json_document or not json_document["tags"]):
                 json_document["tags"] = tags_list
             
             # Check if there has been a state change, and therefore to update state
