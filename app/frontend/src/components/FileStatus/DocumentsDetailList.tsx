@@ -3,8 +3,12 @@
 
 import { useState } from "react";
 import { Link } from '@fluentui/react/lib/Link';
-import { DetailsList, DetailsListLayoutMode, SelectionMode, IColumn } from "@fluentui/react";
+import {
+    DetailsList, DetailsListLayoutMode, SelectionMode, IColumn, IconButton,
+    ITag, DialogFooter, Dialog, DialogType, DefaultButton, PrimaryButton
+} from "@fluentui/react";
 import { TooltipHost } from '@fluentui/react';
+import { TagPickerInline } from '../TagPicker'
 
 import styles from "./DocumentsDetailList.module.css";
 
@@ -13,7 +17,7 @@ export interface IDocument {
     name: string;
     file_path: string;
     folder_name: string;
-    tags: string;
+    tags: string[];
     value: string;
     iconName: string;
     fileType: string;
@@ -21,14 +25,66 @@ export interface IDocument {
     state_description: string;
     upload_timestamp: string;
     modified_timestamp: string;
+    can_edit: boolean;
 }
 
 interface Props {
     items: IDocument[];
     onFilesSorted: (items: IDocument[]) => void;
+    onFileDelete: (item: IDocument) => void;
+    onSaveTags: (item: IDocument) => void;
+    isAdmin: boolean;
+    isDeleting: boolean;
 }
 
-export const DocumentsDetailList = ({ items, onFilesSorted }: Props) => {
+export const DocumentsDetailList = ({ items, onFilesSorted, onFileDelete, onSaveTags, isAdmin, isDeleting }: Props) => {
+
+    const [isDeleteDialogVisible, setIsDeleteDialogVisible] = useState(false);
+    const [isEditTagsDialogVisible, setIsEditTagsDialogVisible] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<IDocument | null>(null);
+    const [itemToEdit, setItemToEdit] = useState<IDocument | null>(null);
+    const [editedTags, setEditedTags] = useState<ITag[]>([]);
+    const [canEditTags, setCanEditTags] = useState(false);
+
+    const openDeleteDialog = (item: IDocument) => {
+        setItemToDelete(item);
+        setIsDeleteDialogVisible(true);
+    };
+
+    const handleDeleteFile = async (item: IDocument) => {
+        try {
+            onFileDelete(item);
+        } catch (error) {
+            console.error("Error deleting file: ", error);
+        } finally {
+            // Close the dialog
+            setIsDeleteDialogVisible(false);
+        }
+    };
+
+    const openEditTagsDialog = (item: IDocument) => {
+        // Convert the tags from string[] to ITag[]
+        const tagsAsITags = item.tags.map((tag) => ({ key: tag, name: tag }));
+        setEditedTags(tagsAsITags);
+        setItemToEdit(item);
+        setCanEditTags(item.state === 'Complete' && item.can_edit);
+        setIsEditTagsDialogVisible(true);
+    };
+
+    const handleSaveTags = async (item: IDocument) => {
+        try {
+            // Convert the tags from ITag[] back to string[]
+            const newTags = editedTags.map(tag => tag.key as string);
+            if (item.tags != newTags) {
+                item.tags = newTags;
+                onSaveTags(item);
+            }
+        } catch (error) {
+            console.error("Error updating tags: ", error);
+        } finally {
+            setIsEditTagsDialogVisible(false);
+        }
+    };
 
     const onColumnClick = (ev: React.MouseEvent<HTMLElement>, column: IColumn): void => {
         const newColumns: IColumn[] = columns.slice();
@@ -63,21 +119,54 @@ export const DocumentsDetailList = ({ items, onFilesSorted }: Props) => {
     }
 
     function renderTagsColumn(item: IDocument): JSX.Element {
-        const tags = item.tags;
-    
-        if (tags.length > 20) { // Adjust the threshold as needed
+        const tagsString = item.tags.join(",") || '';
+
+        if (tagsString.length > 25) {
             // Display a truncated version of the tags with a tooltip for the full content
-            const truncatedTags = tags.substring(0, 20) + '...';
+            const truncatedTags = tagsString.substring(0, 20) + "...";
             return (
-                <TooltipHost content={tags}>
-                    <span>{truncatedTags}</span>
-                </TooltipHost>
+                <div>
+                    <IconButton
+                        className={styles.tagIcon}
+                        iconProps={{ iconName: 'Tag' }}
+                        title="View/Edit Tags"
+                        onClick={() => openEditTagsDialog(item)}
+                    />
+                    <TooltipHost content={tagsString}>
+                        <span>{truncatedTags}</span>
+                    </TooltipHost>
+                </div>
             );
         } else {
             // If the text is not too long, display it without truncation or tooltip
-            return <span>{tags}</span>;
+            return (
+                <div>
+                    <IconButton
+                        className={styles.tagIcon}
+                        iconProps={{ iconName: 'Tag' }}
+                        title="View/Edit Tags"
+                        onClick={() => openEditTagsDialog(item)}
+                    />
+                    <span>{tagsString}</span>
+                </div>
+            );
         }
-    }
+    };
+
+    function renderDeleteColumn(item: IDocument): JSX.Element {
+        const canDelete = item.can_edit && (item.state == "Complete" || item.state == "Error")
+
+        return (
+            <IconButton
+                className={styles.fileIconImg}
+                iconProps={{ iconName: 'Delete' }}
+                title="Delete File"
+                disabled={isDeleting || !canDelete}
+                onClick={() => openDeleteDialog(item)}
+                style={{ cursor: "pointer", marginLeft: "5px" }}
+            />
+        );
+    };
 
     const [columns, setColumns] = useState<IColumn[]>([
         {
@@ -208,6 +297,22 @@ export const DocumentsDetailList = ({ items, onFilesSorted }: Props) => {
                 return <span>{item.modified_timestamp}</span>;
             },
         },
+        ...(isAdmin
+            ? [
+                {
+                    key: 'columnDelete',
+                    name: 'Delete',
+                    fieldName: 'delete',
+                    className: styles.fileIconCell,
+                    iconClassName: styles.fileIconHeaderIcon,
+                    minWidth: 50,
+                    maxWidth: 50,
+                    isRowHeader: true,
+                    isResizable: true,
+                    ariaLabel: 'Delete',
+                    onRender: renderDeleteColumn,
+                },
+            ] : []),
     ]);
 
     return (
@@ -224,6 +329,64 @@ export const DocumentsDetailList = ({ items, onFilesSorted }: Props) => {
                 isHeaderVisible={true}
             />
             <span className={styles.footer}>{"(" + items.length as string + ") records."}</span>
+
+            <Dialog
+                hidden={!isDeleteDialogVisible}
+                onDismiss={() => setIsDeleteDialogVisible(false)}
+                dialogContentProps={{
+                    type: DialogType.normal,
+                    title: "Confirm Deletion",
+                    closeButtonAriaLabel: "Close",
+                    subText: `Are you sure you want to delete ${itemToDelete?.name}?`,
+                }}
+                modalProps={{
+                    isBlocking: true,
+                    styles: { main: { maxWidth: 450 } },
+                }}
+            >
+                <DialogFooter>
+                    <PrimaryButton
+                        onClick={() => itemToDelete && handleDeleteFile(itemToDelete)}
+                        text="Delete"
+                    />
+                    <DefaultButton
+                        onClick={() => setIsDeleteDialogVisible(false)}
+                        text="Cancel"
+                    />
+                </DialogFooter>
+            </Dialog>
+
+            <Dialog
+                hidden={!isEditTagsDialogVisible}
+                onDismiss={() => setIsEditTagsDialogVisible(false)}
+                dialogContentProps={{
+                    type: DialogType.normal,
+                    title: "Edit Tags",
+                    closeButtonAriaLabel: "Close",
+                }}
+                modalProps={{
+                    isBlocking: true,
+                    styles: { main: { maxWidth: 450 } },
+                }}
+            >
+                <TagPickerInline
+                    allowNewTags={true}
+                    preSelectedTags={editedTags}
+                    onSelectedTagsChange={(newTags) => setEditedTags(newTags)}
+                />
+                <DialogFooter>
+                    {canEditTags ? (
+                        <PrimaryButton
+                            onClick={() => itemToEdit && handleSaveTags(itemToEdit)}
+                            text="Save"
+                        />
+                    ) : null}
+                    <DefaultButton
+                        onClick={() => setIsEditTagsDialogVisible(false)}
+                        text="Close"
+                    />
+                </DialogFooter>
+            </Dialog>
         </div>
     );
 }

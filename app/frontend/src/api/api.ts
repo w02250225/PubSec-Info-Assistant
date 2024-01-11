@@ -3,7 +3,7 @@
 
 import {
     ChatAppRequest, BlobClientUrlResponse, AllFilesUploadStatus, GetInfoResponse, ActiveCitation, GetWarningBanner, ExportRequest,
-    StatusLogEntry, StatusLogResponse, ApplicationTitle, GetTagsResponse, GptDeployment, UserData, PromptTemplate, TermsOfUse
+    StatusLogEntry, StatusLogResponse, ApplicationTitle, GetTagsResponse, GptDeployment, UserData, PromptTemplate, TermsOfUse, FileUploadBasicStatus
 } from "./models";
 
 async function fetchWithSessionCheck(url: string, options: RequestInit) {
@@ -134,7 +134,8 @@ export async function logStatus(status_log_entry: StatusLogEntry): Promise<Statu
             "path": status_log_entry.path,
             "status": status_log_entry.status,
             "status_classification": status_log_entry.status_classification,
-            "state": status_log_entry.state
+            "state": status_log_entry.state,
+            "tags": status_log_entry.tags
         })
     });
 
@@ -338,6 +339,31 @@ export async function acceptTermsOfUse(tou_version: string): Promise<Response> {
         },
         body: JSON.stringify({
             "tou_version": tou_version
+        })
+    });
+}
+
+export async function deleteFile(file_path: string): Promise<Response> {
+    return await fetchWithSessionCheck(`/deleteFile`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            "file_path": file_path
+        })
+    });
+}
+
+export async function updateFileTags(file_path: string, newTags: string[]): Promise<Response> {
+    return await fetchWithSessionCheck(`/updateFileTags`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            "file_path": file_path,
+            "tags": newTags,
         })
     });
 }

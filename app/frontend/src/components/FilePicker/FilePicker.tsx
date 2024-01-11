@@ -30,11 +30,11 @@ const FilePicker = ({ folderPath, tags }: Props) => {
     filesArray = filesArray.map((file) => ({
       id: nanoid(),
       file
-  }));
+    }));
     setFiles(filesArray as any);
     setProgress(0);
     setUploadStarted(false);
-}, []);
+  }, []);
 
   // handle for removing files form the files list view
   const handleClearFile = useCallback((id: any) => {
@@ -48,7 +48,7 @@ const FilePicker = ({ folderPath, tags }: Props) => {
   const handleUpload = useCallback(async () => {
     try {
       const data = new FormData();
-      console.log("files", files);
+      // console.log("files", files);
       setUploadStarted(true);
 
       // create an instance of the BlobServiceClient
@@ -69,7 +69,7 @@ const FilePicker = ({ folderPath, tags }: Props) => {
         };
 
         if (tagList.length > 0) {
-          options.metadata = { tags: tagList.map(encodeURIComponent).join(",") };
+          options.metadata = { tags: tagList.join(',') };
         }
 
         // upload file
@@ -79,7 +79,8 @@ const FilePicker = ({ folderPath, tags }: Props) => {
           path: "upload/" + filePath,
           status: "File uploaded from browser to Azure Blob Storage",
           status_classification: StatusLogClassification.Info,
-          state: StatusLogState.Uploaded
+          state: StatusLogState.Uploaded,
+          tags: tags
         }
         await logStatus(logEntry);
 

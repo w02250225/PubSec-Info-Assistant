@@ -206,6 +206,7 @@ export type StatusLogEntry = {
     status: string;
     status_classification: StatusLogClassification;
     state: StatusLogState;
+    tags: string[];
 }
 
 export type StatusLogResponse = {

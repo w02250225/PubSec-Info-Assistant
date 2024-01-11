@@ -31,6 +31,8 @@ from azure.storage.blob import (
     generate_account_sas,
     generate_blob_sas,
 )
+from azure.storage.queue.aio import QueueClient
+from azure.storage.queue import TextBase64EncodePolicy
 from openai import APIError, AsyncAzureOpenAI, AsyncOpenAI
 # from opencensus.ext.azure.log_exporter import AzureLogHandler
 from opentelemetry.instrumentation.aiohttp_client import AioHttpClientInstrumentor
@@ -64,7 +66,8 @@ AZURE_BLOB_WEBSITE_CONTAINER = os.environ.get("AZURE_BLOB_WEBSITE_CONTAINER") or
 AZURE_SEARCH_SERVICE = os.environ.get("AZURE_SEARCH_SERVICE") or "gptkb"
 AZURE_SEARCH_SERVICE_ENDPOINT = os.environ.get("AZURE_SEARCH_SERVICE_ENDPOINT")
 AZURE_SEARCH_SERVICE_KEY = os.environ.get("AZURE_SEARCH_SERVICE_KEY")
-AZURE_SEARCH_INDEX = os.environ.get("AZURE_SEARCH_INDEX") or "gptkbindex"
+AZURE_SEARCH_INDEX = os.environ.get("AZURE_SEARCH_INDEX") or "vector-index"
+SEARCH_INDEX_UPDATE_QUEUE = os.environ["SEARCH_INDEX_UPDATE_QUEUE"]
 
 OPENAI_HOST = os.environ.get("OPENAI_HOST") or "azure"
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY") or "NA"
@@ -134,7 +137,9 @@ MSAL_CLIENT = None
 OPENAI_CLIENT = None
 SEARCH_CLIENT = None
 BLOB_CLIENT = None
-BLOB_CONTAINER = None
+QUEUE_CLIENT = None
+BLOB_CONTAINER_CONTENT = None
+BLOB_CONTAINER_UPLOAD = None
 EXPORT_CONTAINER = None
 
 def create_msal_client():
@@ -163,17 +168,26 @@ async def create_openai_client():
 
 async def create_blob_client():
     return BlobServiceClient(
-    account_url=f"https://{AZURE_BLOB_STORAGE_ACCOUNT}.blob.core.windows.net",
-    credential=AZURE_BLOB_STORAGE_KEY,
+    account_url = f"https://{AZURE_BLOB_STORAGE_ACCOUNT}.blob.core.windows.net",
+    credential = AZURE_BLOB_STORAGE_KEY,
 )
 
 
 async def create_search_client():
     return SearchClient(
-    endpoint=f"https://{AZURE_SEARCH_SERVICE}.search.windows.net",
-    index_name=AZURE_SEARCH_INDEX,
-    credential=azure_search_key_credential,
+    endpoint = f"https://{AZURE_SEARCH_SERVICE}.search.windows.net",
+    index_name = AZURE_SEARCH_INDEX,
+    credential = azure_search_key_credential,
 )
+
+
+async def create_queue_client():
+    return QueueClient.from_connection_string(
+        conn_str = f"DefaultEndpointsProtocol=https;AccountName={AZURE_BLOB_STORAGE_ACCOUNT};AccountKey={AZURE_BLOB_STORAGE_KEY};EndpointSuffix=core.windows.net",
+        queue_name = SEARCH_INDEX_UPDATE_QUEUE,
+        message_encode_policy = TextBase64EncodePolicy()
+    )
+    
 
 EMBEDDING_MODEL_NAME = AZURE_OPENAI_EMBEDDINGS_MODEL_NAME
 EMBEDDING_MODEL_VERSION = AZURE_OPENAI_EMBEDDINGS_MODEL_VERSION
@@ -511,7 +525,7 @@ async def get_all_upload_status():
     user_id = session["user_data"].get("userPrincipalName", "Unknown User")
     is_admin = session["user_data"].get("is_admin", False)
     try:
-        results = await current_app.status_log.read_files_status_by_timeframe(user_id, is_admin)
+        results = await current_app.status_log.read_all_files_status(user_id, is_admin)
     except Exception as ex:
         logging.exception("Exception in /getAllUploadStatus")
         return jsonify({"error": str(ex)}), 500
@@ -525,6 +539,7 @@ async def log_status():
     try:
         path = request_data["path"]
         status = request_data["status"]
+        tags = request_data["tags"]
         status_classification = StatusClassification[request_data["status_classification"].upper()]
         state = State[request_data["state"].upper()]
 
@@ -533,6 +548,7 @@ async def log_status():
                             status = status,
                             status_classification = status_classification,
                             state = state,
+                            tags_list = tags,
                             fresh_start = True)
         
         await current_app.status_log.save_document(document_path=path)
@@ -605,7 +621,7 @@ async def get_citation():
     request_data = await request.get_json()
     citation = urllib.parse.unquote(request_data["citation"])
     try:
-        blob = BLOB_CONTAINER.get_blob_client(citation)
+        blob = BLOB_CONTAINER_CONTENT.get_blob_client(citation)
         blob_data = await blob.download_blob()
         decoded_text = await blob_data.readall()
         results = json.loads(decoded_text.decode())
@@ -763,6 +779,86 @@ async def terms():
         return jsonify({"error": str(ex)}), 500
     
 
+@bp.route('/deleteFile', methods=['POST'])
+async def delete_file():
+    try:
+        request_data = await request.json
+        user_id = session["user_data"].get("userPrincipalName", "Unknown User")
+        is_admin = session["user_data"].get("is_admin", False)
+        file_path = request_data["file_path"]
+        file_path_parts = file_path.split('/')
+        folder_name = file_path_parts[1] if len(file_path_parts) > 2 else None
+
+        if not is_admin and folder_name != user_id:
+            return jsonify({'error': 'Only Admin users can edit this file'}), 400
+        
+        await current_app.status_log.upsert_document(
+                            document_path = file_path,
+                            status = f"Deleted by {user_id}",
+                            status_classification = StatusClassification.INFO,
+                            state =  State.DELETED)
+        
+        await current_app.status_log.save_document(document_path=file_path)
+
+        message = {
+            "file_uri": f"{BLOB_CLIENT.url}{urllib.parse.quote(file_path)}",
+            "file_path": file_path,
+            "action": "delete"
+        }
+        message_string = json.dumps(message)
+        # Queue a message for the tags to be updated in the Vector DB
+        await QUEUE_CLIENT.send_message(message_string)
+        
+        # TODO
+        # delete upload blob?
+        # delete content blobs?
+
+        return jsonify({'message': "File deleted successfully"}), 200
+    
+    except Exception as ex:
+        logging.exception("Exception in /deleteFile")
+        return jsonify({"error": str(ex)}), 500
+
+
+@bp.route('/updateFileTags', methods=['POST'])
+async def update_file_tags():
+    try:
+        request_data = await request.json
+        user_id = session["user_data"].get("userPrincipalName", "Unknown User")
+        is_admin = session["user_data"].get("is_admin", False)
+        file_path = request_data["file_path"]
+        file_path_parts = file_path.split('/')
+        folder_name = file_path_parts[1] if len(file_path_parts) > 2 else None
+        new_tags = request_data["tags"]
+
+        if not is_admin and folder_name != user_id:
+            return jsonify({'error': 'Only Admin users can edit this file'}), 400
+        
+        await current_app.status_log.upsert_document(
+                            document_path = file_path,
+                            status = f"Tags updated by {user_id}",
+                            status_classification = StatusClassification.INFO,
+                            tags_list = new_tags)
+        
+        await current_app.status_log.save_document(document_path = file_path)
+
+        message = {
+            "file_uri": f"{BLOB_CLIENT.url}{urllib.parse.quote(file_path)}",
+            "file_path": file_path,
+            "action": "updateTags",
+            "tags": new_tags
+        }
+        message_string = json.dumps(message)
+        # Queue a message for the tags to be updated in the Vector DB
+        await QUEUE_CLIENT.send_message(message_string)
+
+        return jsonify({'message': 'Tags updated successfully'}), 200
+    
+    except Exception as ex:
+        logging.exception("Exception in /updateFileTags")
+        return jsonify({"error": str(ex)}), 500
+
+
 def create_app():
     app = Quart(__name__)
     app.config['SECRET_KEY'] = APP_SECRET
@@ -775,14 +871,16 @@ def create_app():
 
     @app.before_serving
     async def init():
-        global MSAL_CLIENT, OPENAI_CLIENT, SEARCH_CLIENT, BLOB_CLIENT, BLOB_CONTAINER, EXPORT_CONTAINER
+        global MSAL_CLIENT, OPENAI_CLIENT, SEARCH_CLIENT, BLOB_CLIENT, QUEUE_CLIENT, BLOB_CONTAINER_CONTENT, BLOB_CONTAINER_UPLOAD, EXPORT_CONTAINER
 
         MSAL_CLIENT = create_msal_client()
         OPENAI_CLIENT = await create_openai_client()
         SEARCH_CLIENT = await create_search_client()
         BLOB_CLIENT = await create_blob_client()
+        QUEUE_CLIENT = await create_queue_client()
 
-        BLOB_CONTAINER = BLOB_CLIENT.get_container_client(AZURE_BLOB_STORAGE_CONTAINER)
+        BLOB_CONTAINER_CONTENT = BLOB_CLIENT.get_container_client(AZURE_BLOB_STORAGE_CONTAINER)
+        BLOB_CONTAINER_UPLOAD = BLOB_CLIENT.get_container_client(AZURE_BLOB_UPLOAD_CONTAINER)
         EXPORT_CONTAINER = BLOB_CLIENT.get_container_client(AZURE_BLOB_EXPORT_CONTAINER)
         
         await request_log.initialize()

@@ -310,9 +310,9 @@ def get_tags(blob_service_client, blob_path):
     tags = blob_properties.metadata.get("tags")
     if tags is not None:
         if isinstance(tags, str):
-            tags_list = [unquote(tags)]
-        else:
             tags_list = [unquote(tag) for tag in tags.split(",")]
+        else:
+            tags_list = [unquote(tags)]
     else:
         tags_list = []
 
@@ -435,7 +435,8 @@ def poll_queue() -> None:
 
             statusLog.upsert_document(blob_path,
                                       'Embeddings process complete',
-                                      StatusClassification.INFO, State.COMPLETE)
+                                      StatusClassification.INFO,
+                                      State.COMPLETE)
 
         except Exception as error:
             # Dequeue message and update the embeddings queued count to limit the max retries

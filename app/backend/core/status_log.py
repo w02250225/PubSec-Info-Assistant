@@ -21,6 +21,7 @@ class State(Enum):
     ERROR = "Error"
     THROTTLED = "Throttled"
     UPLOADED = "Uploaded"
+    DELETED = "Deleted"
     ALL = "All"
 
 class StatusClassification(Enum):
@@ -84,7 +85,7 @@ class StatusLog:
         return items
 
 
-    async def read_files_status_by_timeframe(self, user_id: str, is_admin: bool):
+    async def read_all_files_status(self, user_id: str, is_admin: bool):
         """ 
         Function to issue a query and return resulting docs          
         args
@@ -108,9 +109,14 @@ class StatusLog:
         return items
 
 
-    async def upsert_document(self, document_path, status, status_classification: StatusClassification,
-                              state=State.PROCESSING, fresh_start=False):
-        """ Asynchronous function to upsert a status item for a specified id """
+    async def upsert_document(self,
+                              document_path,
+                              status,
+                              status_classification: StatusClassification,
+                              state = State,
+                              fresh_start = False,
+                              tags_list=[]):
+        """ Asynchronous function to upsert a status item for a specified id in CosmosDB"""
         base_name = os.path.basename(document_path)
         document_id = self.encode_document_id(document_path)
         document_path_parts = document_path.split('/')
@@ -135,6 +141,10 @@ class StatusLog:
             else:
                 json_document = self._log_document[document_id]
 
+            # Check if we need to set/update tags
+            if tags_list is not None:
+                json_document["tags"] = tags_list
+
             # Check if there has been a state change, and therefore to update state
             if json_document['state'] != state.value:
                 json_document['state'] = state.value
@@ -154,21 +164,21 @@ class StatusLog:
             status_updates.append(new_item)
         except exceptions.CosmosResourceNotFoundError:
             # this is a new document
-            json_document = self._create_new_json_document(document_id, document_path, base_name, folder_name, state, status, status_classification)
+            json_document = self._create_new_json_document(document_id, document_path, base_name, folder_name, state, status, status_classification, tags_list)
         except Exception:
             # log the exception with stack trace to the status log
-            json_document = self._create_error_json_document(document_id, document_path, base_name, folder_name, state, status, status_classification)
+            json_document = self._create_error_json_document(document_id, document_path, base_name, folder_name, state, status, status_classification, tags_list)
 
         self._log_document[document_id] = json_document
 
 
-    def _create_new_json_document(self, document_id, document_path, base_name, folder_name, state, status, status_classification):
+    def _create_new_json_document(self, document_id, document_path, base_name, folder_name, state, status, status_classification, tags_list):
         return {
             "id": document_id,
             "file_path": document_path,
             "file_name": base_name,
             "folder_name": folder_name,
-            "tags": [],
+            "tags": tags_list,
             "state": str(state.value),
             "start_timestamp": str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
             "state_description": "",
@@ -183,13 +193,13 @@ class StatusLog:
         }
     
 
-    def _create_error_json_document(self, document_id, document_path, base_name, folder_name, state, status, status_classification):
+    def _create_error_json_document(self, document_id, document_path, base_name, folder_name, state, status, status_classification, tags_list):
         return {
             "id": document_id,
             "file_path": document_path,
             "file_name": base_name,
             "folder_name": folder_name,
-            "tags": [],
+            "tags": tags_list,
             "state": str(state.value),
             "start_timestamp": str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
             "state_description": "",
@@ -206,7 +216,7 @@ class StatusLog:
 
 
     async def update_document_state(self, document_path, state_str):
-        """Asynchronously updates the state of the document in the storage"""
+        """Asynchronously updates the state of the document in CosmosDB"""
         try:
             document_id = self.encode_document_id(document_path)
             logging.info(f"{state_str} DocumentID - {document_id}")
@@ -224,10 +234,16 @@ class StatusLog:
      
 
     async def save_document(self, document_path):
-        """Asynchronously saves the document in the storage"""
+        """Asynchronously saves the document in CosmosDB"""
         document_id = self.encode_document_id(document_path)
         await self.container.upsert_item(body=self._log_document[document_id])
         self._log_document[document_id] = ""
+     
+
+    async def delete_document(self, document_path):
+        """Asynchronously deletes the document in CosomsDB"""
+        document_id = self.encode_document_id(document_path)
+        await self.container.delete_item(item=document_id, partition_key=document_path)
 
 
     async def get_all_tags(self):

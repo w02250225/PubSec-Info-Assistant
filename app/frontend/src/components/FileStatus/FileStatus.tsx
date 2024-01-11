@@ -2,15 +2,14 @@
 // Licensed under the MIT license.
 
 import { useEffect, useState } from "react";
-import { ComboBox, IComboBox, IComboBoxOption, IComboBoxStyles, SelectableOptionMenuItemType, Stack } from "@fluentui/react";
+import { ComboBox, DefaultButton, Dialog, DialogFooter, DialogType, IComboBox, IComboBoxOption, IComboBoxStyles, ITag, PrimaryButton, SelectableOptionMenuItemType, Stack } from "@fluentui/react";
 import { DocumentsDetailList, IDocument } from "./DocumentsDetailList";
 import { ArrowClockwise24Filled, FilterDismiss24Filled } from "@fluentui/react-icons";
 import { animated, useSpring } from "@react-spring/web";
-import { getAllUploadStatus, FileUploadBasicStatus } from "../../api";
+import { getAllUploadStatus, FileUploadBasicStatus, deleteFile, updateFileTags, UserData } from "../../api";
+import { TagPickerInline } from '../TagPicker'
 
 import styles from "./FileStatus.module.css";
-
-import { UserData } from '../../api'
 
 interface Props {
     className?: string;
@@ -29,10 +28,12 @@ export const FileStatus = ({ className, userData }: Props) => {
     const [allFiles, setAllFiles] = useState<IDocument[]>([]);
     const [filteredFiles, setFilteredFiles] = useState<IDocument[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const selectableFileStateOptions: IComboBoxOption[] = [
         { key: 'selectAll', text: 'Select All', itemType: SelectableOptionMenuItemType.SelectAll },
         { key: 'Complete', text: 'Complete' },
+        { key: 'Deleted', text: 'Deleted' },
         { key: 'Error', text: 'Error' },
         { key: 'Processing', text: 'Processing' },
         { key: 'Indexing', text: 'Indexing' },
@@ -42,8 +43,60 @@ export const FileStatus = ({ className, userData }: Props) => {
         { key: 'Throttled', text: 'Throttled' },
     ];
 
+    const FILE_ICONS: { [id: string]: string } = {
+        "csv": 'csv',
+        "doc": 'docx',
+        "docx": 'docx',
+        "pdf": 'pdf',
+        "pptx": 'pptx',
+        "txt": 'txt',
+        "htm": 'html',
+        "html": 'html',
+        "xls": 'xlsx',
+        "xlsx": 'xlsx'
+    };
+
+    const STATE_DESCRIPTION: { [id: string]: string } = {
+        "Processing": "File is being processed, please check back later",
+        "Skipped": "File processing was skipped",
+        "Queued": "File is queued for processing, please check back later",
+        "Complete": "File processing is complete",
+        "Error": "There was an unexected error processing the file"
+    };
+
     const onFilesSorted = (items: IDocument[]): void => {
         setFilteredFiles(items);
+    };
+
+    const onFileDelete = async (item: IDocument) => {
+        try {
+            setIsDeleting(true);
+            await deleteFile(item.file_path)
+            setFilteredFiles((filteredFiles) =>
+                filteredFiles.map((i) =>
+                    i === item ? { ...i, state: "Deleted" } : i
+                )
+            );
+            filterData();
+        } catch (error) {
+            console.error("Ereror deleting item: ", error);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const onSaveTags = async (item: IDocument) => {
+        try {
+            await updateFileTags(item.file_path, item.tags);
+            setFilteredFiles((filteredFiles) =>
+                filteredFiles.map((i) =>
+                    i === item ? { ...i, tags: item.tags } : i
+                )
+            );
+
+        } catch (error) {
+            console.error("Error updating tags: ", error);
+        }
     };
 
     const onRefreshClicked = () => {
@@ -82,7 +135,7 @@ export const FileStatus = ({ className, userData }: Props) => {
 
             // Tags
             if (item.tags) {
-                const tagsArray = item.tags.split(',').map(tag => tag.trim());
+                const tagsArray = item.tags.map(tag => tag.trim());
                 tagsArray.forEach(tag => {
                     if (tag && !uniqueTags.includes(tag)) {
                         uniqueTags.push(tag);
@@ -97,10 +150,14 @@ export const FileStatus = ({ className, userData }: Props) => {
 
         setSelectableFolderOptions(folderDropdownOptions);
         setSelectableTagOptions(tagDropdownOptions);
-        
+
         if (selectedFileStates.length === 0) {
-            setSelectedFileStates(selectableFileStateOptions.map(o => o.key.toString()));
-        }
+            setSelectedFileStates(selectableFileStateOptions
+                // Exclude "Deleted" and "Select All" from default selection
+                .filter(option => option.key !== 'Deleted' && option.key !== 'selectAll') 
+                .map(option => option.key.toString())
+            );
+        };
         if (selectedFolders.length === 0) {
             setSelectedFolders(folderDropdownOptions.map(o => o.key.toString()));
         }
@@ -122,14 +179,13 @@ export const FileStatus = ({ className, userData }: Props) => {
             let fileExtension = fileList[i].file_name.split('.').pop();
             fileExtension = fileExtension == undefined ? 'Folder' : fileExtension.toUpperCase()
             const stateDescription = STATE_DESCRIPTION[fileList[i].state] || fileList[i].state;
-            const tagsString = fileList[i].tags.join(",") || '';
             try {
                 items.push({
                     key: fileList[i].id,
                     name: fileList[i].file_name,
                     file_path: fileList[i].file_path,
                     folder_name: folderName === userData.userPrincipalName ? 'My Data' : fileList[i].folder_name,
-                    tags: tagsString,
+                    tags: fileList[i].tags,
                     iconName: FILE_ICONS[fileExtension.toLowerCase() || 'txt'],
                     fileType: fileExtension,
                     state: fileList[i].state,
@@ -137,6 +193,7 @@ export const FileStatus = ({ className, userData }: Props) => {
                     upload_timestamp: fileList[i].start_timestamp,
                     modified_timestamp: fileList[i].state_timestamp,
                     value: fileList[i].id,
+                    can_edit: folderName === userData.userPrincipalName || userData.is_admin,
                 });
             }
             catch (e) {
@@ -164,43 +221,50 @@ export const FileStatus = ({ className, userData }: Props) => {
         setFilteredFiles(filtered);
     };
 
+    const handleSelectionChange = (
+        selectedItems: string[],
+        setSelectedItems: React.Dispatch<React.SetStateAction<string[]>>,
+        selectableOptions: IComboBoxOption[],
+        option?: IComboBoxOption
+    ): void => {
+        const selected = option?.selected;
+        const currentSelectedOptionKeys = selectedItems?.filter(key => key !== 'selectAll');
+        const selectableOptionsFiltered = selectableOptions.filter(
+            option =>
+            (option.itemType === SelectableOptionMenuItemType.Normal ||
+                option.itemType === undefined),
+        );
+        const selectAllState = currentSelectedOptionKeys?.length === selectableOptionsFiltered.length;
+
+        if (option) {
+            if (option.itemType === SelectableOptionMenuItemType.SelectAll) {
+                if (selectAllState) {
+                    // Deselect all items, including "Select All"
+                    setSelectedItems([]);
+                } else {
+                    // Select all items, including "Select All"
+                    const updatedKeys = ['selectAll', ...selectableOptionsFiltered.map(o => o.key as string)];
+                    setSelectedItems(updatedKeys);
+                }
+            } else {
+                const updatedKeys = selected
+                    ? [...currentSelectedOptionKeys, option!.key as string]
+                    : currentSelectedOptionKeys.filter(k => k !== option.key);
+                if (updatedKeys.length === selectableOptionsFiltered.length) {
+                    updatedKeys.push('selectAll');
+                }
+                setSelectedItems(updatedKeys);
+            }
+        }
+    };
+
     const onSelectedFileStateChange = (
         event: React.FormEvent<IComboBox>,
         option?: IComboBoxOption,
         index?: number,
         value?: string,
     ): void => {
-
-        const selected = option?.selected;
-        const currentSelectedOptionKeys = selectedFileStates?.filter(key => key !== 'selectAll');
-        const selectableOptions = selectableFileStateOptions.filter(
-            option =>
-            (option.itemType === SelectableOptionMenuItemType.Normal ||
-                option.itemType === undefined),
-        );
-        const selectAllState = currentSelectedOptionKeys?.length === selectableOptions.length;
-
-        if (option) {
-            if (option.itemType === SelectableOptionMenuItemType.SelectAll) {
-                if (selectAllState) {
-                    // Deselect all items, including "Select All"
-                    setSelectedFileStates([]);
-                } else {
-                    // Select all items, including "Select All"
-                    const updatedKeys = ['selectAll', ...selectableOptions.map(o => o.key as string)];
-                    setSelectedFileStates(updatedKeys);
-                }
-
-            } else {
-                const updatedKeys = selected
-                    ? [...currentSelectedOptionKeys, option!.key as string]
-                    : currentSelectedOptionKeys.filter(k => k !== option.key);
-                if (updatedKeys.length === selectableOptions.length) {
-                    updatedKeys.push('selectAll');
-                }
-                setSelectedFileStates(updatedKeys);
-            }
-        }
+        handleSelectionChange(selectedFileStates, setSelectedFileStates, selectableFileStateOptions, option);
     };
 
     const onSelectedFoldersChange = (
@@ -209,37 +273,7 @@ export const FileStatus = ({ className, userData }: Props) => {
         index?: number,
         value?: string,
     ): void => {
-
-        const selected = option?.selected;
-        const currentSelectedOptionKeys = selectedFolders?.filter(key => key !== 'selectAll');
-        const selectableOptions = selectableFolderOptions.filter(
-            option =>
-            (option.itemType === SelectableOptionMenuItemType.Normal ||
-                option.itemType === undefined),
-        );
-        const selectAllState = currentSelectedOptionKeys?.length === selectableOptions.length;
-
-        if (option) {
-            if (option.itemType === SelectableOptionMenuItemType.SelectAll) {
-                if (selectAllState) {
-                    // Deselect all items, including "Select All"
-                    setSelectedFolders([]);
-                } else {
-                    // Select all items, including "Select All"
-                    const updatedKeys = ['selectAll', ...selectableOptions.map(o => o.key as string)];
-                    setSelectedFolders(updatedKeys);
-                }
-
-            } else {
-                const updatedKeys = selected
-                    ? [...currentSelectedOptionKeys, option!.key as string]
-                    : currentSelectedOptionKeys.filter(k => k !== option.key);
-                if (updatedKeys.length === selectableOptions.length) {
-                    updatedKeys.push('selectAll');
-                }
-                setSelectedFolders(updatedKeys);
-            }
-        }
+        handleSelectionChange(selectedFolders, setSelectedFolders, selectableFolderOptions, option);
     };
 
     const onSelectedTagsChange = (
@@ -248,58 +282,7 @@ export const FileStatus = ({ className, userData }: Props) => {
         index?: number,
         value?: string,
     ): void => {
-
-        const selected = option?.selected;
-        const currentSelectedOptionKeys = selectedTags?.filter(key => key !== 'selectAll');
-        const selectableOptions = selectableTagOptions.filter(
-            option =>
-            (option.itemType === SelectableOptionMenuItemType.Normal ||
-                option.itemType === undefined),
-        );
-        const selectAllState = currentSelectedOptionKeys?.length === selectableOptions.length;
-
-        if (option) {
-            if (option.itemType === SelectableOptionMenuItemType.SelectAll) {
-                if (selectAllState) {
-                    // Deselect all items, including "Select All"
-                    setSelectedTags([]);
-                } else {
-                    // Select all items, including "Select All"
-                    const updatedKeys = ['selectAll', ...selectableOptions.map(o => o.key as string)];
-                    setSelectedTags(updatedKeys);
-                }
-
-            } else {
-                const updatedKeys = selected
-                    ? [...currentSelectedOptionKeys, option!.key as string]
-                    : currentSelectedOptionKeys.filter(k => k !== option.key);
-                if (updatedKeys.length === selectableOptions.length) {
-                    updatedKeys.push('selectAll');
-                }
-                setSelectedTags(updatedKeys);
-            }
-        }
-    };
-
-    const FILE_ICONS: { [id: string]: string } = {
-        "csv": 'csv',
-        "doc": 'docx',
-        "docx": 'docx',
-        "pdf": 'pdf',
-        "pptx": 'pptx',
-        "txt": 'txt',
-        "htm": 'html',
-        "html": 'html',
-        "xls": 'xlsx',
-        "xlsx": 'xlsx'
-    };
-
-    const STATE_DESCRIPTION: { [id: string]: string } = {
-        "Processing": "File is being processed, please check back later",
-        "Skipped": "File processing was skipped",
-        "Queued": "File is queued for processing, please check back later",
-        "Complete": "File processing is complete",
-        "Error": "There was an unexected error processing the file"
+        handleSelectionChange(selectedTags, setSelectedTags, selectableTagOptions, option);
     };
 
     const animatedStyles = useSpring({
@@ -375,7 +358,14 @@ export const FileStatus = ({ className, userData }: Props) => {
                 </animated.div>
             ) : (filteredFiles && filteredFiles.length > 0 ? (
                 <div className={styles.resultspanel}>
-                    <DocumentsDetailList items={filteredFiles == undefined ? [] : filteredFiles} onFilesSorted={onFilesSorted} />
+                    <DocumentsDetailList
+                        items={filteredFiles == undefined ? [] : filteredFiles}
+                        onFilesSorted={onFilesSorted}
+                        onFileDelete={onFileDelete}
+                        onSaveTags={onSaveTags}
+                        isAdmin={userData.is_admin}
+                        isDeleting={isDeleting}
+                    />
                 </div>
             ) : (
                 <Stack className={styles.loadingContainer} verticalAlign="space-between">
