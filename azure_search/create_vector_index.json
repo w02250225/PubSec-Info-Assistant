@@ -19,16 +19,14 @@
       "indexAnalyzer": null,
       "searchAnalyzer": null,
       "analyzer": "$SEARCH_INDEX_ANALYZER",
-      "normalizer": null,
       "dimensions": null,
-      "vectorSearchConfiguration": null,
       "synonymMaps": []
     },
     {
       "name": "file_uri",
       "type": "Edm.String",
-      "searchable": false,
-      "filterable": false,
+      "searchable": true,
+      "filterable": true,
       "retrievable": true,
       "sortable": false,
       "facetable": false,
@@ -36,9 +34,7 @@
       "indexAnalyzer": null,
       "searchAnalyzer": null,
       "analyzer": null,
-      "normalizer": null,
       "dimensions": null,
-      "vectorSearchConfiguration": null,
       "synonymMaps": []
     },
     {
@@ -53,9 +49,7 @@
       "indexAnalyzer": null,
       "searchAnalyzer": null,
       "analyzer": null,
-      "normalizer": null,
       "dimensions": null,
-      "vectorSearchConfiguration": null,
       "synonymMaps": []
     },
     {
@@ -70,9 +64,7 @@
       "indexAnalyzer": null,
       "searchAnalyzer": null,
       "analyzer": null,
-      "normalizer": null,
       "dimensions": null,
-      "vectorSearchConfiguration": null,
       "synonymMaps": []
     },
     {
@@ -87,9 +79,7 @@
       "indexAnalyzer": null,
       "searchAnalyzer": null,
       "analyzer": null,
-      "normalizer": null,
       "dimensions": null,
-      "vectorSearchConfiguration": null,
       "synonymMaps": []
     },
     {
@@ -104,9 +94,7 @@
       "indexAnalyzer": null,
       "searchAnalyzer": null,
       "analyzer": null,
-      "normalizer": null,
       "dimensions": null,
-      "vectorSearchConfiguration": null,
       "synonymMaps": []
     },
     {
@@ -121,9 +109,7 @@
       "indexAnalyzer": null,
       "searchAnalyzer": null,
       "analyzer": null,
-      "normalizer": null,
       "dimensions": null,
-      "vectorSearchConfiguration": null,
       "synonymMaps": []
     },
     {
@@ -138,9 +124,7 @@
       "indexAnalyzer": null,
       "searchAnalyzer": null,
       "analyzer": null,
-      "normalizer": null,
       "dimensions": null,
-      "vectorSearchConfiguration": null,
       "synonymMaps": []
     },   
     {
@@ -155,9 +139,7 @@
       "indexAnalyzer": null,
       "searchAnalyzer": null,
       "analyzer": "$SEARCH_INDEX_ANALYZER",
-      "normalizer": null,
       "dimensions": null,
-      "vectorSearchConfiguration": null,
       "synonymMaps": []
     },
     {
@@ -172,9 +154,7 @@
       "indexAnalyzer": null,
       "searchAnalyzer": null,
       "analyzer": "$SEARCH_INDEX_ANALYZER",
-      "normalizer": null,
       "dimensions": null,
-      "vectorSearchConfiguration": null,
       "synonymMaps": []
     },
     {
@@ -189,9 +169,7 @@
       "indexAnalyzer": null,
       "searchAnalyzer": null,
       "analyzer": "$SEARCH_INDEX_ANALYZER",
-      "normalizer": null,
       "dimensions": null,
-      "vectorSearchConfiguration": null,
       "synonymMaps": []
     },
     {
@@ -206,9 +184,7 @@
       "indexAnalyzer": null,
       "searchAnalyzer": null,
       "analyzer": "$SEARCH_INDEX_ANALYZER",
-      "normalizer": null,
       "dimensions": null,
-      "vectorSearchConfiguration": null,
       "synonymMaps": []
     },
     {
@@ -223,9 +199,7 @@
       "indexAnalyzer": null,
       "searchAnalyzer": null,
       "analyzer": "$SEARCH_INDEX_ANALYZER",
-      "normalizer": null,
       "dimensions": null,
-      "vectorSearchConfiguration": null,
       "synonymMaps": []
     },
     {
@@ -234,7 +208,7 @@
       "searchable": true,
       "retrievable": true,
       "dimensions": $EMBEDDING_VECTOR_SIZE,
-      "vectorSearchConfiguration": "vector-config"
+      "vectorSearchProfile": "vector-profile"
     }
   ],
   "suggesters": [],
@@ -245,7 +219,7 @@
   "charFilters": [],
   "tokenFilters": [],
   "vectorSearch": {
-    "algorithmConfigurations": [
+    "algorithms": [
       {
         "name": "vector-config",
         "kind": "hnsw",
@@ -256,7 +230,14 @@
           "metric": "cosine"
         }
       }
-    ]
+    ],
+    "profiles":[
+      
+        {
+          "name":"vector-profile",
+          "algorithm":"vector-config"
+        }
+      ]
   },
   "tokenizers": [],
   "similarity": {
