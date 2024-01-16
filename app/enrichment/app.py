@@ -55,11 +55,12 @@ ENV = {
     "AZURE_OPENAI_SERVICE": None,
     "AZURE_OPENAI_SERVICE_KEY": None,
     "AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME": None,
+    "AZURE_OPENAI_API_VERSION": None,
     "AZURE_SEARCH_INDEX": None,
     "AZURE_SEARCH_SERVICE_KEY": None,
     "AZURE_SEARCH_SERVICE": None,
     "BLOB_CONNECTION_STRING": None,
-    "TARGET_EMBEDDING_MODEL": None,
+    "TARGET_EMBEDDINGS_MODEL": None,
     "EMBEDDING_VECTOR_SIZE": None,
     "AZURE_SEARCH_SERVICE_ENDPOINT": None
 }
@@ -76,7 +77,7 @@ search_creds = AzureKeyCredential(ENV["AZURE_SEARCH_SERVICE_KEY"])
 openai.api_base = "https://" + ENV["AZURE_OPENAI_SERVICE"] + ".openai.azure.com/"
 openai.api_type = "azure"
 openai.api_key = ENV["AZURE_OPENAI_SERVICE_KEY"]
-openai.api_version = "2023-06-01-preview"
+openai.api_version = ENV["AZURE_OPENAI_API_VERSION"]
 
 class AzOAIEmbedding(object):
     """A wrapper for a Azure OpenAI Embedding model"""
@@ -101,7 +102,7 @@ class AzOAIEmbedding(object):
     def encode(self, texts):
         """Embeds a list of texts using a given model"""
 
-        response = openai.Embedding.create(
+        response = openai.embeddings.create.create(
             engine=self.deployment_name,
             input=texts
         )
