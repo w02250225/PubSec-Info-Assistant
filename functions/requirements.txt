@@ -6,8 +6,8 @@ azure-ai-formrecognizer == 3.3.2
 azure-ai-vision == 0.15.1b1
 azure-core == 1.29.6
 azure-cosmos == 4.5.1
-azure-functions == 1.17.0
-azure-search-documents == 11.4.0b11
+azure-functions == 1.18.0
+azure-search-documents == 11.4.0
 azure-storage-blob == 12.19.0
 azure-storage-queue == 12.9.0
 beautifulsoup4 == 4.12.2

@@ -10,7 +10,7 @@ beautifulsoup4 == 4.12.2
 langchain >= 0.0.157
 msal == 1.26.0
 msal-extensions == 1.1.0
-openai == 1.7.1
+openai == 1.7.2
 opencensus-ext-azure == 1.1.13
 opentelemetry-instrumentation-aiohttp-client
 opentelemetry-instrumentation-httpx
