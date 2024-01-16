@@ -4,10 +4,11 @@
 """ Library of code for status logs reused across various calling features """
 import os
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 import base64
 from enum import Enum
 import logging
+from typing import List, Optional
 from azure.cosmos.aio import CosmosClient
 from azure.cosmos import PartitionKey, exceptions
 import traceback, sys
@@ -58,31 +59,6 @@ class StatusLog:
         """ encode a path/file name to remove unsafe chars for a cosmos db id """
         safe_id = base64.urlsafe_b64encode(document_id.encode()).decode()
         return safe_id
-    
-
-    async def read_file_status(self,
-                               file_id: str,
-                               status_query_level: StatusQueryLevel = StatusQueryLevel.CONCISE):
-        """ 
-        Function to issue a query and return resulting single doc        
-        args
-            status_query_level - the StatusQueryLevel value representing concise 
-            or verbose status updates to be included
-            file_id - if you wish to return a single document by its path     
-        """
-        query_string = f"SELECT * FROM c WHERE c.id = '{self.encode_document_id(file_id)}'"
-
-        items = [item async for item in self.container.query_items(query = query_string)]
-
-        # Now we have the document, remove the status updates that are
-        # considered 'non-verbose' if required
-        if status_query_level == StatusQueryLevel.CONCISE:
-            for item in items:
-                # Filter out status updates that have status_classification == "debug"
-                item['status_updates'] = [update for update in item['status_updates']
-                                          if update['status_classification'] != 'Debug']
-
-        return items
 
 
     async def read_all_files_status(self, user_id: str, is_admin: bool):
@@ -93,11 +69,12 @@ class StatusLog:
             folder_name - return docs within this folder
         """
 
-        query_string = "SELECT c.id, c.file_path, c.file_name, c.folder_name, c.tags, \
-            c.state, c.start_timestamp, c.state_description, c.state_timestamp \
+        query_string = "SELECT c.id, c.file_path, c.file_name, c.folder_name, \
+            c.tags, c.state, c.start_timestamp, c.state_description,  \
+            ARRAY_SLICE(c.status_updates,-1)[0].status_timestamp AS state_timestamp \
             FROM c"
 
-        query_string += " ORDER BY c.state_timestamp DESC"
+        query_string += " ORDER BY c._ts DESC"
 
         items = [item async for item in self.container.query_items(query = query_string)]
 
@@ -113,9 +90,9 @@ class StatusLog:
                               document_path,
                               status,
                               status_classification: StatusClassification,
-                              state = State,
+                              state: Optional[State] = None,
                               fresh_start = False,
-                              tags_list=[]):
+                              tags_list: Optional[List] = None):
         """ Asynchronous function to upsert a status item for a specified id in CosmosDB"""
         base_name = os.path.basename(document_path)
         document_id = self.encode_document_id(document_path)
@@ -146,7 +123,7 @@ class StatusLog:
                 json_document["tags"] = tags_list
 
             # Check if there has been a state change, and therefore to update state
-            if json_document['state'] != state.value:
+            if state is not None and json_document['state'] != state.value:
                 json_document['state'] = state.value
                 json_document['state_timestamp'] = str(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
