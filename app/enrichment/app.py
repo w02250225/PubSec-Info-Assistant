@@ -18,15 +18,13 @@ from azure.storage.blob import BlobServiceClient
 from azure.storage.queue import QueueClient, TextBase64EncodePolicy
 from azure.search.documents import SearchClient
 from azure.core.credentials import AzureKeyCredential
-from data_model import (EmbeddingResponse, ModelInfo, ModelListResponse,
-                        StatusResponse)
+from data_model import (EmbeddingResponse, ModelInfo, ModelListResponse, StatusResponse)
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
-from fastapi_utils.tasks import repeat_every
 from model_handling import load_models
-import openai
+from openai import AzureOpenAI, RateLimitError
 from opencensus.ext.azure.log_exporter import AzureLogHandler
-from tenacity import retry, stop_after_attempt, wait_random_exponential, retry_if_exception_type, before_sleep_log
+from tenacity import retry, stop_after_attempt, wait_random_exponential, before_sleep_log
 from sentence_transformers import SentenceTransformer
 from shared_code.utilities_helper import UtilitiesHelper
 from shared_code.status_log import State, StatusClassification, StatusLog
@@ -72,12 +70,16 @@ for key, value in ENV.items():
     elif value is None:
         raise ValueError(f"Environment variable {key} not set")
 
-search_creds = AzureKeyCredential(ENV["AZURE_SEARCH_SERVICE_KEY"])
+BLOB_SERVICE_CLIENT = BlobServiceClient.from_connection_string(ENV["BLOB_CONNECTION_STRING"])
+CONTAINER_CLIENT = BLOB_SERVICE_CLIENT.get_container_client(ENV["AZURE_BLOB_STORAGE_CONTAINER"])
 
-openai.api_base = "https://" + ENV["AZURE_OPENAI_SERVICE"] + ".openai.azure.com/"
-openai.api_type = "azure"
-openai.api_key = ENV["AZURE_OPENAI_SERVICE_KEY"]
-openai.api_version = ENV["AZURE_OPENAI_API_VERSION"]
+SEARCH_CLIENT = SearchClient(endpoint=ENV["AZURE_SEARCH_SERVICE_ENDPOINT"],
+                             index_name=ENV["AZURE_SEARCH_INDEX"],
+                             credential=AzureKeyCredential(ENV["AZURE_SEARCH_SERVICE_KEY"]))
+
+OPENAI_CLIENT = AzureOpenAI(api_version = ENV["AZURE_OPENAI_API_VERSION"],
+                            azure_endpoint = f'https://{ENV["AZURE_OPENAI_SERVICE"]}.openai.azure.com',
+                            api_key = ENV["AZURE_OPENAI_SERVICE_KEY"])                          
 
 class AzOAIEmbedding(object):
     """A wrapper for a Azure OpenAI Embedding model"""
@@ -86,7 +88,7 @@ class AzOAIEmbedding(object):
 
     def wait_strategy(retry_state):
         exception = retry_state.outcome.exception()
-        if isinstance(exception, openai.error.RateLimitError):
+        if isinstance(exception, RateLimitError):
             log.debug("RateLimitError occurred, waiting for 30 seconds before retrying...")
             return 30
         else:
@@ -102,13 +104,13 @@ class AzOAIEmbedding(object):
     def encode(self, texts):
         """Embeds a list of texts using a given model"""
 
-        response = openai.embeddings.create.create(
-            engine=self.deployment_name,
+        response = OPENAI_CLIENT.embeddings.create(
+            model=self.deployment_name,
             input=texts
         )
         
         return response
-
+    
 class STModel(object):
     """A wrapper for a sentence-transformers model"""
     def __init__(self, deployment_name) -> None:
@@ -255,7 +257,7 @@ def embed_texts(model: str, texts: List[str]):
     try:
         if model.startswith("azure-openai_"):
             embeddings = model_obj.encode(texts)
-            embeddings = embeddings['data'][0]['embedding']
+            embeddings = embeddings.data[0].embedding
         else:
             embeddings = model_obj.encode(texts)
             embeddings = embeddings.tolist()[0]
@@ -291,20 +293,16 @@ def token_count( input_text):
 def index_sections(chunks):
     """ Pushes a batch of content to the search index
     """
-    search_client = SearchClient(endpoint=ENV["AZURE_SEARCH_SERVICE_ENDPOINT"],
-                                    index_name=ENV["AZURE_SEARCH_INDEX"],
-                                    credential=search_creds)
-
-    results = search_client.upload_documents(documents=chunks)
+    results = SEARCH_CLIENT.upload_documents(documents=chunks)
     succeeded = sum([1 for r in results if r.succeeded])
     log.debug(f"\tIndexed {len(results)} chunks, {succeeded} succeeded")
 
 
-def get_tags(blob_service_client, blob_path):
+def get_tags(blob_path):
     """ Gets the tags from the blob metadata and uploads them to cosmos db"""
     file_name, file_extension, file_directory = utilities_helper.get_filename_and_extension(blob_path)
     path = file_directory + file_name + file_extension
-    blob_client = blob_service_client.get_blob_client(
+    blob_client = BLOB_SERVICE_CLIENT.get_blob_client(
         container = ENV["AZURE_BLOB_STORAGE_UPLOAD_CONTAINER"],
         blob = path)
     blob_properties = blob_client.get_blob_properties()
@@ -366,12 +364,10 @@ def poll_queue() -> None:
 
             file_name, file_extension, file_directory  = utilities_helper.get_filename_and_extension(blob_path)
             chunk_folder_path = file_directory + file_name + file_extension
-            blob_service_client = BlobServiceClient.from_connection_string(ENV["BLOB_CONNECTION_STRING"])
-            container_client = blob_service_client.get_container_client(ENV["AZURE_BLOB_STORAGE_CONTAINER"])
             index_chunks = []
 
             # Iterate over the chunks in the container
-            chunk_list = container_client.list_blobs(name_starts_with=chunk_folder_path)
+            chunk_list = CONTAINER_CLIENT.list_blobs(name_starts_with=chunk_folder_path)
             chunks = list(chunk_list)
             i = 0
             for chunk in chunks:
@@ -404,7 +400,7 @@ def poll_queue() -> None:
                 embedding = embed_texts(target_embeddings_model, [text])
                 embedding_data = embedding['data']
 
-                tag_list = get_tags(blob_service_client, chunk_dict["file_name"])
+                tag_list = get_tags(chunk_dict["file_name"])
 
                 index_chunk = {}
                 index_chunk['id'] = statusLog.encode_document_id(chunk.name)
