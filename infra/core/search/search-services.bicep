@@ -1,24 +1,14 @@
 param name string
-param cogServicesName string
 param location string = resourceGroup().location
 param tags object = {}
-
 param sku object = {
   name: 'standard'
 }
-
-param customSubDomainName string = cogServicesName
-param authOptions object = {}
 param semanticSearch string = 'disabled'
-param kind string = 'CognitiveServices'
-param publicNetworkAccess string = 'Enabled'
-param isGovCloudDeployment bool  
-param cogServicesSku object = {
-  name: 'S0'
-}
+param isGovCloudDeployment bool
 param keyVaultName string = ''
 
-resource search 'Microsoft.Search/searchServices@2021-04-01-preview' = {
+resource search 'Microsoft.Search/searchServices@2023-11-01' = {
   name: name
   location: location
   tags: tags
@@ -26,49 +16,44 @@ resource search 'Microsoft.Search/searchServices@2021-04-01-preview' = {
     type: 'SystemAssigned'
   }
   properties: {
-    authOptions: authOptions
+    authOptions: {
+      aadOrApiKey: {
+        aadAuthFailureMode: 'http401WithBearerChallenge'
+      }
+    }
     disableLocalAuth: false
-    disabledDataExfiltrationOptions: []
     encryptionWithCmk: {
       enforcement: 'Unspecified'
     }
     hostingMode: 'default'
     networkRuleSet: {
-      bypass: 'None'
       ipRules: []
     }
     partitionCount: 1
-    publicNetworkAccess: 'Enabled'
+    publicNetworkAccess: 'enabled'
     replicaCount: 1
-    semanticSearch:  ((isGovCloudDeployment) ? null : semanticSearch)
+    semanticSearch: ((isGovCloudDeployment) ? null : semanticSearch)
   }
   sku: sku
 }
 
-resource cogService 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
-  name: cogServicesName
-  location: location
-  tags: tags
-  kind: kind
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = if (!(empty(keyVaultName))) {
+  name: keyVaultName
+}
+
+resource searchServiceKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: keyVault
+  name: 'AZURE-SEARCH-SERVICE-KEY'
   properties: {
-    customSubDomainName: customSubDomainName
-    publicNetworkAccess: publicNetworkAccess
-    networkAcls: {
-      defaultAction: 'Allow'
-      virtualNetworkRules: []
-      ipRules: []
+    value: search.listAdminKeys().primaryKey
+    attributes: {
+      enabled: true
+
     }
   }
-  sku: cogServicesSku
+
 }
 
 output id string = search.id
 output endpoint string = (isGovCloudDeployment) ? 'https://${name}.search.azure.us/' : 'https://${name}.search.windows.net/'
 output name string = search.name
-#disable-next-line outputs-should-not-contain-secrets
-output searchServiceKey string = search.listAdminKeys().primaryKey
-#disable-next-line outputs-should-not-contain-secrets 
-output cogServiceKey string = cogService.listKeys().key1
-output cogServiceName string = cogService.name
-output cogServiceLocation string = cogService.location
-output cogServiceEndpoint string = 'https://${cogService.name}.cognitiveservices.azure.com/'

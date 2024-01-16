@@ -57,12 +57,6 @@ param CosmosDBLogDatabaseName string
 @description('CosmosDB Log Container Name')
 param CosmosDBLogContainerName string
 
-@description('CosmosDB Tags Database Name')
-param CosmosDBTagsDatabaseName string
-
-@description('CosmosDB Tags Container Name')
-param CosmosDBTagsContainerName string
-
 @description('Name of the submit queue for PDF files')
 param pdfSubmitQueue string
 
@@ -77,6 +71,9 @@ param mediaSubmitQueue string
 
 @description('The queue which is used to trigger processing of text files')
 param textEnrichmentQueue string
+
+@description('The queue which is used to trigger processing of text files')
+param indexUpdateQueue string
 
 @description('The queue which is used to trigger processing of image files')
 param imageEnrichmentQueue string
@@ -107,9 +104,6 @@ param maxReadAttempts string
 
 @description('Endpoint of the enrichment service')
 param enrichmentEndpoint string
-
-@description('The region to use for the enrichment service')
-param enrichmentEndpointRegion string
 
 @description('Name of the enrichment service')
 param enrichmentName string
@@ -262,10 +256,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
           value: CosmosDBLogContainerName
         }
         {
-          name: 'COSMOSDB_TAGS_DATABASE_NAME'
-          value: CosmosDBTagsDatabaseName
-        }
-        {
+
           name: 'PDF_SUBMIT_QUEUE'
           value: pdfSubmitQueue
         }
@@ -284,6 +275,10 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
         {
           name: 'TEXT_ENRICHMENT_QUEUE'
           value: textEnrichmentQueue
+        }
+        {
+          name: 'INDEX_UPDATE_QUEUE'
+          value: indexUpdateQueue
         }
         {
           name: 'IMAGE_ENRICHMENT_QUEUE'
@@ -330,10 +325,6 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
           value: enrichmentEndpoint
         }
         {
-          name: 'ENRICHMENT_ENDPOINT_REGION'
-          value: enrichmentEndpointRegion
-        }
-        {
           name: 'ENRICHMENT_NAME'
           value: enrichmentName
         }
@@ -356,7 +347,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
         {
           name: 'ENABLE_DEV_CODE'
           value: string(enableDevCode)
-        }        
+        }
         {
           name: 'EMBEDDINGS_QUEUE'
           value: EMBEDDINGS_QUEUE
@@ -364,15 +355,15 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
         {
           name: 'AZURE_SEARCH_SERVICE_KEY'
           value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/AZURE-SEARCH-SERVICE-KEY)'
-        }  
+        }
         {
           name: 'AZURE_SEARCH_SERVICE_ENDPOINT'
           value: azureSearchServiceEndpoint
-        }  
+        }
         {
           name: 'AZURE_SEARCH_INDEX'
           value: azureSearchIndex
-        }                  
+        }
 
       ]
     }
@@ -383,7 +374,7 @@ resource existingStorageAccount 'Microsoft.Storage/storageAccounts@2021-04-01' e
   name: blobStorageAccountName
 }
 
-resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = if (!(empty(keyVaultName))) {
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = if (!(empty(keyVaultName))) {
   name: keyVaultName
 }
 

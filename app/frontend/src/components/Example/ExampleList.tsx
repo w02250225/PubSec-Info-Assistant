@@ -16,8 +16,7 @@ const EXAMPLES: ExampleModel[] = [
     { text: "What is the economic outlook for Queensland?", value: "What is the economic outlook for Queensland?" },
     { text: "What is the Queensland Government's plan to support women in leadership roles?", value: "What is the Queensland Government's plan to support women in leadership roles?" },
     { text: "Provide an overview of the Queensland State Budget for 2023-24", value: "Provide an overview of the Queensland State Budget for 2023-24" },
-    { text: "What is the Empowered and Safe Communities project?", value: "What is the Empowered and Safe Communities project?" }
-    
+    { text: "What is the Empowered and Safe Communities project?", value: "What is the Empowered and Safe Communities project?" }  
 ];
 
 interface Props {

@@ -35,16 +35,14 @@ param scmDoBuildDuringDeployment bool = false
 param use32BitWorkerProcess bool = false
 param ftpsState string = 'FtpsOnly'
 param healthCheckPath string = ''
-param aadClientId string = ''
-param tenantId string = subscription().tenantId
 
 param logAnalyticsWorkspaceResourceId string = !empty(logAnalyticsWorkspaceName) ? resourceId('Microsoft.OperationalInsights/workspaces', logAnalyticsWorkspaceName) : ''
 
-param isGovCloudDeployment bool  
+param isGovCloudDeployment bool
 
 param portalURL string = (isGovCloudDeployment) ? 'https://portal.azure.us' : 'https://portal.azure.com'
 
-resource appService 'Microsoft.Web/sites@2022-09-01' = {
+resource appService 'Microsoft.Web/sites@2023-01-01' = {
   name: name
   location: location
   tags: tags
@@ -81,7 +79,9 @@ resource appService 'Microsoft.Web/sites@2022-09-01' = {
         AZURE_OPENAI_SERVICE_KEY: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/AZURE-OPENAI-SERVICE-KEY)'
         AZURE_BLOB_STORAGE_KEY: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/AZURE-BLOB-STORAGE-KEY)'
         COSMOSDB_KEY: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/COSMOSDB-KEY)'
-        AZURE_CLIENT_SECRET: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/AZURE-CLIENT-SECRET)'
+        APP_SECRET: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/APP-SECRET)'
+        CLIENT_ID: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/CLIENT-ID)'
+        CLIENT_SECRET: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/CLIENT-SECRET)'
       },
       !empty(applicationInsightsName) ? { APPLICATIONINSIGHTS_CONNECTION_STRING: applicationInsights.properties.ConnectionString } : {},
       !empty(keyVaultName) ? { AZURE_KEY_VAULT_ENDPOINT: keyVault.properties.vaultUri } : {})
@@ -99,42 +99,13 @@ resource appService 'Microsoft.Web/sites@2022-09-01' = {
       configAppSettings
     ]
   }
-
-// Auth handled in app
-//   resource authSettingsV2 'config' = {
-//     name: 'authsettingsV2'
-//     properties: {
-//       globalValidation: {
-//         unauthenticatedClientAction: 'RedirectToLoginPage'
-//         redirectToProvider: 'AzureActiveDirectory'
-//         requireAuthentication: true
-//       }
-//       identityProviders: {
-//         azureActiveDirectory: {
-//           enabled: true
-//           registration: {
-//             openIdIssuer: 'https://sts.windows.net/${tenantId}/v2.0'
-//             clientId: aadClientId
-//           }
-//           validation: {
-//             allowedAudiences: [
-//               'api://${name}'
-//             ]
-//             defaultAuthorizationPolicy: {
-//               allowedApplications: []
-//             }
-//           }
-//         }
-//       }
-//     }
-//   }
 }
 
-resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = if (!(empty(keyVaultName))) {
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = if (!(empty(keyVaultName))) {
   name: keyVaultName
 }
 
-resource keyVaultAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2019-09-01' = {
+resource keyVaultAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2023-07-01' = {
   parent: keyVault
   name: 'add'
   properties: {
@@ -167,16 +138,16 @@ resource diagnosticLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
         category: 'AppServiceAppLogs'
         enabled: true
         retentionPolicy: {
-          days: 0 
-          enabled: true 
+          days: 0
+          enabled: true
         }
       }
       {
         category: 'AppServicePlatformLogs'
         enabled: true
-        retentionPolicy:  {
+        retentionPolicy: {
           days: 0
-          enabled: true 
+          enabled: true
         }
       }
       {
@@ -184,9 +155,9 @@ resource diagnosticLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
         enabled: true
         retentionPolicy: {
           days: 0
-          enabled: true 
+          enabled: true
         }
-      }        
+      }
     ]
     metrics: [
       {
@@ -194,7 +165,7 @@ resource diagnosticLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
         enabled: true
         retentionPolicy: {
           days: 0
-          enabled: true 
+          enabled: true
         }
       }
     ]

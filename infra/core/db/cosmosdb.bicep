@@ -1,8 +1,7 @@
 param name string
 param location string = resourceGroup().location
 param tags object = {}
-param keyVaultName string = ''
-
+param keyVaultName string
 
 @description('The default consistency level of the Cosmos DB account.')
 @allowed([
@@ -19,7 +18,6 @@ param defaultConsistencyLevel string = 'Session'
 @maxValue(2147483647)
 param maxStalenessPrefix int = 100000
 
-
 @description('Max lag time (minutes). Required for BoundedStaleness. Valid ranges, Single Region: 5 to 84600. Multi Region: 300 to 86400.')
 @minValue(5)
 @maxValue(86400)
@@ -27,7 +25,6 @@ param maxIntervalInSeconds int = 300
 
 @description('Enable system managed failover for regions')
 param systemManagedFailover bool = true
-
 
 @description('The name for the database')
 param databaseName string
@@ -73,8 +70,7 @@ var locations = [
   }
 ]
 
-
-resource cosmosDBAccount 'Microsoft.DocumentDB/databaseAccounts@2022-05-15' = {
+resource cosmosDBAccount 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' = {
   name: toLower(name)
   kind: 'GlobalDocumentDB'
   location: location
@@ -87,7 +83,7 @@ resource cosmosDBAccount 'Microsoft.DocumentDB/databaseAccounts@2022-05-15' = {
   }
 }
 
-resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2022-05-15' = {
+resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-11-15' = {
   parent: cosmosDBAccount
   name: databaseName
   properties: {
@@ -97,7 +93,7 @@ resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2022-05-15
   }
 }
 
-resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2022-05-15' = {
+resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-11-15' = {
   parent: database
   name: containerName
   properties: {
@@ -125,21 +121,18 @@ resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/container
   }
 }
 
-
-resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = if (!(empty(keyVaultName))) {
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = if (!(empty(keyVaultName))) {
   name: keyVaultName
 }
 
-resource cosmosdbKeySecret 'Microsoft.KeyVault/vaults/secrets@2019-09-01' = {
+resource cosmosdbKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!(empty(keyVaultName))) {
   parent: keyVault
   name: 'COSMOSDB-KEY'
   properties: {
-    value: cosmosDBAccount.listKeys().primaryMasterKey 
+    value: cosmosDBAccount.listKeys().primaryMasterKey
   }
 }
 
 output CosmosDBEndpointURL string = cosmosDBAccount.properties.documentEndpoint
-#disable-next-line outputs-should-not-contain-secrets
-output CosmosDBKey string = cosmosDBAccount.listKeys().primaryMasterKey
 output CosmosDBDatabaseName string = database.name
 output CosmosDBContainerName string = container.name

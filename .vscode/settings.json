@@ -16,5 +16,9 @@
     ],
     "githubPullRequests.ignoredPullRequestBranches": [
         "main"
+    ],
+    "cSpell.words": [
+        "Codespaces",
+        "referenceable"
     ]
 }

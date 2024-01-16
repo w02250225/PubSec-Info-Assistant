@@ -5,7 +5,7 @@ param sku string = ''
 param isGovCloudDeployment bool  
 param keyVaultName string = ''
 
-resource cognitiveService 'Microsoft.CognitiveServices/accounts@2023-05-01' = if (!isGovCloudDeployment) {
+resource cognitiveService 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' = if (!isGovCloudDeployment) {
   name: name
   location: location
   tags: tags
@@ -21,7 +21,7 @@ resource cognitiveService 'Microsoft.CognitiveServices/accounts@2023-05-01' = if
 }
 
 //Additional resouce to handle the api version parody issue.  
-resource cognitiveServiceGov 'Microsoft.CognitiveServices/accounts@2022-12-01' = if (isGovCloudDeployment) {
+resource cognitiveServiceGov 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' = if (isGovCloudDeployment) {
   name: name
   location: location
   tags: tags
@@ -41,18 +41,17 @@ resource cognitiveServiceGov 'Microsoft.CognitiveServices/accounts@2022-12-01' =
   }
 }
 
-resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = if (!(empty(keyVaultName))) {
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = if (!(empty(keyVaultName))) {
   name: keyVaultName
 }
 
-resource enrichmentKeySecret 'Microsoft.KeyVault/vaults/secrets@2019-09-01' = {
+resource enrichmentKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   parent: keyVault
   name: 'ENRICHMENT-KEY'
   properties: {
     value: (isGovCloudDeployment) ? cognitiveServiceGov.listKeys().key1 : cognitiveService.listKeys().key1
   }
 }
-
 
 output cognitiveServicerAccountName string = (isGovCloudDeployment) ? cognitiveServiceGov.name : cognitiveService.name
 output cognitiveServiceID string = (isGovCloudDeployment) ? cognitiveServiceGov.id : cognitiveService.id

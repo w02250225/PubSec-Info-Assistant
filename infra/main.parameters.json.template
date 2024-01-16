@@ -11,12 +11,6 @@
     "location": {
       "value": "${LOCATION}"
     },
-    "cuaEnabled": {
-      "value": ${ENABLE_CUSTOMER_USAGE_ATTRIBUTION}
-    },
-    "cuaId": {
-      "value": "${CUSTOMER_USAGE_ATTRIBUTION_ID}"
-    },
     "principalId": {
       "value": "${SINGED_IN_USER_PRINCIPAL}"
     },
@@ -77,14 +71,8 @@
     "buildNumber": {
       "value": "${BUILD_NUMBER}"
     },
-    "aadWebClientId": {
-      "value": "${AZURE_AD_WEB_APP_CLIENT_ID}"
-    },
     "aadMgmtClientId": {
       "value": "${AZURE_AD_MGMT_APP_CLIENT_ID}"
-    },
-    "aadMgmtServicePrincipalId": {
-      "value": "${AZURE_AD_MGMT_SP_ID}"
     },
     "aadMgmtClientSecret": {
       "value": "${AZURE_AD_MGMT_APP_SECRET}"

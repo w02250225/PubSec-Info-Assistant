@@ -1,17 +1,15 @@
 param name string
 param location string = resourceGroup().location
-param kvAccessObjectId string 
+param kvAccessObjectId string
 @secure()
 param openaiServiceKey string
-@secure()
-param spClientSecret string 
+param useExistingAOAIService bool
+param tags object = {}
 
-
-
-resource kv 'Microsoft.KeyVault/vaults@2019-09-01' = {
+resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: name
   location: location
-  
+  tags: tags
   properties: {
     enabledForTemplateDeployment: true
     createMode: 'default'
@@ -23,29 +21,21 @@ resource kv 'Microsoft.KeyVault/vaults@2019-09-01' = {
     accessPolicies: [
       {
         tenantId: subscription().tenantId
-        objectId: kvAccessObjectId 
+        objectId: kvAccessObjectId
         permissions: {
-          keys: ['all']
-          secrets: ['all']
+          keys: [ 'all' ]
+          secrets: [ 'all' ]
         }
       }
     ]
   }
 }
 
-resource openaiServiceKeySecret 'Microsoft.KeyVault/vaults/secrets@2019-09-01' = {
+resource openaiServiceKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (useExistingAOAIService) {
   parent: kv
   name: 'AZURE-OPENAI-SERVICE-KEY'
   properties: {
-    value: openaiServiceKey 
-  }
-}
-
-resource spClientKeySecret 'Microsoft.KeyVault/vaults/secrets@2019-09-01' = {
-  parent: kv
-  name: 'AZURE-CLIENT-SECRET'
-  properties: {
-    value: spClientSecret 
+    value: openaiServiceKey
   }
 }
 

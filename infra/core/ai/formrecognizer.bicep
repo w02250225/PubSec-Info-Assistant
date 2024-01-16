@@ -5,7 +5,7 @@ param keyVaultName string = ''
 
 param customSubDomainName string = name
 param publicNetworkAccess string = 'Enabled'
-param isGovCloudDeployment bool  
+param isGovCloudDeployment bool
 
 param sku object = {
   name: 'S0'
@@ -42,18 +42,17 @@ resource formRecognizerAccountGov 'Microsoft.CognitiveServices/accounts@2022-12-
   }
 }
 
-resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = if (!(empty(keyVaultName))) {
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = if (!(empty(keyVaultName))) {
   name: keyVaultName
 }
 
-resource formRecognizerKeySecret 'Microsoft.KeyVault/vaults/secrets@2019-09-01' = {
+resource formRecognizerKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   parent: keyVault
   name: 'AZURE-FORM-RECOGNIZER-KEY'
   properties: {
     value: (isGovCloudDeployment) ? formRecognizerAccountGov.listKeys().key1 : formRecognizerAccount.listKeys().key1
   }
 }
-
 
 output formRecognizerAccountName string = (isGovCloudDeployment) ? formRecognizerAccountGov.name : formRecognizerAccount.name
 output formRecognizerAccountEndpoint string = (isGovCloudDeployment) ? formRecognizerAccountGov.properties.endpoint : formRecognizerAccount.properties.endpoint
