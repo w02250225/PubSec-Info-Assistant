@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 import { useState, useEffect } from 'react';
 import { TagPicker, ITag, IBasePickerSuggestionsProps } from '@fluentui/react/lib/Pickers';
-import { Label, TooltipHost, ITooltipHostStyles } from "@fluentui/react";
+import { Label, TooltipHost, ITooltipHostStyles, Icon } from "@fluentui/react";
 import { FiHelpCircle } from 'react-icons/fi';
 import { mergeStyles } from '@fluentui/react/lib/Styling';
 import { useId } from '@fluentui/react-hooks';
@@ -40,30 +40,43 @@ export const TagPickerInline = ({ allowNewTags, onSelectedTagsChange, preSelecte
   };
 
   const filterSuggestedTags = (filterText: string, tagList: ITag[] | undefined): ITag[] => {
-    var existingMatches = filterText
-      ? tags.filter(
-        tag => tag.name.toLowerCase().indexOf(filterText.toLowerCase()) === 0 && !listContainsTagList(tag, tagList),
-      )
-      : [];
+    if (filterText) {
+      // Lowercase the filter text for case-insensitive comparison
+      const filterTextLower = filterText.toLowerCase();
 
-    if (allowAddNew) {
-      return existingMatches.some(a => a.key === filterText)
-        ? existingMatches :
-        [{ key: filterText, name: filterText, isNewItem: true } as ITag].concat(existingMatches);
-    }
-    else {
+      // Filter for existing tags that start with the filter text and aren't already selected
+      let existingMatches = tags.filter(tag =>
+        tag.name.toLowerCase().startsWith(filterTextLower) &&
+        !listContainsTagList(tag, tagList)
+      );
+
+      // Check if the filter text is already used as a key (case-insensitive) in the existing or selected tags
+      let isNewItem = !existingMatches.some(tag => tag.name.toLowerCase() === filterTextLower) &&
+        !(tagList?.some(tag => tag.name.toLowerCase() === filterTextLower));
+
+      // If a new tag should be allowed, and the text isn't an existing tag, offer to add the new tag
+      if (allowAddNew && isNewItem) {
+        existingMatches = existingMatches.concat([{ key: filterText, name: filterText, isNewItem: true } as ITag]);
+      }
+
       return existingMatches;
     }
+
+    return []; // If filterText is empty, return an empty array
   };
 
   const onItemSelected = (item: any | undefined): ITag | PromiseLike<ITag> | null => {
-    const selected = selectedTags;
+    // Check if the item is empty, blank, whitespace or only contains non-alphanumeric characters
+    if (!item || !item.name.trim() || !/[a-zA-Z0-9]/.test(item.name)) {
+      return null; // Invalid item, prevent adding
+    }
+
     if (item && item.isNewItem) {
       item.isNewItem = false;
-      var newTags = tags;
-      newTags.push(item);
+      var newTags = [...tags, item]; // Use spread syntax for immutability
       setTags(newTags);
     }
+
     return item as ITag;
   };
 
@@ -71,6 +84,7 @@ export const TagPickerInline = ({ allowNewTags, onSelectedTagsChange, preSelecte
     if (allowAddNew) {
       return <div className={props.isNewItem ? newItem : existingItem} key={props.key}>
         {props.name}
+        {props.isNewItem && <Icon iconName="Add" className={styles.addIcon} />}
       </div>;
     }
     else {
@@ -78,11 +92,6 @@ export const TagPickerInline = ({ allowNewTags, onSelectedTagsChange, preSelecte
         {props.name}
       </div>;
     }
-  };
-
-  const pickerSuggestionsProps: IBasePickerSuggestionsProps = {
-    suggestionsHeaderText: 'Existing Tags',
-    noResultsFoundText: allowAddNew ? 'Press Enter to add as a new tag' : 'No matching tag found',
   };
 
   async function fetchTagsFromCosmos() {
@@ -127,7 +136,7 @@ export const TagPickerInline = ({ allowNewTags, onSelectedTagsChange, preSelecte
       <div className={styles.tagSelection}>
         <div className={allowAddNew ? styles.rootClass : styles.rootClassFilter}>
           <Label htmlFor={pickerId}>Tags&nbsp;
-            <TooltipHost content={allowAddNew ? "Tags to append to each document uploaded below." : "Tags to filter documents by."}
+            <TooltipHost content={allowAddNew ? "Tags to append to each document uploaded below. Max 10" : "Tags to filter documents by. Max 10"}
               styles={hostStyles}
               id={tooltipId}>
               <FiHelpCircle></FiHelpCircle>
@@ -136,11 +145,10 @@ export const TagPickerInline = ({ allowNewTags, onSelectedTagsChange, preSelecte
           <TagPicker
             className={styles.tagPicker}
             removeButtonAriaLabel="Remove"
-            selectionAriaLabel="Existing tags"
+            selectionAriaLabel="Tags"
             onResolveSuggestions={filterSuggestedTags}
             onRenderSuggestionsItem={onRenderSuggestionsItem}
             getTextFromItem={getTextFromItem}
-            pickerSuggestionsProps={pickerSuggestionsProps}
             itemLimit={10}
             // this option tells the picker's callout to render inline instead of in a new layer
             pickerCalloutProps={{ doNotLayer: false }}

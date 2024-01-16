@@ -86,6 +86,10 @@ export const DocumentsDetailList = ({ items, onFilesSorted, onFileDelete, onSave
         }
     };
 
+    const compareTags = (array1: string[], array2: string[]) => {
+        return array1.length === array2.length && array1.every((value, index) => value === array2[index]);
+    };
+
     const onColumnClick = (ev: React.MouseEvent<HTMLElement>, column: IColumn): void => {
         const newColumns: IColumn[] = columns.slice();
         const currColumn: IColumn = newColumns.filter(currCol => column.key === currCol.key)[0];
@@ -359,6 +363,7 @@ export const DocumentsDetailList = ({ items, onFilesSorted, onFileDelete, onSave
             <Dialog
                 hidden={!isEditTagsDialogVisible}
                 onDismiss={() => setIsEditTagsDialogVisible(false)}
+                containerClassName=""
                 dialogContentProps={{
                     type: DialogType.normal,
                     title: "Edit Tags",
@@ -366,7 +371,12 @@ export const DocumentsDetailList = ({ items, onFilesSorted, onFileDelete, onSave
                 }}
                 modalProps={{
                     isBlocking: true,
-                    styles: { main: { maxWidth: 450 } },
+                    styles: {
+                        main: {
+                            minWidth: 450,
+                            maxWidth: '80%', // Adjust the max width as needed
+                        },
+                    },
                 }}
             >
                 <TagPickerInline
@@ -379,6 +389,13 @@ export const DocumentsDetailList = ({ items, onFilesSorted, onFileDelete, onSave
                         <PrimaryButton
                             onClick={() => itemToEdit && handleSaveTags(itemToEdit)}
                             text="Save"
+                            disabled={
+                                editedTags.length === 0 ||
+                                compareTags(
+                                    editedTags.map(tag => tag.key as string),
+                                    itemToEdit?.tags || []
+                                )
+                            }
                         />
                     ) : null}
                     <DefaultButton

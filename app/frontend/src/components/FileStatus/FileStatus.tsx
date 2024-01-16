@@ -77,7 +77,6 @@ export const FileStatus = ({ className, userData }: Props) => {
                     i === item ? { ...i, state: "Deleted" } : i
                 )
             );
-            filterData();
         } catch (error) {
             console.error("Ereror deleting item: ", error);
         } finally {

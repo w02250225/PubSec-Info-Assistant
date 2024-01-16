@@ -1,4 +1,3 @@
-
 .rootClass {
     max-width: 800px;
 }
@@ -13,11 +12,17 @@
 
 .tagArea {
     padding-bottom: 20px;
-  }
+    max-height: 60vh;
+    overflow-y: auto;
+}
 
 .tagSelection {
     padding-bottom: 5px;
     justify-content: left;
     text-align: left;
     height: 90px;
- }  
+}
+
+.addIcon {
+    margin-left: 5px;
+}
