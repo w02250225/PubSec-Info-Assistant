@@ -97,9 +97,13 @@ def delete_search_documents(file_uri: str):
 
 def update_search_documents_tags(file_uri: str, new_tags: list[str]):
     try:
-        results = SEARCH_CLIENT.search(search_text="*", filter=f"file_uri eq '{file_uri}'", select="id")
+        results = SEARCH_CLIENT.search(search_text="*", filter=f"file_uri eq '{file_uri}'", select="id, tags")
         
-        documents_to_update = [{"@search.action": "merge", "id": result["id"], "tags": new_tags} for result in results]
+        documents_to_update = []
+        for result in results:
+            current_tags = result.get("tags", [])
+            if current_tags != new_tags:
+                documents_to_update.append({"@search.action": "merge", "id": result["id"], "tags": new_tags})
 
         if len(documents_to_update) > 0:
             SEARCH_CLIENT.merge_documents(documents_to_update)
