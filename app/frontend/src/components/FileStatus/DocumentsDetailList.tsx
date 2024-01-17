@@ -167,7 +167,6 @@ export const DocumentsDetailList = ({ items, onFilesSorted, onFileDelete, onSave
                 title="Delete File"
                 disabled={isDeleting || !canDelete}
                 onClick={() => openDeleteDialog(item)}
-                style={{ cursor: "pointer", marginLeft: "5px" }}
             />
         );
     };
@@ -301,22 +300,19 @@ export const DocumentsDetailList = ({ items, onFilesSorted, onFileDelete, onSave
                 return <span>{item.modified_timestamp}</span>;
             },
         },
-        ...(isAdmin
-            ? [
-                {
-                    key: 'columnDelete',
-                    name: 'Delete',
-                    fieldName: 'delete',
-                    className: styles.fileIconCell,
-                    iconClassName: styles.fileIconHeaderIcon,
-                    minWidth: 50,
-                    maxWidth: 50,
-                    isRowHeader: true,
-                    isResizable: true,
-                    ariaLabel: 'Delete',
-                    onRender: renderDeleteColumn,
-                },
-            ] : []),
+        {
+            key: 'columnDelete',
+            name: 'Delete',
+            fieldName: 'delete',
+            className: styles.fileIconCell,
+            iconClassName: styles.fileIconHeaderIcon,
+            minWidth: 50,
+            maxWidth: 50,
+            isRowHeader: true,
+            isResizable: true,
+            ariaLabel: 'Delete',
+            onRender: renderDeleteColumn,
+        },
     ]);
 
     return (
@@ -363,7 +359,6 @@ export const DocumentsDetailList = ({ items, onFilesSorted, onFileDelete, onSave
             <Dialog
                 hidden={!isEditTagsDialogVisible}
                 onDismiss={() => setIsEditTagsDialogVisible(false)}
-                containerClassName=""
                 dialogContentProps={{
                     type: DialogType.normal,
                     title: "Edit Tags",

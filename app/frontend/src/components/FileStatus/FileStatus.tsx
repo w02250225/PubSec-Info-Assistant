@@ -7,7 +7,6 @@ import { DocumentsDetailList, IDocument } from "./DocumentsDetailList";
 import { ArrowClockwise24Filled, FilterDismiss24Filled } from "@fluentui/react-icons";
 import { animated, useSpring } from "@react-spring/web";
 import { getAllUploadStatus, FileUploadBasicStatus, deleteFile, updateFileTags, UserData } from "../../api";
-import { TagPickerInline } from '../TagPicker'
 
 import styles from "./FileStatus.module.css";
 

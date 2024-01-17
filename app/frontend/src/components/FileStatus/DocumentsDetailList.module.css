@@ -25,6 +25,10 @@
   max-width: 16px;
 }
 
+.fileIconImg:disabled {
+  cursor: not-allowed;
+}
+
 .tagIcon {
   vertical-align: middle;
   max-height: 16px;
