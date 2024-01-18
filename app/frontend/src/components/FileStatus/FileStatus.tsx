@@ -128,7 +128,7 @@ export const FileStatus = ({ className, userData }: Props) => {
             const folderName = item.folder_name && typeof item.folder_name === 'string' ? item.folder_name.trim() : '';
 
             if (folderName && !folderDropdownOptions.some(o => o.key === folderName)) {
-                folderDropdownOptions.push({ key: folderName, text: folderName });
+                folderDropdownOptions.push({ key: folderName, text: folderName, itemType: SelectableOptionMenuItemType.Normal });
             }
 
             // Tags
@@ -143,7 +143,21 @@ export const FileStatus = ({ className, userData }: Props) => {
         });
 
         uniqueTags.forEach(tag => {
-            tagDropdownOptions.push({ key: tag, text: tag });
+            tagDropdownOptions.push({ key: tag, text: tag, itemType: SelectableOptionMenuItemType.Normal });
+        });
+
+        folderDropdownOptions.sort((a, b) => {
+            if (a.itemType === SelectableOptionMenuItemType.Normal && b.itemType === SelectableOptionMenuItemType.Normal) {
+                return a.text.localeCompare(b.text);
+            }
+            return 0;
+        });
+        
+        tagDropdownOptions.sort((a, b) => {
+            if (a.itemType === SelectableOptionMenuItemType.Normal && b.itemType === SelectableOptionMenuItemType.Normal) {
+                return a.text.localeCompare(b.text);
+            }
+            return 0;
         });
 
         setSelectableFolderOptions(folderDropdownOptions);
@@ -164,7 +178,7 @@ export const FileStatus = ({ className, userData }: Props) => {
         }
 
         setAllFiles(list);
-        filterData();
+        // filterData();
         setIsLoading(false);
     };
 
