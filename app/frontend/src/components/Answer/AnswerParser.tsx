@@ -61,16 +61,20 @@ export function parseAnswerToHtml(answer: string, isStreaming: boolean, citation
                 return "";
             }
             else {
+                // splitting the full file path from citation_lookup into an array and then slicing it to get the folders, file name, and extension 
+                // the first 4 elements of the full file path are the "https:", "", "blob storaage url", and "container name" which are not needed in the display
+                let citationShortName: string = citation_lookup[part].citation.split("/").slice(4).join("/");
                 let citationIndex: number;
-                if (citations.indexOf((citation_lookup as any)[part]) !== -1) {
-                    citationIndex = citations.indexOf((citation_lookup as any)[part]) + 1;
 
+                // Check if the citationShortName is already in the citations array
+                if (citations.includes(citationShortName)) {
+                    // If it exists, use the existing index (add 1 because array is 0-based but citation numbers are 1-based)
+                    citationIndex = citations.indexOf(citationShortName) + 1;
                 } else {
-                    // splitting the full file path from citation_lookup into an array and then slicing it to get the folders, file name, and extension 
-                    // the first 4 elements of the full file path are the "https:", "", "blob storaage url", and "container name" which are not needed in the display
-
-                    let citationShortName: string = (citation_lookup)[part].citation.split("/").slice(4).join("/");
+                    // If it's a new citation, add it to the array
                     citations.push(citationShortName);
+                    citationIndex = citations.length; // The new index is the length of the array
+
                     // switch these to the citationShortName as key to allow dynamic lookup of the source path and page number
                     // The "FileX" moniker will not be used beyond this point in the UX code
                     sourceFiles[citationShortName] = citation.source_path;
@@ -84,19 +88,16 @@ export function parseAnswerToHtml(answer: string, isStreaming: boolean, citation
                         // The page_number property is not a valid number, but we still generate a citation.
                         pageNumbers[citationShortName] = NaN;
                     }
-                    citationIndex = citations.length;
                 }
+
                 const path = getCitationFilePath(citation.citation.split("/").slice(4).join("/"));
                 const sourcePath = citation.source_path;
                 const pageNumber = citation.page_number;
 
                 return renderToStaticMarkup(
-                    // splitting the full file path from citation_lookup into an array and then slicing it to get the folders, file name, and extension 
-                    // the first 4 elements of the full file path are the "https:", "", "blob storaage url", and "container name" which are not needed in the display
-
                     <a
                         className="supContainer"
-                        title={citation.citation.split("/").slice(-2, -1)[0]} 
+                        title={citation.citation.split("/").slice(-2, -1)[0]}
                         data-path={path}
                         data-source-path={sourcePath}
                         data-page-number={pageNumber}>
