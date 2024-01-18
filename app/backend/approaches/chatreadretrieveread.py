@@ -13,8 +13,6 @@ from openai.types.chat import (
     ChatCompletionChunk,
     ChatCompletionMessageParam,
 )
-from quart import jsonify
-
 from approaches.approach import Approach
 from azure.search.documents.aio import SearchClient
 from azure.search.documents.models import QueryType, VectorizedQuery, VectorQuery
@@ -25,9 +23,8 @@ from azure.storage.blob import (
     generate_account_sas,
 )
 from text import nonewlines
-import tiktoken
 from core.messagebuilder import MessageBuilder
-from core.modelhelper import get_token_limit
+from core.modelhelper import get_token_limit, get_num_tokens_from_messages
 import requests
 
 # Simple retrieve-then-read implementation, using the Cognitive Search and
@@ -192,14 +189,14 @@ Always include citations if you reference the source documents. Use square brack
         data_points = []
         thoughts = ""
         citation_lookup = {}
-
+        prompt_tokens = 0
         query_prompt = self.query_prompt_template.format(query_term_language = self.query_term_language)
 
-        try:
-        # STEP 1: Generate an optimized keyword search query based on the chat history and the last question
-            messages = self.get_messages_from_history(
+        try:            
+            # STEP 1: Generate an optimized keyword search query based on the chat history and the last question
+            messages, prompt_tokens = self.get_messages_from_history(
                 system_prompt = query_prompt,
-                model_id=self.gpt_model_name,
+                model_id = self.gpt_model_name,
                 history = history,
                 user_content = user_query_request,
                 max_tokens = self.chatgpt_token_limit - len(user_query_request),
@@ -237,7 +234,7 @@ Always include citations if you reference the source documents. Use square brack
                     vectors.append(VectorizedQuery(vector = embedded_query_vector, k_nearest_neighbors = 50,  fields = "contentVector"))
                 else:
                     logging.error(f"Error generating embedding: {response.text}")
-                    raise Exception('Error generating embedding:', response.status_code)
+                    raise Exception('Error generating embedding')
 
             # Only keep the text query if the retrieval mode uses text, otherwise drop it
             if not has_text:
@@ -289,9 +286,6 @@ Always include citations if you reference the source documents. Use square brack
                 "/".join(urllib.parse.unquote(doc[self.source_file_field]).split("/")[4:]
                     ) + "| " + nonewlines(doc[self.content_field])
                     )
-                # uncomment to debug size of each search result content_field
-                # print(f"File{idx}: ", self.num_tokens_from_string(f"File{idx} " + /
-                #  "| " + nonewlines(doc[self.content_field]), "cl100k_base"))
 
                 # add the "FileX" moniker and full file name to the citation lookup
                 citation_lookup[f"File{idx}"] = {
@@ -354,7 +348,7 @@ Always include citations if you reference the source documents. Use square brack
 
             # STEP 3: Generate a contextual and content-specific answer using the search results and chat history.
             messages_token_limit = self.chatgpt_token_limit - response_length
-            messages = self.get_messages_from_history(
+            messages, prompt_tokens = self.get_messages_from_history(
                 system_prompt = system_message,
                 model_id = self.gpt_model_name,
                 history = history,
@@ -363,9 +357,9 @@ Always include citations if you reference the source documents. Use square brack
             )
 
             chat_coroutine = self.openai_client.chat.completions.create(
+                messages = messages,
                 # Azure Open AI takes the deployment name as the model name
                 model = self.gpt_deployment if self.gpt_deployment else self.gpt_model_name,
-                messages = messages,
                 temperature = float(overrides.get("temperature") or 0.4),
                 top_p = float(overrides.get("top_p") or 1.0),
                 max_tokens = response_length,
@@ -378,20 +372,22 @@ Always include citations if you reference the source documents. Use square brack
                 "generated_query" : generated_query,
                 "citation_lookup": citation_lookup,
                 "data_points": data_points,
+                "prompt_tokens": prompt_tokens,
                 "thoughts": f"Searched for:<br>{generated_query}<br><br>Conversations:<br>" + msg_to_display.replace('\n', '<br>'),
                 }
 
             return (extra_info, chat_coroutine)
 
         except Exception as error:
-            extra_info = jsonify({
+            extra_info = {
                 "error_message": str(error),
                 "generated_query": generated_query,
                 "data_points": data_points,
                 "thoughts": thoughts,
+                "prompt_tokens": prompt_tokens,
                 "citation_lookup": citation_lookup,
-            })
-        return (extra_info, None)
+            }
+            return (extra_info, None)
 
 
     async def run_without_streaming(
@@ -421,8 +417,7 @@ Always include citations if you reference the source documents. Use square brack
         session_state: Any = None,
     ) -> AsyncGenerator[dict, None]:
         extra_info, chat_coroutine = await self.run_until_final_call(
-            history, overrides, should_stream = True
-        )
+            history, overrides, should_stream = True)
 
         if chat_coroutine is None:
             yield {
@@ -504,7 +499,7 @@ Always include citations if you reference the source documents. Use square brack
         user_content: str,
         max_tokens: int = 4096,
         few_shots = [],
-        ) -> list[ChatCompletionMessageParam]:
+        ) -> (list[ChatCompletionMessageParam], int):
         """
         Construct a list of messages from the chat history and the user's question.
         """
@@ -528,7 +523,7 @@ Always include citations if you reference the source documents. Use square brack
                 break
             message_builder.insert_message(message["role"], message["content"], index=append_index)
             total_token_count += potential_message_count
-        return message_builder.messages
+        return message_builder.messages, total_token_count
 
     def get_search_query(self, chat_completion: ChatCompletion, user_query: str):
         response_message = chat_completion.choices[0].message
@@ -556,20 +551,7 @@ Always include citations if you reference the source documents. Use square brack
         }
         level = levels[response_length]
         return f"Please provide a {level} answer. This means that your answer should be no more than {response_length} tokens long."
-
-    def num_tokens_from_string(self, string: str, encoding_name: str) -> int:
-        """ Function to return the number of tokens in a text string"""
-        encoding = tiktoken.get_encoding(encoding_name)
-        num_tokens = len(encoding.encode(string))
-        return num_tokens
     
-    def token_count(self, input_text):
-        """ Function to return the number of tokens in a text string"""
-        # calc token count
-        # For gpt-4, gpt-3.5-turbo, text-embedding-ada-002, you need to use cl100k_base
-        encoding = "cl100k_base"
-        token_count = self.num_tokens_from_string(input_text, encoding)
-        return token_count
 
     def get_source_file_with_sas(self, source_file: str) -> str:
         """ Function to return the source file with a SAS token"""

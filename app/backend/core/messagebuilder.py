@@ -7,7 +7,7 @@ from openai.types.chat import (
     ChatCompletionUserMessageParam,
 )
 
-from .modelhelper import num_tokens_from_messages
+from .modelhelper import get_num_tokens_from_messages
 
 class MessageBuilder:
     """
@@ -48,7 +48,7 @@ class MessageBuilder:
         self.messages.insert(index, message)
 
     def count_tokens_for_message(self, message: dict[str, str]):
-        return num_tokens_from_messages(message, self.model)
+        return get_num_tokens_from_messages(message, self.model)
 
     def normalize_content(self, content: str):
         return unicodedata.normalize("NFC", content)

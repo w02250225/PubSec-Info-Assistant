@@ -3,7 +3,6 @@
 
 from datetime import datetime, timedelta
 
-import asyncio
 import base64
 import json
 import logging
@@ -88,7 +87,7 @@ AZURE_OPENAI_API_VERSION = os.environ.get("AZURE_OPENAI_API_VERSION")
 AZURE_SUBSCRIPTION_ID = os.environ.get("AZURE_SUBSCRIPTION_ID")
 CHAT_WARNING_BANNER_TEXT = os.environ.get("CHAT_WARNING_BANNER_TEXT") or ""
 
-TARGET_EMBEDDING_MODEL = os.environ.get("TARGET_EMBEDDING_MODEL") or "azure-openai_text-embedding-ada-002"
+TARGET_EMBEDDINGS_MODEL = os.environ.get("TARGET_EMBEDDINGS_MODEL") or "azure-openai_text-embedding-ada-002"
 ENRICHMENT_APPSERVICE_NAME = os.environ.get("ENRICHMENT_APPSERVICE_NAME") or "enrichment"
 APPLICATION_TITLE = os.environ.get("APPLICATION_TITLE") or "Coeus - Internal Use Only"
 
@@ -108,7 +107,8 @@ COSMOSDB_USER_CONTAINER_NAME = os.environ.get("COSMOSDB_USER_CONTAINER_NAME") or
 
 QUERY_TERM_LANGUAGE = os.environ.get("QUERY_TERM_LANGUAGE") or "English"
 
-ERROR_MESSAGE = "The application encountered an error processing your request."
+ERROR_MESSAGE_TEMPLATE = """The application encountered an error processing your request.
+Error Message: {error_message}"""
 ERROR_MESSAGE_FILTER = """Your message contains content that was flagged by the OpenAI content filter."""
 
 # Oauth
@@ -253,14 +253,14 @@ def before_request():
             return jsonify({'error': 'Unauthorized'}), 401
         else:
             # Return a redirect for regular web requests
-            return redirect(url_for('routes.login'))
+            return redirect(url_for('routes.login')), 301
 
 
 def error_dict(error: Exception) -> dict:
     if isinstance(error, APIError) and error.code == "content_filter":
         return {"error": ERROR_MESSAGE_FILTER}
     
-    return { "error": ERROR_MESSAGE }
+    return { "error": ERROR_MESSAGE_TEMPLATE.format(error_message = str(error)) }
 
         
 def error_response(error: Exception, route: str, status_code: int = 500):
@@ -278,7 +278,10 @@ async def format_response(session_id: str,
         accumulated_content = ""
         request_doc.setdefault('response', {})
         request_id = request_doc["request_id"]
+        completion_tokens = 0
         async for event in result:
+            completion_tokens += 1
+
             event["request_id"] = request_id
             
             choice = event.get("choices", [{}])[0]
@@ -319,6 +322,7 @@ async def format_response(session_id: str,
 
         if accumulated_content:
             # Add the full answer to the request_doc
+            request_doc["response"].setdefault('completion_tokens', completion_tokens)
             request_doc["response"].setdefault('answer', accumulated_content)
 
         active_sessions.pop(session_id, None)
@@ -435,7 +439,7 @@ async def chat():
             KB_FIELDS_CHUNKFILE,
             AZURE_BLOB_STORAGE_CONTAINER,
             QUERY_TERM_LANGUAGE,
-            TARGET_EMBEDDING_MODEL,
+            TARGET_EMBEDDINGS_MODEL,
             ENRICHMENT_APPSERVICE_NAME
         )
         

@@ -39,7 +39,7 @@ def get_token_limit(model_id: str, model_version: str = "default") -> int:
     return token_limit
 
 
-def num_tokens_from_messages(message: dict[str, str], model: str) -> int:
+def get_num_tokens_from_messages(message: dict[str, str], model: str) -> int:
     """
     Calculate the number of tokens required to encode a message.
     Args:
@@ -50,13 +50,32 @@ def num_tokens_from_messages(message: dict[str, str], model: str) -> int:
     Example:
         message = {'role': 'user', 'content': 'Hello, how are you?'}
         model = 'gpt-3.5-turbo'
-        num_tokens_from_messages(message, model)
+        get_num_tokens_from_messages(message, model)
         output: 11
     """
     encoding = tiktoken.encoding_for_model(get_oai_chatmodel_tiktok(model))
     num_tokens = 4  # For "role" and "content" keys
     for key, value in message.items():
         num_tokens += len(encoding.encode(value))
+    return num_tokens
+
+
+def get_num_tokens_from_string(message: str, model: str) -> int:
+    """
+    Calculate the number of tokens required to encode a message.
+    Args:
+        message (str): The message to encode, represented as a string.
+        model (str): The name of the model to use for encoding.
+    Returns:
+        int: The total number of tokens required to encode the message.
+    Example:
+        message = {'role': 'user', 'content': 'Hello, how are you?'}
+        model = 'gpt-3.5-turbo'
+        get_num_tokens_from_string(message, model)
+        output: 11
+    """
+    encoding = tiktoken.encoding_for_model(get_oai_chatmodel_tiktok(model))
+    num_tokens = len(encoding.encode(message))
     return num_tokens
 
 
