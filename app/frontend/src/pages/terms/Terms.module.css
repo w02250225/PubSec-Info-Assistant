@@ -5,7 +5,17 @@
   align-content: center;
 }
 
+.buttonContainer {
+  display: flex; 
+  justify-content: center; 
+  margin-top: 10px;
+}
+
 .acceptButton {
   width: 10%;
-  margin: 0 auto;
+  margin-right: 10px;
+}
+
+.notAcceptButton {
+  width: 10%;
 }

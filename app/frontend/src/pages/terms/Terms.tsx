@@ -1,5 +1,5 @@
 import { useEffect, useState, useContext } from 'react';
-import { PrimaryButton } from '@fluentui/react';
+import { DefaultButton, PrimaryButton } from '@fluentui/react';
 import { useNavigate } from "react-router-dom";
 import DOMPurify from "dompurify";
 
@@ -44,6 +44,10 @@ const Terms = () => {
         }
     };
 
+    const handleNotAccept = async () => {
+        navigate('/logout');
+    };
+
     useEffect(() => {
         if (termsAccepted && userData?.tou_accepted) {
             navigate('/');
@@ -54,11 +58,18 @@ const Terms = () => {
         <div className={styles.contentArea}>
             <div dangerouslySetInnerHTML={{ __html: terms }}></div>
             {!userData?.tou_accepted && (
-                <PrimaryButton
-                    className={styles.acceptButton}
-                    onClick={handleAccept}>
-                    Accept Terms
-                </PrimaryButton>
+                <div className={styles.buttonContainer}>
+                    <PrimaryButton
+                        className={styles.acceptButton}
+                        onClick={handleAccept}>
+                        I Understand & Agree
+                    </PrimaryButton>
+                    <DefaultButton
+                        className={styles.notAcceptButton}
+                        onClick={handleNotAccept}>
+                        I do not agree
+                    </DefaultButton>
+                </div>
             )}
         </div>
     );
