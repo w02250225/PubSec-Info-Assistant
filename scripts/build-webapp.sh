@@ -15,8 +15,13 @@ BINARIES_OUTPUT_PATH="${DIR}/../artifacts/build/"
 rm -f ${BINARIES_OUTPUT_PATH}/webapp.zip
 mkdir -p ${BINARIES_OUTPUT_PATH}
 
+# build frontend
+cd app/frontend
+npm install
+npm run build
+
 # zip the webapp content from app/backend to the ./artifacts folders
-cd app/backend
+cd ../backend
 zip -r ${BINARIES_OUTPUT_PATH}/webapp.zip . 2>&1 | pv > /dev/null
 cd $DIR
 echo "Successfully zipped webapp"

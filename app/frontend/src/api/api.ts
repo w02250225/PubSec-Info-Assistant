@@ -6,18 +6,18 @@ import {
     StatusLogEntry, StatusLogResponse, ApplicationTitle, GetTagsResponse, GptDeployment, UserData, PromptTemplate, TermsOfUse, FileUploadBasicStatus
 } from "./models";
 
-// async function fetchWithSessionCheck(url: string, options: RequestInit) {
-//     const response = await fetch(url, options);
+async function fetchWithSessionCheck(url: string, options: RequestInit) {
+    const response = await fetch(url, options);
 
-//     if (response.status === 401) {
-//         window.location.href = '/login';
-//         throw new Error('Session timeout, redirecting to login');
-//     }
-//     return response;
-// }
+    // if (response.status === 401) {
+    //     window.location.href = '/login';
+    //     throw new Error('Session timeout, redirecting to login');
+    // }
+    return response;
+}
 
 export async function chatApi(request: ChatAppRequest): Promise<Response> {
-    return await fetch(`/chat`, {
+    return await fetchWithSessionCheck(`/chat`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -55,7 +55,7 @@ export async function downloadFileFromResponse(response: Response): Promise<void
 
 export async function exportAnswer(request: ExportRequest): Promise<void> {
     try {
-        const response = await fetch("/exportAnswer", {
+        const response = await fetchWithSessionCheck("/exportAnswer", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -74,7 +74,7 @@ export function getCitationFilePath(citation: string): string {
 }
 
 export async function getBlobClientUrl(): Promise<string> {
-    const response = await fetch("/getBlobClientUrl", {
+    const response = await fetchWithSessionCheck("/getBlobClientUrl", {
         method: "GET",
         headers: {
             "Content-Type": "application/json"
@@ -90,7 +90,7 @@ export async function getBlobClientUrl(): Promise<string> {
 }
 
 export async function getBlobUrl(filename: string): Promise<string> {
-    const response = await fetch("/getBlobUrl", {
+    const response = await fetchWithSessionCheck("/getBlobUrl", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -109,7 +109,7 @@ export async function getBlobUrl(filename: string): Promise<string> {
 }
 
 export async function getAllUploadStatus(): Promise<AllFilesUploadStatus> {
-    const response = await fetch("/getAllUploadStatus", {
+    const response = await fetchWithSessionCheck("/getAllUploadStatus", {
         method: "GET",
         headers: {
             "Content-Type": "application/json"
@@ -125,7 +125,7 @@ export async function getAllUploadStatus(): Promise<AllFilesUploadStatus> {
 }
 
 export async function logStatus(status_log_entry: StatusLogEntry): Promise<StatusLogResponse> {
-    var response = await fetch("/logStatus", {
+    var response = await fetchWithSessionCheck("/logStatus", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -149,7 +149,7 @@ export async function logStatus(status_log_entry: StatusLogEntry): Promise<Statu
 }
 
 export async function getInfoData(): Promise<GetInfoResponse> {
-    const response = await fetch("/getInfoData", {
+    const response = await fetchWithSessionCheck("/getInfoData", {
         method: "GET",
         headers: {
             "Content-Type": "application/json"
@@ -164,7 +164,7 @@ export async function getInfoData(): Promise<GetInfoResponse> {
 }
 
 export async function getWarningBanner(): Promise<GetWarningBanner> {
-    const response = await fetch("/getWarningBanner", {
+    const response = await fetchWithSessionCheck("/getWarningBanner", {
         method: "GET",
         headers: {
             "Content-Type": "application/json"
@@ -179,7 +179,7 @@ export async function getWarningBanner(): Promise<GetWarningBanner> {
 }
 
 export async function getCitationObj(citation: string): Promise<ActiveCitation> {
-    const response = await fetch(`/getCitation`, {
+    const response = await fetchWithSessionCheck(`/getCitation`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -197,7 +197,7 @@ export async function getCitationObj(citation: string): Promise<ActiveCitation> 
 }
 
 export async function getApplicationTitle(): Promise<ApplicationTitle> {
-    const response = await fetch("/getApplicationTitle", {
+    const response = await fetchWithSessionCheck("/getApplicationTitle", {
         method: "GET",
         headers: {
             "Content-Type": "application/json"
@@ -214,7 +214,7 @@ export async function getApplicationTitle(): Promise<ApplicationTitle> {
 }
 
 export async function getAllTags(): Promise<GetTagsResponse> {
-    const response = await fetch("/getAllTags", {
+    const response = await fetchWithSessionCheck("/getAllTags", {
         method: "GET",
         headers: {
             "Content-Type": "application/json"
@@ -231,7 +231,7 @@ export async function getAllTags(): Promise<GetTagsResponse> {
 }
 
 export async function getGptDeployments(): Promise<GptDeployment[]> {
-    const response = await fetch("/getGptDeployments", {
+    const response = await fetchWithSessionCheck("/getGptDeployments", {
         method: "GET",
         headers: {
             "Content-Type": "application/json"
@@ -250,7 +250,7 @@ export async function getGptDeployments(): Promise<GptDeployment[]> {
 }
 
 export async function setGptDeployment(deployment: GptDeployment): Promise<void> {
-    const response = await fetch("/setGptDeployment", {
+    const response = await fetchWithSessionCheck("/setGptDeployment", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -265,7 +265,7 @@ export async function setGptDeployment(deployment: GptDeployment): Promise<void>
 }
 
 export async function logout() {
-    const response = await fetch("/logout", { method: "GET" });
+    const response = await fetchWithSessionCheck("/logout", { method: "GET" });
 
     if (response.status > 299 || !response.ok) {
         console.error(response);
@@ -274,7 +274,7 @@ export async function logout() {
 }
 
 export async function getUserData(): Promise<UserData> {
-    const response = await fetch("/getUserData", {
+    const response = await fetchWithSessionCheck("/getUserData", {
         method: "GET",
         headers: {
             "Content-Type": "application/json"
@@ -289,7 +289,7 @@ export async function getUserData(): Promise<UserData> {
 }
 
 export async function getPromptTemplates(): Promise<PromptTemplate[]> {
-    const response = await fetch("/getPromptTemplates", {
+    const response = await fetchWithSessionCheck("/getPromptTemplates", {
         method: "GET",
         headers: {
             "Content-Type": "application/json"
@@ -308,7 +308,7 @@ export async function getPromptTemplates(): Promise<PromptTemplate[]> {
 }
 
 export async function stopStream(): Promise<Response> {
-    return await fetch(`/stopStream`, {
+    return await fetchWithSessionCheck(`/stopStream`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -317,7 +317,7 @@ export async function stopStream(): Promise<Response> {
 }
 
 export async function getTermsOfUse(): Promise<TermsOfUse> {
-    const response = await fetch(`/termsOfUse`, {
+    const response = await fetchWithSessionCheck(`/termsOfUse`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json"
@@ -332,7 +332,7 @@ export async function getTermsOfUse(): Promise<TermsOfUse> {
 }
 
 export async function acceptTermsOfUse(tou_version: string): Promise<Response> {
-    return await fetch(`/termsOfUse`, {
+    return await fetchWithSessionCheck(`/termsOfUse`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -344,7 +344,7 @@ export async function acceptTermsOfUse(tou_version: string): Promise<Response> {
 }
 
 export async function deleteFile(file_path: string): Promise<Response> {
-    return await fetch(`/deleteFile`, {
+    return await fetchWithSessionCheck(`/deleteFile`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -356,7 +356,7 @@ export async function deleteFile(file_path: string): Promise<Response> {
 }
 
 export async function updateFileTags(file_path: string, newTags: string[]): Promise<Response> {
-    return await fetch(`/updateFileTags`, {
+    return await fetchWithSessionCheck(`/updateFileTags`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"

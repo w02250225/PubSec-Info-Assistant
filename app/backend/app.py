@@ -18,7 +18,7 @@ import requests
 
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from azure.core.credentials import AzureKeyCredential
-from azure.identity.aio import DefaultAzureCredential, get_bearer_token_provider
+from azure.identity.aio import DefaultAzureCredential#, get_bearer_token_provider
 from azure.mgmt.cognitiveservices.aio import CognitiveServicesManagementClient
 from azure.monitor.opentelemetry import configure_azure_monitor
 from azure.search.documents.aio import SearchClient
@@ -49,6 +49,7 @@ from quart import (
     session,
     url_for
 )
+from quart_cors import cors
 from core.request_log import RequestLog
 from core.status_log import State, StatusClassification, StatusLog
 from core.userdata_log import UserDataLog
@@ -922,7 +923,7 @@ def create_app():
         default_level = "INFO"
     logging.basicConfig(level = os.getenv("APP_LOG_LEVEL", default_level))
 
-    # if allowed_origin := os.getenv("ALLOWED_ORIGIN"):
-    #     app.logger.info("CORS enabled for %s", allowed_origin)
-    #     cors(app, allow_origin=allowed_origin, allow_methods=["GET", "POST"])
+    if allowed_origin := os.getenv("ALLOWED_ORIGIN"):
+        app.logger.info("CORS enabled for %s", allowed_origin)
+        cors(app, allow_origin = allowed_origin, allow_methods=["GET", "POST"])
     return app
