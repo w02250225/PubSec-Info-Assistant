@@ -379,8 +379,18 @@ Always include citations if you reference the source documents. Use square brack
             return (extra_info, chat_coroutine)
 
         except Exception as error:
+            # error_type = type(error).__name__
+            error_code = "Unknown Code"
+            error_message = "No message provided"
+
+            # Check if error has an attribute named 'body'
+            if hasattr(error, 'body') and isinstance(error.body, dict):
+                error_body = error.body
+                error_code = error_body.get('code', error_code)
+                error_message = error_body.get('message', error_message)
+
             extra_info = {
-                "error_message": str(error),
+                "error_message": error_message,
                 "generated_query": generated_query,
                 "data_points": data_points,
                 "thoughts": thoughts,

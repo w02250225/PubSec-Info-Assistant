@@ -109,6 +109,7 @@ COSMOSDB_USER_CONTAINER_NAME = os.environ.get("COSMOSDB_USER_CONTAINER_NAME") or
 QUERY_TERM_LANGUAGE = os.environ.get("QUERY_TERM_LANGUAGE") or "English"
 
 ERROR_MESSAGE_TEMPLATE = """The application encountered an error processing your request.
+
 Error Message: {error_message}"""
 ERROR_MESSAGE_FILTER = """Your message contains content that was flagged by the OpenAI content filter."""
 
@@ -254,7 +255,7 @@ def before_request():
             return jsonify({'error': 'Unauthorized'}), 401
         else:
             # Return a redirect for regular web requests
-            return redirect(url_for('routes.login')), 301
+            return redirect(url_for('routes.login'))
 
 
 def error_dict(error: Exception) -> dict:

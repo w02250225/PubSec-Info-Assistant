@@ -7,12 +7,28 @@ import {
 } from "./models";
 
 async function fetchWithSessionCheck(url: string, options: RequestInit) {
-    const response = await fetch(url, options);
+    let response;
 
-    // if (response.status === 401) {
-    //     window.location.href = '/login';
-    //     throw new Error('Session timeout, redirecting to login');
-    // }
+    try {
+        response = await fetch(url, options);
+    } catch (error) {
+        console.error('Network error:', error);
+        throw error;
+    }
+
+    if (response.status === 301 || response.status === 302) {
+        const redirectUrl = response.headers.get('Location');
+
+        if (redirectUrl) {
+            window.location.href = redirectUrl;
+
+        } else {
+            const error_message = 'Redirect requested, but no Location header found'
+            console.error(error_message);
+            throw new Error(error_message)
+        }
+    }
+
     return response;
 }
 

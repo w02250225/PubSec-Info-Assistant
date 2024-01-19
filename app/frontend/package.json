@@ -33,9 +33,10 @@
     "@types/react": "^18.0.27",
     "@types/react-dom": "^18.0.10",
     "@vitejs/plugin-react": "^4.2.1",
+    "postcss-nesting": "^11.2.2",
     "prettier": "^2.8.3",
+    "rollup-plugin-visualizer": "^5.12.0",
     "typescript": "^4.9.3",
-    "vite": "^5.0.10",
-    "postcss-nesting": "^11.2.2"
+    "vite": "^5.0.10"
   }
 }
