@@ -18,7 +18,7 @@ resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = {
       family: 'A'
     }
     tenantId: subscription().tenantId
-    accessPolicies: [
+    accessPolicies: kvAccessObjectId != '' ? [
       {
         tenantId: subscription().tenantId
         objectId: kvAccessObjectId
@@ -27,7 +27,7 @@ resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = {
           secrets: [ 'all' ]
         }
       }
-    ]
+    ] : []
   }
 }
 
