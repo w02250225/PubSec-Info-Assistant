@@ -306,7 +306,8 @@ def get_tags(blob_path):
         container = ENV["AZURE_BLOB_STORAGE_UPLOAD_CONTAINER"],
         blob = path)
     blob_properties = blob_client.get_blob_properties()
-    tags = blob_properties.metadata.get("tags")
+    tags = blob_properties.metadata.get("Tags") or blob_properties.metadata.get("tags")
+    
     if tags is not None:
         if isinstance(tags, str):
             tags_list = [unquote(tag) for tag in tags.split(",")]

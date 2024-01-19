@@ -36,7 +36,7 @@ def main(myblob: func.InputStream):
         blob_service_client = BlobServiceClient.from_connection_string(azure_blob_connection_string)
         blob_client = blob_service_client.get_blob_client(container = container_name, blob = blob_name)
         blob_properties = blob_client.get_blob_properties()
-        tags = blob_properties.metadata.get("tags")
+        tags = blob_properties.metadata.get("Tags") or blob_properties.metadata.get("tags")
         
         # Extract tags
         if tags is not None:

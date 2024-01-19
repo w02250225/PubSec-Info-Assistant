@@ -310,7 +310,7 @@ def main(msg: func.QueueMessage) -> None:
         blob_service_client = BlobServiceClient.from_connection_string(azure_blob_connection_string)
         blob_client = blob_service_client.get_blob_client(container=azure_blob_drop_storage_container, blob=path)
         blob_properties = blob_client.get_blob_properties()
-        tags = blob_properties.metadata.get("tags")
+        tags = blob_properties.metadata.get("Tags") or blob_properties.metadata.get("tags")
 
         if tags is not None:
             if isinstance(tags, str):
