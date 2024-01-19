@@ -88,7 +88,7 @@ AZURE_OPENAI_API_VERSION = os.environ.get("AZURE_OPENAI_API_VERSION")
 AZURE_SUBSCRIPTION_ID = os.environ.get("AZURE_SUBSCRIPTION_ID")
 CHAT_WARNING_BANNER_TEXT = os.environ.get("CHAT_WARNING_BANNER_TEXT") or ""
 
-TARGET_EMBEDDINGS_MODEL = os.environ.get("TARGET_EMBEDDINGS_MODEL") or "azure-openai_text-embedding-ada-002"
+TARGET_EMBEDDINGS_MODEL = os.environ.get("TARGET_EMBEDDINGS_MODEL")
 ENRICHMENT_APPSERVICE_NAME = os.environ.get("ENRICHMENT_APPSERVICE_NAME") or "enrichment"
 APPLICATION_TITLE = os.environ.get("APPLICATION_TITLE") or "Coeus - Internal Use Only"
 
@@ -126,7 +126,7 @@ ADMIN_GROUP_NAME = os.getenv("ADMIN_GROUP_NAME")
 APP_SECRET = os.getenv("APP_SECRET")
 DEBUG = os.getenv("CODESPACES") == "true"
 SCHEME = "http" if DEBUG else "https"
-LOGOUT_URL = os.getenv("LOGOUT_URL") or "https://treasuryqld.sharepoint.com/sites/corporate/"
+LOGOUT_URL = os.getenv("LOGOUT_URL") or "https://www.treasury.qld.gov.au/"
 
 os.environ['TZ'] = 'Australia/Brisbane'
 time.tzset()

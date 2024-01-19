@@ -381,7 +381,7 @@ Always include citations if you reference the source documents. Use square brack
         except Exception as error:
             # error_type = type(error).__name__
             error_code = "Unknown Code"
-            error_message = "No message provided"
+            error_message = str(error)
 
             # Check if error has an attribute named 'body'
             if hasattr(error, 'body') and isinstance(error.body, dict):
