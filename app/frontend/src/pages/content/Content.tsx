@@ -36,7 +36,7 @@ const Content = () => {
             <Pivot aria-label="Upload Files Section" className={styles.topPivot} onLinkClick={handleLinkClick}>
                 <PivotItem headerText="Upload Files" aria-label="Upload Files Tab">
                     <div className={styles.App} >
-                        {/* Only allow admins to pick folders for upload     */}
+                        {/* Only allow admins to pick folders for upload */}
                         {userData.is_admin ? (
                         <FolderPicker allowFolderCreation={true} onSelectedKeyChange={onSelectedKeyChanged} selectedKeys={[selectedKey || ""]} userData={userData}/>
                         ) : null }

@@ -1,0 +1,38 @@
+.faqContainer {
+  margin: 50px;
+  display: flex;
+  flex-direction: column;
+  align-content: center;
+}
+
+.faqItem {
+  margin-bottom: 20px;
+  padding: 10px;
+  border-bottom: 1px solid #ddd; /* A subtle line to separate items */
+}
+
+.faqItem h3 {
+  font-size: 1.2em;
+  margin-bottom: 15px; 
+  cursor: pointer; 
+}
+
+.faqItem p {
+  font-size: 1em;
+  line-height: 1.6;
+}
+
+.faqAnswer {
+  padding-top: 15px; 
+  transition: max-height 0.3s ease-out;
+  overflow: hidden;
+  max-height: 0; 
+}
+
+.faqItem.expanded .faqAnswer {
+  max-height: 500px; 
+}
+
+.faqIcon {
+  margin-right: 10px;
+}

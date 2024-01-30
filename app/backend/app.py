@@ -142,7 +142,8 @@ BLOB_CLIENT = None
 QUEUE_CLIENT = None
 BLOB_CONTAINER_CONTENT = None
 BLOB_CONTAINER_UPLOAD = None
-EXPORT_CONTAINER = None
+BLOB_CONTAINER_EXPORT = None
+BLOB_CONTAINER_WEBSITE = None
 
 def create_msal_client():
     return msal.ConfidentialClientApplication(
@@ -330,6 +331,24 @@ async def format_response(session_id: str,
         active_sessions.pop(session_id, None)
         finish_time = datetime.now()
         await request_log.log_response(request_id, request_doc, finish_time)
+
+
+async def get_website_blob_json(blob_name: str):
+    try:
+        # Setup blob client
+        blob_client = BLOB_CONTAINER_WEBSITE.get_blob_client(blob_name)
+        
+        # Download the JSON file content
+        blob_data = await blob_client.download_blob()
+        json_content = await blob_data.readall()
+
+        return json.loads(json_content)
+   
+    except Exception as error:
+        return jsonify({
+            "error": str(error)
+        })
+
 
 
 @bp.route("/login")
@@ -532,9 +551,9 @@ async def get_all_upload_status():
     is_admin = session["user_data"].get("is_admin", False)
     try:
         results = await current_app.status_log.read_all_files_status(user_id, is_admin)
-    except Exception as ex:
+    except Exception as error:
         logging.exception("Exception in /getAllUploadStatus")
-        return jsonify({"error": str(ex)}), 500
+        return jsonify({"error": str(error)}), 500
     return jsonify(results)
 
 
@@ -559,9 +578,9 @@ async def log_status():
         
         await current_app.status_log.save_document(document_path=path)
 
-    except Exception as ex:
+    except Exception as error:
         logging.exception("Exception in /logStatus")
-        return jsonify({"error": str(ex)}), 500
+        return jsonify({"error": str(error)}), 500
     return jsonify({"status": 200})
 
 
@@ -606,9 +625,9 @@ async def get_user_data():
 
         return jsonify(user_data)
     
-    except Exception as ex:
+    except Exception as error:
         logging.exception("Exception in /getUserData")
-        return jsonify({"error": str(ex)}), 500
+        return jsonify({"error": str(error)}), 500
 
 
 @bp.route("/getWarningBanner")
@@ -632,9 +651,9 @@ async def get_citation():
         decoded_text = await blob_data.readall()
         results = json.loads(decoded_text.decode())
 
-    except Exception as ex:
+    except Exception as error:
         logging.exception("Exception in /getCitation")
-        return jsonify({"error": str(ex)}), 500
+        return jsonify({"error": str(error)}), 500
 
     return jsonify(results)
 
@@ -646,7 +665,7 @@ async def export():
         session_gpt_deployment = session.get('gpt_deployment', GPT_DEPLOYMENT)
         file_name, export_file = await exporthelper.export_to_blob(
                                     request_data,
-                                    EXPORT_CONTAINER,
+                                    BLOB_CONTAINER_EXPORT,
                                     OPENAI_CLIENT,
                                     session_gpt_deployment.get('deploymentName'),
                                     session_gpt_deployment.get('modelName'))
@@ -656,9 +675,9 @@ async def export():
                                 attachment_filename = file_name
                                 )
 
-    except Exception as ex:
+    except Exception as error:
         logging.exception("Exception in /exportAnswer")
-        return jsonify({"error": str(ex)}), 500
+        return jsonify({"error": str(error)}), 500
 
 
 @bp.route("/getApplicationTitle")
@@ -676,9 +695,9 @@ async def get_all_tags():
     """Get the status of all tags in the system"""
     try:
         results = await current_app.status_log.get_all_tags()
-    except Exception as ex:
+    except Exception as error:
         logging.exception("Exception in /getAllTags")
-        return jsonify({"error": str(ex)}), 500
+        return jsonify({"error": str(error)}), 500
     return jsonify(results)
 
 
@@ -687,9 +706,9 @@ async def get_gpt_deployments():
     """Get a list of all GPT model deployments"""
     try:
         return jsonify(ALL_GPT_DEPLOYMENTS)
-    except Exception as ex:
+    except Exception as error:
         logging.exception("Exception in /getGptDeployments")
-        return jsonify({"error": str(ex)}), 500
+        return jsonify({"error": str(error)}), 500
 
 
 @bp.route("/setGptDeployment", methods=["POST"])
@@ -716,23 +735,12 @@ async def get_prompt_templates():
     """Get a list of all Prompt Templates"""
     try:
         blob_name = "prompt_templates.json"
-        
-        # Setup container/blob client
-        container_client = BLOB_CLIENT.get_container_client(AZURE_BLOB_WEBSITE_CONTAINER)
-        blob_client = container_client.get_blob_client(blob_name)
-        
-        # Download the JSON file content
-        blob_data = await blob_client.download_blob()
-        json_content = await blob_data.readall()
-
-        # Convert the JSON content to a dict
-        template_data = json.loads(json_content)
-
+        template_data = await get_website_blob_json(blob_name)
         return jsonify(template_data)
     
-    except Exception as ex:
+    except Exception as error:
         logging.exception("Exception in /getPromptTemplates")
-        return jsonify({"error": str(ex)}), 500
+        return jsonify({"error": str(error)}), 500
 
 
 @bp.route('/termsOfUse', methods=['GET', 'POST'])
@@ -761,28 +769,15 @@ async def terms():
         # If it's a GET request, display the terms to the user
         elif request.method == 'GET':
             blob_name = "terms.json"
-            
-            # Setup container/blob client
-            container_client = BLOB_CLIENT.get_container_client(AZURE_BLOB_WEBSITE_CONTAINER)
-            blob_client = container_client.get_blob_client(blob_name)
-            
-            # Download the JSON file content
-            blob_data = await blob_client.download_blob()
-            json_content = await blob_data.readall()
-
-            # Convert the JSON content to a dict
-            tou_data = json.loads(json_content)
-
+            tou_data = await get_website_blob_json(blob_name)
             return jsonify(tou_data)
         
         else:
             return jsonify({'error': 'Method not allowed'}), 405
     
-    except json.JSONDecodeError:
-        return jsonify({'error': 'Invalid JSON format'}), 400
-    except Exception as ex:
+    except Exception as error:
         logging.exception("Exception in /termsOfUse")
-        return jsonify({"error": str(ex)}), 500
+        return jsonify({"error": str(error)}), 500
     
 
 @bp.route('/deleteFile', methods=['POST'])
@@ -821,9 +816,9 @@ async def delete_file():
 
         return jsonify({'message': "File deleted successfully"}), 200
     
-    except Exception as ex:
+    except Exception as error:
         logging.exception("Exception in /deleteFile")
-        return jsonify({"error": str(ex)}), 500
+        return jsonify({"error": str(error)}), 500
 
 
 @bp.route('/updateFileTags', methods=['POST'])
@@ -860,9 +855,21 @@ async def update_file_tags():
 
         return jsonify({'message': 'Tags updated successfully'}), 200
     
-    except Exception as ex:
+    except Exception as error:
         logging.exception("Exception in /updateFileTags")
-        return jsonify({"error": str(ex)}), 500
+        return jsonify({"error": str(error)}), 500
+
+
+@bp.route('/getFaq', methods=['GET'])
+async def get_faq():
+    try:
+        blob_name = "faq.json"
+        faq_data = await get_website_blob_json(blob_name)
+        return jsonify(faq_data)
+        
+    except Exception as error:
+        logging.exception("Exception in /getFaq")
+        return jsonify({"error": str(error)}), 500
 
 
 def create_app():
@@ -877,7 +884,8 @@ def create_app():
 
     @app.before_serving
     async def init():
-        global MSAL_CLIENT, OPENAI_CLIENT, SEARCH_CLIENT, BLOB_CLIENT, QUEUE_CLIENT, BLOB_CONTAINER_CONTENT, BLOB_CONTAINER_UPLOAD, EXPORT_CONTAINER
+        global MSAL_CLIENT, OPENAI_CLIENT, SEARCH_CLIENT, BLOB_CLIENT, QUEUE_CLIENT, BLOB_CONTAINER_CONTENT, \
+        BLOB_CONTAINER_UPLOAD, BLOB_CONTAINER_EXPORT, BLOB_CONTAINER_WEBSITE
 
         MSAL_CLIENT = create_msal_client()
         OPENAI_CLIENT = await create_openai_client()
@@ -887,7 +895,8 @@ def create_app():
 
         BLOB_CONTAINER_CONTENT = BLOB_CLIENT.get_container_client(AZURE_BLOB_STORAGE_CONTAINER)
         BLOB_CONTAINER_UPLOAD = BLOB_CLIENT.get_container_client(AZURE_BLOB_UPLOAD_CONTAINER)
-        EXPORT_CONTAINER = BLOB_CLIENT.get_container_client(AZURE_BLOB_EXPORT_CONTAINER)
+        BLOB_CONTAINER_EXPORT = BLOB_CLIENT.get_container_client(AZURE_BLOB_EXPORT_CONTAINER)
+        BLOB_CONTAINER_WEBSITE = BLOB_CLIENT.get_container_client(AZURE_BLOB_WEBSITE_CONTAINER)
         
         await request_log.initialize()
         await status_log.initialize()

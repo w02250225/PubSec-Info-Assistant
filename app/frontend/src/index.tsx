@@ -14,6 +14,7 @@ import Layout from "./pages/layout/Layout";
 import NoPage from "./pages/NoPage";
 import Chat from "./pages/chat/Chat";
 import Content from "./pages/content/Content";
+import FAQ from "./pages/faq/FAQ"
 import Terms from "./pages/terms/Terms"
 import ViewDocument from "./pages/document/ViewDocument"
 
@@ -27,6 +28,7 @@ export default function App() {
                     <Route path="/" element={<Layout />}>
                         <Route index element={<Chat />} />
                         <Route path="Content" element={<Content />} />
+                        <Route path="FAQ" element={<FAQ />} />
                         <Route path="Terms" element={<Terms />} />
                         <Route path="ViewDocument/*" element={<ViewDocument />} />
                         <Route path="*" element={<NoPage />} />

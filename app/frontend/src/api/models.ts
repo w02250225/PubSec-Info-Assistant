@@ -244,3 +244,15 @@ export type TermsOfUse = {
     version: string;
     error?: string;
 }
+
+export type FaqContent = {
+    content: string;
+    questions: FaqQuestion[];
+    version: string;
+    error?: string;
+}
+
+export type FaqQuestion = {
+    question: string;
+    answer: string;
+}

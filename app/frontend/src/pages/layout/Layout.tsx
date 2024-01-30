@@ -48,6 +48,11 @@ const Layout = () => {
                                     Terms of Use
                                 </NavLink>
                             </li>
+                            <li className={styles.headerNavLeftMargin}>
+                                <NavLink to="/FAQ" className={({ isActive }) => (isActive ? styles.headerNavPageLinkActive : styles.headerNavPageLink)}>
+                                    FAQ
+                                </NavLink>
+                            </li>
                         </ul>
                     </nav>
                     {userData && (

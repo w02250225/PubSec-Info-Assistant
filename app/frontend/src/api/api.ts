@@ -3,7 +3,7 @@
 
 import {
     ChatAppRequest, BlobClientUrlResponse, AllFilesUploadStatus, GetInfoResponse, ActiveCitation, GetWarningBanner, ExportRequest,
-    StatusLogEntry, StatusLogResponse, ApplicationTitle, GetTagsResponse, GptDeployment, UserData, PromptTemplate, TermsOfUse, FileUploadBasicStatus
+    StatusLogEntry, StatusLogResponse, ApplicationTitle, GetTagsResponse, GptDeployment, UserData, PromptTemplate, TermsOfUse, FaqContent
 } from "./models";
 
 async function fetchWithSessionCheck(url: string, options: RequestInit) {
@@ -382,4 +382,19 @@ export async function updateFileTags(file_path: string, newTags: string[]): Prom
             "tags": newTags,
         })
     });
+}
+
+export async function getFaq(): Promise<FaqContent> {
+    const response = await fetchWithSessionCheck(`/getFaq`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+    const parsedResponse: FaqContent = await response.json();
+    if (response.status > 299 || !response.ok) {
+        console.log(response);
+        throw Error(parsedResponse.error || "Unknown error");
+    }
+    return parsedResponse;
 }
