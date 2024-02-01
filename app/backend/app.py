@@ -17,6 +17,7 @@ import msal
 import requests
 
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
+from approaches.chat import ChatApproach
 from azure.core.credentials import AzureKeyCredential
 from azure.identity.aio import DefaultAzureCredential#, get_bearer_token_provider
 from azure.mgmt.cognitiveservices.aio import CognitiveServicesManagementClient
@@ -263,7 +264,14 @@ def error_dict(error: Exception) -> dict:
     if isinstance(error, APIError) and error.code == "content_filter":
         return {"error": ERROR_MESSAGE_FILTER}
     
-    return { "error": ERROR_MESSAGE_TEMPLATE.format(error_message = str(error)) }
+    error_message = str(error)
+
+    # Check if error has an attribute named 'body'
+    if hasattr(error, 'body') and isinstance(error.body, dict):
+        error_body = error.body
+        error_message = error_body.get('message', error_message)
+    
+    return { "error": ERROR_MESSAGE_TEMPLATE.format(error_message = error_message) }
 
         
 def error_response(error: Exception, route: str, status_code: int = 500):
@@ -348,7 +356,6 @@ async def get_website_blob_json(blob_name: str):
         return jsonify({
             "error": str(error)
         })
-
 
 
 @bp.route("/login")
@@ -446,23 +453,34 @@ async def chat():
                 session_gpt_deployment, 
                 request_json, 
                 start_time)
+        
+        retrieval_mode = request_context.get("overrides", {}).get("retrieval_mode", "none")
 
-        approach = ChatReadRetrieveReadApproach(
-            SEARCH_CLIENT,
-            OPENAI_CLIENT,
-            BLOB_CLIENT,
-            session_gpt_deployment.get("deploymentName"),
-            session_gpt_deployment.get("modelName"),
-            session_gpt_deployment.get("modelVersion"),
-            KB_FIELDS_SOURCEFILE,
-            KB_FIELDS_CONTENT,
-            KB_FIELDS_PAGENUMBER,
-            KB_FIELDS_CHUNKFILE,
-            AZURE_BLOB_STORAGE_CONTAINER,
-            QUERY_TERM_LANGUAGE,
-            TARGET_EMBEDDINGS_MODEL,
-            ENRICHMENT_APPSERVICE_NAME
-        )
+        if retrieval_mode == "none":
+            approach = ChatApproach(
+                OPENAI_CLIENT,
+                session_gpt_deployment.get("deploymentName"),
+                session_gpt_deployment.get("modelName"),
+                session_gpt_deployment.get("modelVersion"),
+            )
+
+        else:
+            approach = ChatReadRetrieveReadApproach(
+                SEARCH_CLIENT,
+                OPENAI_CLIENT,
+                BLOB_CLIENT,
+                session_gpt_deployment.get("deploymentName"),
+                session_gpt_deployment.get("modelName"),
+                session_gpt_deployment.get("modelVersion"),
+                KB_FIELDS_SOURCEFILE,
+                KB_FIELDS_CONTENT,
+                KB_FIELDS_PAGENUMBER,
+                KB_FIELDS_CHUNKFILE,
+                AZURE_BLOB_STORAGE_CONTAINER,
+                QUERY_TERM_LANGUAGE,
+                TARGET_EMBEDDINGS_MODEL,
+                ENRICHMENT_APPSERVICE_NAME
+            )
         
         result = await approach.run(
             request_json["messages"],

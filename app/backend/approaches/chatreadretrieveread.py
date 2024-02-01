@@ -10,8 +10,7 @@ from typing import Any, AsyncGenerator, Coroutine, Literal, Optional, Union, ove
 from openai import AsyncOpenAI, AsyncStream
 from openai.types.chat import (
     ChatCompletion,
-    ChatCompletionChunk,
-    ChatCompletionMessageParam,
+    ChatCompletionChunk
 )
 from approaches.approach import Approach
 from azure.search.documents.aio import SearchClient
@@ -34,13 +33,6 @@ import requests
 
 class ChatReadRetrieveReadApproach(Approach):
 
-     # Chat roles
-    SYSTEM = "system"
-    USER = "user"
-    ASSISTANT = "assistant"
-    
-    NO_RESPONSE = "0"
-
     system_message_chat_conversation = """You are {systemPersona} who helps {userPersona} answer questions about a Government agency's data.
 {response_length_prompt}
 User persona is {userPersona}.
@@ -59,14 +51,6 @@ Here is how you should answer every question:
 {follow_up_questions_prompt}
 {injected_prompt}"""
 
-    follow_up_questions_prompt_content = """
-Generate three very brief follow-up questions that the user would likely ask next about their agencies data.
-Use triple angle brackets to reference the questions. Example:
-<<<What are the key initiatives of the Queensland Budget?>>>
-<<<What is the Empowered and Safe Communities project?>>>
-Do no repeat questions that have already been asked.
-Make sure the last question ends with ">>>"."""
-
     query_prompt_template = """Below is a history of the conversation so far, and a new question asked by the user that needs to be answered by searching in source documents.
 Generate a search query based on the conversation and the new question. Treat each search term as an individual keyword. Do not combine terms in quotes or brackets.
 Do not include cited source filenames and document names (for example info.txt or doc.pdf) in the search query terms.
@@ -84,18 +68,18 @@ Always include citations if you reference the source documents. Use square brack
 
     #Few Shot prompting for Keyword Search Query
     query_prompt_few_shots = [
-    {'role' : USER, 'content' : 'What are the future plans for public transportation development?' },
-    {'role' : ASSISTANT, 'content' : 'Future plans for public transportation' },
-    {'role' : USER, 'content' : 'how much renewable energy was generated last year?' },
-    {'role' : ASSISTANT, 'content' : 'Renewable energy generation last year' }
+    {'role' : Approach.USER, 'content' : 'What are the future plans for public transportation development?' },
+    {'role' : Approach.ASSISTANT, 'content' : 'Future plans for public transportation' },
+    {'role' : Approach.USER, 'content' : 'how much renewable energy was generated last year?' },
+    {'role' : Approach.ASSISTANT, 'content' : 'Renewable energy generation last year' }
     ]
 
     #Few Shot prompting for Response. This will feed into Chain of thought system message.
     response_prompt_few_shots = [
-    {"role": USER ,'content': 'I am looking for information in source documents'},
-    {'role': ASSISTANT, 'content': 'user is looking for information in source documents. Do not provide answers that are not in the source documents'},
-    {'role': USER, 'content': 'What steps are being taken to promote energy conservation?'},
-    {'role': ASSISTANT, 'content': 'Several steps are being taken to promote energy conservation including reducing energy consumption, increasing energy efficiency, and increasing the use of renewable energy sources [File0].'}
+    {"role": Approach.USER ,'content': 'I am looking for information in source documents'},
+    {'role': Approach.ASSISTANT, 'content': 'user is looking for information in source documents. Do not provide answers that are not in the source documents'},
+    {'role': Approach.USER, 'content': 'What steps are being taken to promote energy conservation?'},
+    {'role': Approach.ASSISTANT, 'content': 'Several steps are being taken to promote energy conservation including reducing energy consumption, increasing energy efficiency, and increasing the use of renewable energy sources [File0].'}
     ]
 
     def __init__(
@@ -155,9 +139,8 @@ Always include citations if you reference the source documents. Use square brack
         overrides: dict[str, Any],
         should_stream: bool = False,
     ) -> tuple[dict[str, Any], Coroutine[Any, Any, Union[ChatCompletion, AsyncStream[ChatCompletionChunk]]]]:
-        #TODO
-        has_text = True #overrides.get("retrieval_mode") in ["text", "hybrid", None]
-        has_vector = True #overrides.get("retrieval_mode") in ["vectors", "hybrid", None]
+        has_text = overrides.get("retrieval_mode") in ["text", "hybrid", None]
+        has_vector = overrides.get("retrieval_mode") in ["vectors", "hybrid", None]
         use_semantic_captions = True if overrides.get("semantic_captions") else False
         top = overrides.get("top", 3)
         user_persona = overrides.get("user_persona", "")
@@ -190,6 +173,7 @@ Always include citations if you reference the source documents. Use square brack
         thoughts = ""
         citation_lookup = {}
         prompt_tokens = 0
+        prompt_override = ""
         query_prompt = self.query_prompt_template.format(query_term_language = self.query_term_language)
 
         try:            
@@ -238,7 +222,7 @@ Always include citations if you reference the source documents. Use square brack
 
             # Only keep the text query if the retrieval mode uses text, otherwise drop it
             if not has_text:
-                query_text = None
+                generated_query = None
 
             #Create a filter for the search query
             if (folder_filter != "") & (folder_filter != "All"):
@@ -374,6 +358,7 @@ Always include citations if you reference the source documents. Use square brack
                 "data_points": data_points,
                 "prompt_tokens": prompt_tokens,
                 "thoughts": f"Searched for:<br>{generated_query}<br><br>Conversations:<br>" + msg_to_display.replace('\n', '<br>'),
+                "prompt_override": prompt_override
                 }
 
             return (extra_info, chat_coroutine)
@@ -392,10 +377,11 @@ Always include citations if you reference the source documents. Use square brack
             extra_info = {
                 "error_message": error_message,
                 "generated_query": generated_query,
-                "data_points": data_points,
-                "thoughts": thoughts,
-                "prompt_tokens": prompt_tokens,
                 "citation_lookup": citation_lookup,
+                "data_points": data_points,
+                "prompt_tokens": prompt_tokens,
+                "thoughts": thoughts,
+                "prompt_override": prompt_override
             }
             return (extra_info, None)
 
@@ -492,7 +478,11 @@ Always include citations if you reference the source documents. Use square brack
             }
 
     async def run(
-        self, messages: list[dict], stream: bool = False, session_state: Any = None, context: dict[str, Any] = {}
+        self,
+        messages: list[dict],
+        stream: bool = False,
+        session_state: Any = None,
+        context: dict[str, Any] = {}
     ) -> Union[dict[str, Any], AsyncGenerator[dict[str, Any], None]]:
         overrides = context.get("overrides", {})
         if stream is False:
@@ -500,68 +490,6 @@ Always include citations if you reference the source documents. Use square brack
         else:
             return self.run_with_streaming(messages, overrides, session_state)
 
-
-    def get_messages_from_history(
-        self,
-        system_prompt: str,
-        model_id: str,
-        history: list[dict[str, str]],
-        user_content: str,
-        max_tokens: int = 4096,
-        few_shots = [],
-        ) -> (list[ChatCompletionMessageParam], int):
-        """
-        Construct a list of messages from the chat history and the user's question.
-        """
-        message_builder = MessageBuilder(system_prompt, model_id)
-
-        # Few Shot prompting. Add examples to show the chat what responses we want. 
-        # It will try to mimic any responses and make sure they match the rules laid out in the system message.
-        for shot in reversed(few_shots):
-            message_builder.insert_message(shot.get("role"), shot.get("content"))
-
-        append_index = len(few_shots) + 1
-
-        message_builder.insert_message(self.USER, user_content, index=append_index)
-        total_token_count = message_builder.count_tokens_for_message(dict(message_builder.messages[-1]))  # type: ignore
-
-        newest_to_oldest = list(reversed(history[:-1]))
-        for message in newest_to_oldest:
-            potential_message_count = message_builder.count_tokens_for_message(message)
-            if (total_token_count + potential_message_count) >= max_tokens:
-                logging.debug("Reached max tokens of %d, history will be truncated", max_tokens)
-                break
-            message_builder.insert_message(message["role"], message["content"], index=append_index)
-            total_token_count += potential_message_count
-        return message_builder.messages, total_token_count
-
-    def get_search_query(self, chat_completion: ChatCompletion, user_query: str):
-        response_message = chat_completion.choices[0].message
-        if function_call := response_message.function_call:
-            if function_call.name == "search_sources":
-                arg = json.loads(function_call.arguments)
-                search_query = arg.get("search_query", self.NO_RESPONSE)
-                if search_query != self.NO_RESPONSE:
-                    return search_query
-        elif query_text := response_message.content:
-            if query_text.strip() != self.NO_RESPONSE:
-                return query_text
-        return user_query
-
-    def extract_followup_questions(self, content: str):
-        return content.split("<<<")[0], re.findall(r"<<<([^>>>]+)>>>", content)
-
-    #Get the prompt text for the response length
-    def get_response_length_prompt_text(self, response_length: int):
-        """ Function to return the response length prompt text"""
-        levels = {
-            1024: "succinct",
-            2048: "standard",
-            3072: "thorough",
-        }
-        level = levels[response_length]
-        return f"Please provide a {level} answer. This means that your answer should be no more than {response_length} tokens long."
-    
 
     def get_source_file_with_sas(self, source_file: str) -> str:
         """ Function to return the source file with a SAS token"""
@@ -586,22 +514,3 @@ Always include citations if you reference the source documents. Use square brack
         except Exception as error:
             logging.error(f"Unable to parse source file name: {str(error)}")
             return ""
-
-    def get_first_page_num_for_chunk(self, content: str) -> str:
-        """
-        Parse the search document content for the first page from the "pages" attribute
-
-        Args:
-            content: The search document content (JSON string)
-
-        Returns:
-            The first page number.
-        """
-        try:
-            page_num = str(json.loads(content)["pages"][0])
-            if page_num is None:
-                return "0"
-            return page_num
-        except Exception as error:
-            logging.exception("Unable to parse first page num: " + str(error) + "")
-            return "0"

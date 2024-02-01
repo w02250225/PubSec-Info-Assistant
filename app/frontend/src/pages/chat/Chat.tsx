@@ -3,7 +3,7 @@
 
 import { useRef, useState, useEffect, useContext } from "react";
 import Coeus from "../../assets/coeus.png";
-import { Checkbox, Panel, DefaultButton, TextField, SpinButton, Separator, PanelType, IComboBoxOption, SelectableOptionMenuItemType } from "@fluentui/react";
+import { Checkbox, Panel, DefaultButton, TextField, SpinButton, Separator, PanelType, IComboBoxOption, SelectableOptionMenuItemType, IDropdownOption, Dropdown } from "@fluentui/react";
 import { ITag } from '@fluentui/react/lib/Pickers';
 import readNDJSONStream from "ndjson-readablestream";
 import { BlobServiceClient } from "@azure/storage-blob";
@@ -112,7 +112,7 @@ const Chat = () => {
                         // Only show folders if 
                         // - The folder is not a user folder (e.g. "Public") 
                         // - The folder belongs to them
-                        if ( !isUserFolder || folderName === userData.userPrincipalName ) {
+                        if (!isUserFolder || folderName === userData.userPrincipalName) {
                             newSelectedFolders.push(folderName);
                         }
                     }
@@ -296,9 +296,9 @@ const Chat = () => {
         setRetrieveCount(parseInt(newValue || "5"));
     };
 
-    // const onRetrievalModeChange = (_ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption<RetrievalMode> | undefined, index?: number | undefined) => {
-    //     setRetrievalMode(option?.data || RetrievalMode.Hybrid);
-    // };
+    const onRetrievalModeChange = (_ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption<RetrievalMode> | undefined, index?: number | undefined) => {
+        setRetrievalMode(option?.data || RetrievalMode.Hybrid);
+    };
 
     const onUserPersonaChange = (_ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
         setUserPersona(newValue || "");
@@ -405,6 +405,13 @@ const Chat = () => {
 
         fetchBlobFolderData();
     }, []);
+
+    const retrievalModeOptions: IDropdownOption[] = [
+        { key: "hybrid", text: "Vectors + Text (Hybrid)", selected: retrievalMode == RetrievalMode.Hybrid, data: RetrievalMode.Hybrid },
+        { key: "vectors", text: "Vectors", selected: retrievalMode == RetrievalMode.Vectors, data: RetrievalMode.Vectors },
+        { key: "text", text: "Text", selected: retrievalMode == RetrievalMode.Text, data: RetrievalMode.Text },
+        { key: "none", text: "No Document Search (Chat Direct)", selected: retrievalMode == RetrievalMode.None, data: RetrievalMode.None }
+    ]
 
     return (
         <div className={styles.container}>
@@ -577,19 +584,12 @@ const Chat = () => {
                     closeButtonAriaLabel="Close"
                     onRenderFooterContent={() => <DefaultButton onClick={() => setIsConfigPanelOpen(false)}>Close</DefaultButton>}
                     isFooterAtBottom={true}>
-                    <SpinButton
+                    <TextField
                         className={styles.chatSettingsSeparator}
-                        label="Documents to retrieve from search:"
-                        min={1}
-                        max={50}
-                        defaultValue={retrieveCount.toString()}
-                        onChange={onRetrieveCountChange}
-                    />
-                    <Checkbox
-                        className={styles.chatSettingsSeparator}
-                        checked={useSuggestFollowupQuestions}
-                        label="Suggest follow-up questions"
-                        onChange={onUseSuggestFollowupQuestionsChange}
+                        defaultValue={systemPersona}
+                        label="System Persona"
+                        onChange={onSystemPersonaChange}
+                        errorMessage={systemPersona.length == 0 ? "Please provide a value" : undefined}
                     />
                     <TextField
                         className={styles.chatSettingsSeparator}
@@ -598,28 +598,44 @@ const Chat = () => {
                         onChange={onUserPersonaChange}
                         errorMessage={userPersona.length == 0 ? "Please provide a value" : undefined}
                     />
-                    <TextField
+                    <Checkbox
                         className={styles.chatSettingsSeparator}
-                        defaultValue={systemPersona}
-                        label="System Persona"
-                        onChange={onSystemPersonaChange}
-                        errorMessage={systemPersona.length == 0 ? "Please provide a value" : undefined}
+                        checked={useSuggestFollowupQuestions}
+                        label="Suggest follow-up questions"
+                        onChange={onUseSuggestFollowupQuestionsChange}
                     />
-                    <Separator
-                        className={styles.chatSettingsSeparator}>
-                        Filter Search Results
-                    </Separator>
-                    <FolderPicker
-                        allowFolderCreation={false}
-                        onSelectedKeyChange={onSelectedKeyChanged}
-                        selectedKeys={selectedFolders}
-                        userData={userData}
+                    <Dropdown
+                        label="Document search mode"
+                        options={retrievalModeOptions}
+                        onChange={onRetrievalModeChange}
                     />
-                    <TagPickerInline
-                        allowNewTags={false}
-                        onSelectedTagsChange={onSelectedTagsChange}
-                        preSelectedTags={selectedTags}
-                    />
+                    {retrievalMode !== RetrievalMode.None &&
+                        <>
+                            <SpinButton
+                                className={styles.chatSettingsSeparator}
+                                label="Documents to retrieve from search"
+                                min={1}
+                                max={50}
+                                defaultValue={retrieveCount.toString()}
+                                onChange={onRetrieveCountChange}
+                            />
+                            <Separator
+                                className={styles.chatSettingsSeparator}>
+                                Filter Search Results
+                            </Separator>
+                            <FolderPicker
+                                allowFolderCreation={false}
+                                onSelectedKeyChange={onSelectedKeyChanged}
+                                selectedKeys={selectedFolders}
+                                userData={userData}
+                            />
+                            <TagPickerInline
+                                allowNewTags={false}
+                                onSelectedTagsChange={onSelectedTagsChange}
+                                preSelectedTags={selectedTags}
+                            />
+                        </>
+                    }
                 </Panel>
                 <Panel
                     type={PanelType.smallFixedFar}
