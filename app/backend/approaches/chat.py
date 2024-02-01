@@ -161,10 +161,10 @@ Always remember to adhere to safety guidelines by steering clear of sensitive to
 
             extra_info = {
                 "generated_query" : "N/A",
-                "citation_lookup": "N/A",
-                "data_points": "N/A",
-                "prompt_tokens": prompt_tokens,
+                "citation_lookup": {},
+                "data_points": [],
                 "thoughts": "N/A",
+                "prompt_tokens": prompt_tokens,
                 "prompt_override": prompt_override,
                 }
 
@@ -184,10 +184,10 @@ Always remember to adhere to safety guidelines by steering clear of sensitive to
             extra_info = {
                 "error_message": error_message,
                 "generated_query": "N/A",
-                "data_points": "N/A",
+                "citation_lookup": {},
+                "data_points": [],
                 "thoughts": "N/A",
                 "prompt_tokens": prompt_tokens,
-                "citation_lookup": "N/A",
                 "prompt_override": prompt_override,
             }
             return (extra_info, None)

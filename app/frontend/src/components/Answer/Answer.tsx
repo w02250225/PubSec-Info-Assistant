@@ -5,6 +5,9 @@ import { useEffect } from "react";
 import { useMemo, useState } from "react";
 import { Stack, IconButton } from "@fluentui/react";
 import DOMPurify from "dompurify";
+import Markdown from 'react-markdown'
+import rehypeRaw from 'rehype-raw';
+import rehypeHighlight from "rehype-highlight";
 
 import styles from "./Answer.module.css";
 
@@ -131,11 +134,11 @@ export const Answer = ({
         const handleLinkClick = (event: MouseEvent) => {
             event.preventDefault();
             const anchorElement = event.currentTarget as HTMLAnchorElement;
-        
+
             const path = anchorElement.getAttribute('data-path');
             const sourcePath = anchorElement.getAttribute('data-source-path');
             const pageNumber = anchorElement.getAttribute('data-page-number');
-            
+
             if (path && sourcePath && pageNumber) {
                 onCitationClicked(path, sourcePath, pageNumber);
             }
@@ -152,7 +155,7 @@ export const Answer = ({
                 link.removeEventListener('click', handleLinkClick as EventListener);
             });
         };
-    }, []); 
+    }, []);
 
 
     return (
@@ -182,7 +185,12 @@ export const Answer = ({
             </Stack.Item>
 
             <Stack.Item grow>
-                <div className={styles.answerText} dangerouslySetInnerHTML={{ __html: sanitizedAnswerHtml }}></div>
+                {/* <div className={styles.answerText} dangerouslySetInnerHTML={{ __html: sanitizedAnswerHtml }}></div> */}
+                <Markdown
+                    className={styles.answerText}
+                    rehypePlugins={[rehypeRaw, rehypeHighlight]}>
+                    {sanitizedAnswerHtml}
+                </Markdown>
             </Stack.Item>
 
             {!!citationLinks.length && (
