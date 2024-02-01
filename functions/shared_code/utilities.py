@@ -18,6 +18,7 @@ import tiktoken
 import nltk
 # Try to download using nltk.download
 nltk.download('punkt')
+from bs4 import BeautifulSoup
 
 punkt_dir = os.path.join(nltk.data.path[0], 'tokenizers/punkt')
 
@@ -65,6 +66,7 @@ class MediaType:
     MEDIA = "media"    
 
 class Utilities:
+       
     """ Class to hold utility functions """
     def __init__(self,
                  azure_blob_storage_account,
@@ -108,29 +110,87 @@ class Utilities:
         """ Function to retrieve the uri and sas token for a given blob in azure storage"""
         return self.utilities_helper.get_blob_and_sas(blob_path)
 
+    # def table_to_html(self, table):
+    #     """ Function to take an output FR table json structure and convert to HTML """
+    #     header_processing_complete = False
+    #     table_html = "<table>"
+    #     rows = [sorted([cell for cell in table["cells"] if cell["rowIndex"] == i],
+    #                    key=lambda cell: cell["columnIndex"]) for i in range(table["rowCount"])]
+    #     for row_cells in rows:
+    #         is_row_a_header = False
+    #         row_html = "<tr>"
+    #         for cell in row_cells:
+    #             tag = "td"
+    #             #if hasattr(cell, 'kind'):
+    #             if 'kind' in cell:                      
+    #                 if (cell["kind"] == "columnHeader" or cell["kind"] == "rowHeader"):
+    #                     tag = "th"
+    #                 if (cell["kind"] == "columnHeader"):
+    #                     is_row_a_header = True
+    #             else:
+    #                 # we have encountered a cell that isn't tagged as a header, 
+    #                 # so assume we have now rerached regular table cells
+    #                 header_processing_complete = True
+    #             cell_spans = ""
+    #             #if hasattr(cell, 'columnSpan'):
+    #             if 'columnSpan' in cell:
+    #                 if cell["columnSpan"] > 1:
+    #                     cell_spans += f" colSpan={cell['columnSpan']}"
+    #             #if hasattr(cell, 'rowSpan'):
+    #             if 'rowSpan' in cell:
+    #                 if cell["rowSpan"] > 1:
+    #                     cell_spans += f" rowSpan={cell['rowSpan']}"
+    #             row_html += f"<{tag}{cell_spans}>{html.escape(cell['content'])}</{tag}>"
+    #         row_html += "</tr>"
+            
+    #         if is_row_a_header and header_processing_complete == False:
+    #             row_html = "<thead>" + row_html + "</thead>"     
+    #         table_html += row_html
+    #     table_html += "</table>"
+    #     return table_html
+
     def table_to_html(self, table):
         """ Function to take an output FR table json structure and convert to HTML """
         table_html = "<table>"
         rows = [sorted([cell for cell in table["cells"] if cell["rowIndex"] == i],
                        key=lambda cell: cell["columnIndex"]) for i in range(table["rowCount"])]
-        for row_cells in rows:
-            table_html += "<tr>"
+        thead_open_added = False
+        thead_closed_added = False 
+
+        for i, row_cells in enumerate(rows):
+            is_row_a_header = False
+            row_html = "<tr>"
             for cell in row_cells:
                 tag = "td"
-                if hasattr(cell, 'kind'):
+                if 'kind' in cell:                      
                     if (cell["kind"] == "columnHeader" or cell["kind"] == "rowHeader"):
                         tag = "th"
+                    if (cell["kind"] == "columnHeader"):
+                        is_row_a_header = True
                 cell_spans = ""
-                if hasattr(cell, 'columnSpan'):
+                if 'columnSpan' in cell:
                     if cell["columnSpan"] > 1:
                         cell_spans += f" colSpan={cell['columnSpan']}"
-                if hasattr(cell, 'rowSpan'):
+                if 'rowSpan' in cell:
                     if cell["rowSpan"] > 1:
                         cell_spans += f" rowSpan={cell['rowSpan']}"
-                table_html += f"<{tag}{cell_spans}>{html.escape(cell['content'])}</{tag}>"
-            table_html +="</tr>"
+                row_html += f"<{tag}{cell_spans}>{html.escape(cell['content'])}</{tag}>"
+            row_html += "</tr>"
+            
+            # add the opening thead if this is the first row and the first header row encountered
+            if is_row_a_header and i == 0 and not thead_open_added:
+                row_html = "<thead>" + row_html 
+                thead_open_added = True 
+                            
+            # add the closing thead if we have added an opening thead and if this is not a header row
+            if not is_row_a_header and thead_open_added and not thead_closed_added:
+                row_html = "</thead>" + row_html                 
+                thead_closed_added = True
+                
+            table_html += row_html
         table_html += "</table>"
         return table_html
+
 
     def build_document_map_pdf(self, myblob_name, myblob_uri, result, azure_blob_log_storage_container, enable_dev_code):
         """ Function to build a json structure representing the paragraphs in a document, 
@@ -151,14 +211,26 @@ class Utilities:
 
         # update content_type array where spans are tables
         for index, table in enumerate(result["tables"]):
+            # initialize start_char and end_char based on the first span
             start_char = table["spans"][0]["offset"]
             end_char = start_char + table["spans"][0]["length"] - 1
+            
+            # iterate over the remaining spans
+            for span in table["spans"][1:]:
+                span_start = span["offset"]
+                # update start_char to the minimum offset
+                start_char = min(start_char, span_start)
+                # update total_length by adding the length of the current span
+                end_char += span["length"] -1
+            
+            # update the content_type array
             document_map['content_type'][start_char] = ContentType.TABLE_START
-            for i in range(start_char+1, end_char):
+            for i in range(start_char + 1, end_char):
                 document_map['content_type'][i] = ContentType.TABLE_CHAR
             document_map['content_type'][end_char] = ContentType.TABLE_END
             # tag the end point in content of a table with the index of which table this is
             document_map['table_index'][end_char] = index
+
 
         # update content_type array where spans are titles, section headings or regular content,
         # BUT skip over the table paragraphs
@@ -304,7 +376,58 @@ class Utilities:
         folder_set = file_directory + file_name + file_extension + "/"
         output_filename = file_name + f'-{file_number}' + '.json'
         return f'{folder_set}{output_filename}'
+    
+    previous_table_header = ""
+    
+    def chunk_table_with_headers(self, prefix_text, table_html, standard_chunk_target_size, 
+                                 previous_paragraph_element_is_a_table):
+        soup = BeautifulSoup(table_html, 'html.parser')
+        thead = str(soup.find('thead'))
+          
+        # check if this table is a continuation of a table on a previous page. 
+        # If yes then apply the header row from the previous table
+        if previous_paragraph_element_is_a_table:
+            if thead != "":
+                # update thead to include the main table header
+                thead = thead.replace("<thead>", "<thead>"+self.previous_table_header)
+            
+            else:
+                # just use the previoud thead
+                thead = "<thead>"+self.previous_table_header+"</thead>"    
 
+        def add_current_table_chunk(chunk):
+            # Close the table tag for the current chunk and add it to the chunks list
+            if chunk.strip() and not chunk.endswith("<table>"):
+                chunk = '<table>' + chunk + '</table>'
+                chunks.append(chunk)
+                # Start a new chunk with header if it exists                
+        
+        # Initialize chunks list
+        chunks = []
+        current_chunk = prefix_text
+        # set the target size of the first chunk 
+        chunk_target_size = standard_chunk_target_size - self.token_count(prefix_text)
+        rows = soup.find_all('tr')
+        # Filter out rows that are part of thead block
+        filtered_rows = [row for row in rows if row.parent.name != "thead"] 
+               
+        for i, row in enumerate(filtered_rows):
+            row_html = str(row)
+
+            # If adding this row to the current chunk exceeds the target size, start a new chunk
+            if self.token_count(current_chunk + row_html) > chunk_target_size:
+                add_current_table_chunk(current_chunk)    
+                current_chunk = thead
+                chunk_target_size = standard_chunk_target_size                
+
+            # Add the current row to the chunk
+            current_chunk += row_html
+
+        # Add the final chunk if there's any content left
+        add_current_table_chunk(current_chunk)      
+
+        return chunks
+    
     def build_chunks(self, document_map, myblob_name, myblob_uri, chunk_target_size):
         """ Function to build chunk outputs based on the document map """
 
