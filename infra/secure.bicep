@@ -481,6 +481,7 @@ module enrichmentApp 'core/host/secure-enrichmentappservice.bicep' = {
     location: location
     tags: tags
     appServicePlanId: enrichmentAppServicePlan.outputs.id
+    dnsZoneName: privateDnsZoneApp.outputs.name
     subnetResourceIdInbound: network.outputs.subnetIdEnrichmentInbound
     subnetResourceIdOutbound: network.outputs.subnetIdEnrichmentOutbound
   }
