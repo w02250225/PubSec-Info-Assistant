@@ -34,11 +34,6 @@ export default defineConfig({
         emptyOutDir: true,
         sourcemap: true
     },
-    server: {
-        proxy: {
-            "/chat": "http://localhost:5000"
-        }
-    },
     css: {
         postcss: {
             plugins: [
