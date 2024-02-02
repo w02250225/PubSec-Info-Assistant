@@ -287,14 +287,13 @@ async def format_response(session_id: str,
                           request_doc: dict) -> AsyncGenerator[str, None]:
     try:
         accumulated_content = ""
+        error_message = ""
         request_doc.setdefault('response', {})
         request_id = request_doc["request_id"]
         completion_tokens = 0
         async for event in result:
             completion_tokens += 1
-
             event["request_id"] = request_id
-            
             choice = event.get("choices", [{}])[0]
             context = choice.get("context", {})
             delta = choice.get("delta", {})
@@ -307,7 +306,8 @@ async def format_response(session_id: str,
                     request_doc["response"][key] = value
 
             if context.get("error_message"):
-                raise Exception(context["error_message"])
+                error_message = context["error_message"]
+                raise Exception(error_message)
 
             content = delta.get("content")
             if content:
@@ -317,26 +317,29 @@ async def format_response(session_id: str,
             if followup_questions:
                 request_doc["response"].setdefault('followup_questions', followup_questions)
             
-            if not active_sessions.get(session_id, True):
+            if session_id not in active_sessions:
                 request_doc["response"].setdefault('cancelled', True)
                 break
 
             yield json.dumps(event, ensure_ascii=False) + "\n"
 
     except Exception as e:
+        error_message = str(e)
+        request_doc["response"]["error_message"] = error_message
         logging.exception("Exception while generating response stream. %s", e)
         yield json.dumps(error_dict(e))
 
     finally:
-        #TODO
-        # Calculate completion tokens
-
         if accumulated_content:
             # Add the full answer to the request_doc
             request_doc["response"].setdefault('completion_tokens', completion_tokens)
             request_doc["response"].setdefault('answer', accumulated_content)
 
-        active_sessions.pop(session_id, None)
+        # Add error_message to request_doc
+        if error_message:
+            request_doc["response"]["error_message"] = error_message
+
+        # active_sessions.pop(request_id, None)
         finish_time = datetime.now()
         await request_log.log_response(request_id, request_doc, finish_time)
 
@@ -364,7 +367,7 @@ async def login():
     auth_url = MSAL_CLIENT.get_authorization_request_url(
         scopes=SCOPES,
         state=session["state"],
-        redirect_uri=url_for("routes.authorized", _external=True, _scheme=SCHEME)
+        redirect_uri=REDIRECT_URI
     )
     return redirect(auth_url)
 
@@ -381,7 +384,7 @@ async def authorized():
         token_response = MSAL_CLIENT.acquire_token_by_authorization_code(
             request.args["code"],
             scopes=SCOPES,
-            redirect_uri=url_for("routes.authorized", _external=True, _scheme=SCHEME)
+            redirect_uri=REDIRECT_URI
         )
         if "error" in token_response:
             return "Error: " + token_response["error_description"]
@@ -406,7 +409,7 @@ async def authorized():
         is_admin = any(group.get('displayName', '') == ADMIN_GROUP_NAME for group in group_data.get("value", []))
         
         user_data["is_admin"] = is_admin
-        user_data["tou_accepted"] = False
+        user_data["tou_accepted"] = is_admin or False # skip TOU for admins
         user_data["session_id"] = session["state"]
         user_data["session_timestamp"] = session_timestamp
 
@@ -443,7 +446,7 @@ async def chat():
     request_id = str(uuid.uuid4())
     start_time = datetime.now()
 
-    try:    
+    try:
         session_gpt_deployment = session.get('gpt_deployment', GPT_DEPLOYMENT)
 
         # Log the request to CosmosDB
@@ -507,9 +510,11 @@ async def chat():
 
 @bp.route('/stopStream', methods=['POST'])
 async def stop_stream():
+    # request_json = await request.get_json()
+    # request_id = request_json.get("request_id", "")
     session_id = session["state"]
     if session_id in active_sessions:
-        active_sessions[session_id] = False
+        active_sessions.pop(session_id, None)
         return json.dumps({'status': 'Stop request sent'})
     else:
         return json.dumps({'status': f'Session ID {session_id} not found in active_sessions'})
@@ -953,5 +958,5 @@ def create_app():
 
     if allowed_origin := os.getenv("ALLOWED_ORIGIN"):
         app.logger.info("CORS enabled for %s", allowed_origin)
-        cors(app, allow_origin = allowed_origin, allow_methods=["GET", "POST"])
+        cors(app, allow_origin = "*", allow_methods=["GET", "POST"])
     return app

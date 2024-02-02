@@ -22,8 +22,7 @@ from azure.storage.blob import (
     generate_account_sas,
 )
 from text import nonewlines
-from core.messagebuilder import MessageBuilder
-from core.modelhelper import get_token_limit, get_num_tokens_from_messages
+from core.modelhelper import get_token_limit
 import requests
 
 # Simple retrieve-then-read implementation, using the Cognitive Search and
