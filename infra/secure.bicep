@@ -609,7 +609,7 @@ module functions 'core/function/secure-function.bicep' = {
     appServicePlanId: appServicePlan.outputs.id
     dnsZoneName: privateDnsZoneApp.outputs.name
     subnetResourceIdInbound: network.outputs.subnetIdFunctionInbound
-    subnetResourceIdOutbound: network.outputs.subnetIdAppOutbound
+    subnetResourceIdOutbound: network.outputs.subnetIdFunctionOutbound
   }
 }
 
