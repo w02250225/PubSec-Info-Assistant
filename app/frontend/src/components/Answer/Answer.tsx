@@ -7,11 +7,10 @@ import { Stack, IconButton } from "@fluentui/react";
 import DOMPurify from "dompurify";
 import Markdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw';
-import rehypeHighlight from "rehype-highlight";
 
 import styles from "./Answer.module.css";
 
-import { ChatAppResponse, getCitationFilePath, ExportRequest, exportAnswer, stopStream } from "../../api";
+import { ChatAppResponse, getCitationFilePath, ExportRequest, exportAnswer } from "../../api";
 import { parseAnswerToHtml } from "./AnswerParser";
 import { AnswerIcon } from "./AnswerIcon";
 import { RAIPanel } from "../RAIPanel";
@@ -188,7 +187,7 @@ export const Answer = ({
                 {/* <div className={styles.answerText} dangerouslySetInnerHTML={{ __html: sanitizedAnswerHtml }}></div> */}
                 <Markdown
                     className={styles.answerText}
-                    rehypePlugins={[rehypeRaw, rehypeHighlight]}>
+                    rehypePlugins={[rehypeRaw]}>
                     {sanitizedAnswerHtml}
                 </Markdown>
             </Stack.Item>

@@ -21,7 +21,6 @@ export type ChatAppRequestOverrides = {
     suggest_followup_questions?: boolean;
     user_persona?: string;
     system_persona?: string;
-    ai_persona?: string;
     response_length?: number;
     top_p?: number;
     selected_folders?: string;
@@ -74,8 +73,6 @@ export type AskResponse = {
     answer: string;
     thoughts: string | null;
     data_points: string[];
-    // citation_lookup: {}
-    // added this for citation bug. aparmar.
     citation_lookup: { [key: string]: { citation: string; source_path: string; page_number: string } };
     request_id: string;
     error?: string;
@@ -237,7 +234,8 @@ export type PromptTemplate = {
     promptOverride: string;
     response_length: number;
     temperature: number;
-    top_p: number
+    top_p: number;
+    retrievalMode: RetrievalMode;
 }
 
 export type TermsOfUse = {
