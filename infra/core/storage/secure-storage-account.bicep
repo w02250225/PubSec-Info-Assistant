@@ -21,7 +21,7 @@ resource storage 'Microsoft.Storage/storageAccounts@2022-05-01' = {
 }
 
 module privateEndpointBlob '../network/secure-private_endpoint.bicep' = {
-  name: 'private-endpoint-${name}'
+  name: 'private-endpoint-${name}-blob'
   params: {
     name: '${name}-blob'
     location: location
@@ -33,7 +33,7 @@ module privateEndpointBlob '../network/secure-private_endpoint.bicep' = {
 }
 
 module privateEndpointFile '../network/secure-private_endpoint.bicep' = {
-  name: 'private-endpoint-${name}'
+  name: 'private-endpoint-${name}-file'
   params: {
     name: '${name}-file'
     location: location
@@ -45,7 +45,7 @@ module privateEndpointFile '../network/secure-private_endpoint.bicep' = {
 }
 
 module privateEndpointQueue '../network/secure-private_endpoint.bicep' = {
-  name: 'private-endpoint-${name}'
+  name: 'private-endpoint-${name}-queue'
   params: {
     name: '${name}-queue'
     location: location
@@ -57,7 +57,7 @@ module privateEndpointQueue '../network/secure-private_endpoint.bicep' = {
 }
 
 module privateEndpointTable '../network/secure-private_endpoint.bicep' = {
-  name: 'private-endpoint-${name}'
+  name: 'private-endpoint-${name}-table'
   params: {
     name: '${name}-table'
     location: location

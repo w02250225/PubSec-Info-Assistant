@@ -55,6 +55,57 @@ param snetFunctionOutboundCIDR string = '10.0.3.128/26'
 param snetEnrichmentInboundCIDR string = '10.0.4.0/26'
 param snetEnrichmentOutboundCIDR string = '10.0.4.128/26'
 
+//temp add to reuse param file
+param aadWebClientId string = ''
+param aadMgmtClientId string = ''
+@secure()
+param aadMgmtClientSecret string = ''
+param aadMgmtServicePrincipalId string = ''
+param isInAutomation bool = false
+param azureOpenAIServiceName string
+param azureOpenAIResourceGroup string
+@secure()
+param azureOpenAIServiceKey string
+param openAiSkuName string = 'S0'
+param formRecognizerSkuName string = 'S0'
+param enrichmentSkuName string = 'S0'
+param videoIndexerName string = ''
+param searchServicesSkuName string = 'standard'
+param containerName string = 'content'
+param uploadContainerName string = 'upload'
+param functionLogsContainerName string = 'logs'
+param searchIndexName string = 'vector-index'
+param chatGptDeploymentName string = 'gpt-35-turbo-16k'
+param azureOpenAIEmbeddingDeploymentName string = 'text-embedding-ada-002'
+param azureOpenAIEmbeddingsModelName string = 'text-embedding-ada-002'
+param azureOpenAIEmbeddingsModelVersion string = '2'
+param useAzureOpenAIEmbeddings bool = true
+param sentenceTransformersModelName string = 'BAAI/bge-small-en-v1.5'
+param sentenceTransformerEmbeddingVectorSize string = '384'
+param embeddingsDeploymentCapacity int = 240
+param chatWarningBannerText string = ''
+param chatGptModelName string = 'gpt-35-turbo-16k'
+param chatGptModelVersion string = '0613'
+param chatGptDeploymentCapacity int = 240
+// metadata in our chunking strategy adds about 180-200 tokens to the size of the chunks, 
+// our default target size is 750 tokens so the chunk files that get indexed will be around 950 tokens each
+param chunkTargetSize string = '750'
+param targetPages string = 'ALL'
+param formRecognizerApiVersion string = '2022-08-31'
+param queryTermLanguage string = 'English'
+param cuaEnabled bool = false
+param cuaId string = ''
+param enableDevCode bool = false
+param tenantId string = ''
+param subscriptionId string = ''
+
+@description('Id of the user or app to assign application roles')
+param principalId string = ''
+param kvAccessObjectId string = ''
+// This block of variables are used for Branding
+param applicationtitle string = ''
+param targetTranslationLanguage string = 'en'
+// end of temp section
 
 var tags = { ProjectName: 'Information Assistant', BuildNumber: buildNumber }
 var prefix = 'infoasst'
@@ -138,21 +189,6 @@ module privateDnsZoneApiManagement 'core/dns/secure-private_dns_zone.bicep' = {
   ]
 }
 
-module privateDnsZoneAppService 'core/dns/secure-private_dns_zone.bicep' = {
-  scope: rg
-  name: 'secure-private-dns-zone-app-service'
-  params: {
-    name: contains(location, 'USGov') ? 'appserviceenvironment.us' : 'privatelink.appserviceenvironment.net'
-    vnetLinkName: '${prefix}-link-app-service-outbound-${randomString}'
-    location: 'global'
-    tags: tags
-    vnetResourceId: network.outputs.id
-  }
-  dependsOn: [
-    network
-  ]
-}
-
 module privateDnsZoneAzureAi 'core/dns/secure-private_dns_zone.bicep' = {
   scope: rg
   name: 'secure-private-dns-zone-azure-ai'
@@ -187,7 +223,7 @@ module privateDnsZoneKeyVault 'core/dns/secure-private_dns_zone.bicep' = {
   scope: rg
   name: 'secure-private-dns-zone-key-vault'
   params: {
-    name: contains(location, 'USGov') ? 'vault.usgovcloudapi.net' : 'privatelink.vault.azure.net'
+    name: 'privatelink${environment().suffixes.keyvaultDns}'
     vnetLinkName: '${prefix}-link-key-vault-${randomString}'
     location: 'global'
     tags: tags
@@ -202,7 +238,7 @@ module privateDnsZoneStorageAccountBlob 'core/dns/secure-private_dns_zone.bicep'
   scope: rg
   name: 'secure-private-dns-zone-storage-account-blob'
   params: {
-    name: contains(location, 'USGov') ? 'blob.core.usgovcloudapi.net' : 'privatelink.blob.core.windows.net'
+    name: 'privatelink.blob.${environment().suffixes.storage}'
     vnetLinkName: '${prefix}-link-storate-account-${randomString}'
     location: 'global'
     tags: tags
@@ -217,7 +253,7 @@ module privateDnsZoneStorageAccountFile 'core/dns/secure-private_dns_zone.bicep'
   scope: rg
   name: 'secure-private-dns-zone-storage-account-file'
   params: {
-    name: contains(location, 'USGov') ? 'file.core.usgovcloudapi.net' : 'privatelink.file.core.windows.net'
+    name: 'privatelink.file.${environment().suffixes.storage}'
     vnetLinkName: '${prefix}-link-storate-account-${randomString}'
     location: 'global'
     tags: tags
@@ -232,7 +268,7 @@ module privateDnsZoneStorageAccountTable 'core/dns/secure-private_dns_zone.bicep
   scope: rg
   name: 'secure-private-dns-zone-storage-account-table'
   params: {
-    name: contains(location, 'USGov') ? 'table.core.usgovcloudapi.net' : 'privatelink.table.core.windows.net'
+    name: 'privatelink.table.${environment().suffixes.storage}'
     vnetLinkName: '${prefix}-link-storate-account-${randomString}'
     location: 'global'
     tags: tags
@@ -247,7 +283,7 @@ module privateDnsZoneStorageAccountQueue 'core/dns/secure-private_dns_zone.bicep
   scope: rg
   name: 'secure-private-dns-zone-storage-account-queue'
   params: {
-    name: contains(location, 'USGov') ? 'queue.core.usgovcloudapi.net' : 'privatelink.queue.core.windows.net'
+    name: 'privatelink.queue.${environment().suffixes.storage}'
     vnetLinkName: '${prefix}-link-storate-account-${randomString}'
     location: 'global'
     tags: tags
@@ -461,8 +497,8 @@ module funcServicePlan 'core/host/funcserviceplan.bicep' = {
     location: location
     tags: tags
     sku: {
-      name: 'P1v3'
-      capacity: 5
+      name: 'S2'
+      capacity: 2
     }
     kind: 'linux'
   }
@@ -593,7 +629,7 @@ module storageRoleFunc 'core/security/role.bicep' = {
   scope: rg
   name: 'storage-role-Func'
   params: {
-    principalId: formrecognizer.outputs.id
+    principalId: functions.outputs.identityPrincipalId
     roleDefinitionId: azureRoles.StorageBlobDataReader
     principalType: 'ServicePrincipal'
   }

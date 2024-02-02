@@ -59,7 +59,6 @@ module scm '../dns/secure-private_dns_zone-record.bicep' = {
 resource virtualNetworkConnection 'Microsoft.Web/sites/virtualNetworkConnections@2022-09-01' = {
   parent: appService
   name: 'virtual-network-connection'
-  location: location
   properties: {
     vnetResourceId: subnetResourceIdOutbound
     isSwift: true

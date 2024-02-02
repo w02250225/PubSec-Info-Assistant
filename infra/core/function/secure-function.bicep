@@ -36,6 +36,7 @@ module self '../dns/secure-private_dns_zone-record.bicep' = {
     privateEndpointName: privateEndpoint.outputs.name
     privateDnsZoneName: dnsZoneName
     ipAddress: privateEndpoint.outputs.ipAddress
+    reusePrivateDnsZone: true
   }
 }
 
@@ -51,3 +52,4 @@ module scm '../dns/secure-private_dns_zone-record.bicep' = {
 }
 
 output ipAddress string = privateEndpoint.outputs.ipAddress
+output identityPrincipalId string = functionApp.identity.principalId

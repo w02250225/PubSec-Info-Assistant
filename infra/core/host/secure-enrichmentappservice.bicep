@@ -30,7 +30,6 @@ module privateEndpoint '../network/secure-private_endpoint.bicep' = {
 resource virtualNetworkConnection 'Microsoft.Web/sites/virtualNetworkConnections@2022-09-01' = {
   parent: appService
   name: 'virtual-network-connection'
-  location: location
   properties: {
     vnetResourceId: subnetResourceIdOutbound
     isSwift: true
