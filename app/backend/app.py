@@ -109,9 +109,7 @@ COSMOSDB_USER_CONTAINER_NAME = os.environ.get("COSMOSDB_USER_CONTAINER_NAME") or
 
 QUERY_TERM_LANGUAGE = os.environ.get("QUERY_TERM_LANGUAGE") or "English"
 
-ERROR_MESSAGE_TEMPLATE = """The application encountered an error processing your request.
-
-Error Message: {error_message}"""
+ERROR_MESSAGE_TEMPLATE = """The application encountered an error processing your request.\n\nError Message: {error_message}"""
 ERROR_MESSAGE_FILTER = """Your message contains content that was flagged by the OpenAI content filter."""
 
 # Oauth
@@ -668,18 +666,26 @@ async def get_warning_banner():
 async def get_citation():
     """Get the citation for a given file"""
     request_data = await request.get_json()
-    citation = urllib.parse.unquote(request_data["citation"])
+    
+    # Check if citation is in the request data and is not empty
+    citation = request_data.get("citation")
+    if not citation:
+        # If citation is not set or is empty, ignore it
+        return jsonify({"message": "No citation provided"}), 200
+
+    # Continue with the processing as citation is available
+    citation = urllib.parse.unquote(citation)
     try:
         blob = BLOB_CONTAINER_CONTENT.get_blob_client(citation)
         blob_data = await blob.download_blob()
         decoded_text = await blob_data.readall()
         results = json.loads(decoded_text.decode())
+        
+        return jsonify(results)
 
     except Exception as error:
         logging.exception("Exception in /getCitation")
         return jsonify({"error": str(error)}), 500
-
-    return jsonify(results)
 
 
 @bp.route('/exportAnswer', methods=["POST"])

@@ -34,13 +34,15 @@ export const AnalysisPanel = ({ answer, activeTab, activeCitation, sourceFile, p
     const sanitizedThoughts = DOMPurify.sanitize(answer.choices[0].context.thoughts!);
 
     async function fetchActiveCitationObj() {
-        try {
-            const citationObj = await getCitationObj(activeCitation as string);
-            setActiveCitationObj(citationObj);
-        } catch (error) {
-            console.log(error);
+        if (activeCitation) {
+            try {
+                const citationObj = await getCitationObj(activeCitation as string);
+                setActiveCitationObj(citationObj);
+            } catch (error) {
+                console.log(error);
+            }
         }
-    }
+    };
 
     useEffect(() => {
         fetchActiveCitationObj();

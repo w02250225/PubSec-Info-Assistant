@@ -30,7 +30,7 @@ async function fetchWithSessionCheck(url: string, options: RequestInit) {
     }
 
     return response;
-}
+};
 
 export async function chatApi(request: ChatAppRequest): Promise<Response> {
     return await fetchWithSessionCheck(`/chat`, {
@@ -40,7 +40,7 @@ export async function chatApi(request: ChatAppRequest): Promise<Response> {
         },
         body: JSON.stringify(request)
     });
-}
+};
 
 export async function downloadFileFromResponse(response: Response): Promise<void> {
     try {
@@ -67,7 +67,7 @@ export async function downloadFileFromResponse(response: Response): Promise<void
     } catch (error) {
         console.error("Error downloading file", error);
     }
-}
+};
 
 export async function exportAnswer(request: ExportRequest): Promise<void> {
     try {
@@ -83,11 +83,11 @@ export async function exportAnswer(request: ExportRequest): Promise<void> {
     } catch (error) {
         console.error("Error exporting answer", error);
     }
-}
+};
 
 export function getCitationFilePath(citation: string): string {
     return `${encodeURIComponent(citation)}`;
-}
+};
 
 export async function getBlobClientUrl(): Promise<string> {
     const response = await fetchWithSessionCheck("/getBlobClientUrl", {
@@ -103,7 +103,7 @@ export async function getBlobClientUrl(): Promise<string> {
     }
 
     return parsedResponse.url;
-}
+};
 
 export async function getBlobUrl(filename: string): Promise<string> {
     const response = await fetchWithSessionCheck("/getBlobUrl", {
@@ -122,7 +122,7 @@ export async function getBlobUrl(filename: string): Promise<string> {
     }
 
     return parsedResponse.url;
-}
+};
 
 export async function getAllUploadStatus(): Promise<AllFilesUploadStatus> {
     const response = await fetchWithSessionCheck("/getAllUploadStatus", {
@@ -138,7 +138,7 @@ export async function getAllUploadStatus(): Promise<AllFilesUploadStatus> {
     }
     const results: AllFilesUploadStatus = { statuses: parsedResponse };
     return results;
-}
+};
 
 export async function logStatus(status_log_entry: StatusLogEntry): Promise<StatusLogResponse> {
     var response = await fetchWithSessionCheck("/logStatus", {
@@ -162,7 +162,7 @@ export async function logStatus(status_log_entry: StatusLogEntry): Promise<Statu
 
     var results: StatusLogResponse = { status: parsedResponse.status };
     return results;
-}
+};
 
 export async function getInfoData(): Promise<GetInfoResponse> {
     const response = await fetchWithSessionCheck("/getInfoData", {
@@ -177,7 +177,7 @@ export async function getInfoData(): Promise<GetInfoResponse> {
         throw Error(parsedResponse.error || "Unknown error");
     }
     return parsedResponse;
-}
+};
 
 export async function getWarningBanner(): Promise<GetWarningBanner> {
     const response = await fetchWithSessionCheck("/getWarningBanner", {
@@ -192,7 +192,7 @@ export async function getWarningBanner(): Promise<GetWarningBanner> {
         throw Error(parsedResponse.error || "Unknown error");
     }
     return parsedResponse;
-}
+};
 
 export async function getCitationObj(citation: string): Promise<ActiveCitation> {
     const response = await fetchWithSessionCheck(`/getCitation`, {
@@ -210,7 +210,7 @@ export async function getCitationObj(citation: string): Promise<ActiveCitation> 
         throw Error(parsedResponse.error || "Unknown error");
     }
     return parsedResponse;
-}
+};
 
 export async function getApplicationTitle(): Promise<ApplicationTitle> {
     const response = await fetchWithSessionCheck("/getApplicationTitle", {

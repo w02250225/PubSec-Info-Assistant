@@ -78,6 +78,7 @@ const Chat = () => {
     const [selectedAnswer, setSelectedAnswer] = useState<number>(0);
     const [answers, setAnswers] = useState<[user: string, response: ChatAppResponse][]>([]);
     const [streamedAnswers, setStreamedAnswers] = useState<[user: string, response: ChatAppResponse][]>([]);
+    const [abortController, setAbortController] = useState<AbortController | null>(null);
 
     const [allGptDeployments, setAllGptDeployments] = useState<GptDeployment[]>([]);
     const [defaultGptDeployment, setdefaultGptDeployment] = useState<string | undefined>(undefined);
@@ -128,12 +129,17 @@ const Chat = () => {
                 console.log(error);
             }
         }
-    }
+    };
 
-    const handleAsyncRequest = async (question: string, answers: [string, ChatAppResponse][], setAnswers: Function, responseBody: ReadableStream<any>) => {
+    const handleAsyncRequest = async (
+        question: string,
+        answers: [string, ChatAppResponse][],
+        setAnswers: Function,
+        responseBody: ReadableStream<any>,
+        signal: AbortSignal
+    ) => {
         let answer: string = "";
         let askResponse: ChatAppResponse = {} as ChatAppResponse;
-        const currentStreamIndex = answers.length;
 
         const updateState = (newContent: string) => {
             return new Promise(resolve => {
@@ -149,10 +155,13 @@ const Chat = () => {
             });
         };
 
-
         try {
             setIsStreaming(true);
             for await (const event of readNDJSONStream(responseBody)) {
+                if (signal.aborted) {
+                    // Abort the stream if requested
+                    break;
+                }
                 if (event["choices"] && event["choices"][0]["context"] && event["choices"][0]["context"]["data_points"]) {
                     event["choices"][0]["message"] = event["choices"][0]["delta"];
                     askResponse = event as ChatAppResponse;
@@ -166,9 +175,16 @@ const Chat = () => {
                     throw Error(event["error"]);
                 }
             }
-        } finally {
-            setIsStreaming(false);
+        } catch (e) {
+            if (!signal.aborted) {
+                // Non-abort-related error
+                console.error("An error occurred:", e);
+            }
         }
+        finally {
+            setIsStreaming(false);
+        };
+
         const fullResponse: ChatAppResponse = {
             ...askResponse,
             choices: [{ ...askResponse.choices[0], message: { content: answer, role: askResponse.choices[0].message.role } }]
@@ -177,6 +193,8 @@ const Chat = () => {
     };
 
     const makeApiRequest = async (question: string) => {
+        const controller = new AbortController();
+        setAbortController(controller);
         lastQuestionRef.current = question;
 
         error && setError(undefined);
@@ -224,7 +242,7 @@ const Chat = () => {
                 throw Error("No response body");
             }
             if (shouldStream) {
-                const parsedResponse: ChatAppResponse = await handleAsyncRequest(question, answers, setAnswers, response.body);
+                const parsedResponse: ChatAppResponse = await handleAsyncRequest(question, answers, setAnswers, response.body, controller.signal);
                 setAnswers([...answers, [question, parsedResponse]]);
             } else {
                 const parsedResponse: ChatAppResponseOrError = await response.json();
@@ -349,7 +367,9 @@ const Chat = () => {
 
     const onStopClick = async () => {
         try {
-            setIsStreaming(false);
+            if (abortController) {
+                abortController.abort();
+            }
             return stopStream();
         } catch (e) {
             console.log(e);
