@@ -79,13 +79,13 @@ export const QuestionInput = ({
         if (onStopClick) {
             setIsStopping(true);
             try {
-                await onStopClick();
+                onStopClick();
             } catch (error) {
                 console.error("Error stopping stream: ", error);
             }
             setTimeout(() => {
                 setIsStopping(false);
-            }, 2000); // Change back after 2 seconds
+            }, 500); // Change back after 500ms
         }
     };
 
