@@ -59,7 +59,7 @@ export const QuestionInput = ({
         }
     };
 
-    const sendQuestionDisabled = disabled || !question.trim();
+    const sendQuestionDisabled = disabled || !question.trim() || isStreaming;
 
     const [clearChatTextEnabled, setClearChatTextEnable] = useState<boolean>(true);
 
@@ -115,19 +115,19 @@ export const QuestionInput = ({
                         onKeyDown={onEnterPress}
                     />
                     <div className={styles.questionInputButtonsContainer}>
-                        {isStreaming ? (
+                        {/* {isStreaming ? (
                             <div className={`${styles.questionInputSendButton} ${isStopping ? styles.questionInputSendButtonDisabled : ''}`}
                                 onClick={handleStopClick}>
                                 <RecordStop28Filled primaryFill="0058a6" />
                             </div>
-                        ) : (
+                        ) : ( */}
                             <div
                                 className={`${styles.questionInputSendButton} ${sendQuestionDisabled ? styles.questionInputSendButtonDisabled : ""}`}
                                 aria-label="Ask question button"
                                 onClick={sendQuestion}>
                                 <Send28Filled primaryFill="#0058a6" />
                             </div>
-                        )}
+                        {/* )} */}
                     </div>
                 </Stack>
             </Stack.Item>
