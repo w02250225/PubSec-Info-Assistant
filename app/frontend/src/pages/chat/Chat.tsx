@@ -52,13 +52,11 @@ const Chat = () => {
     const [useSuggestFollowupQuestions, setUseSuggestFollowupQuestions] = useState<boolean>(true);
     const [userPersona, setUserPersona] = useState<string>("an analyst");
     const [systemPersona, setSystemPersona] = useState<string>("an Assistant");
-    const [aiPersona, setAiPersona] = useState<string>("");
     // Setting responseLength to 2048 by default, this will effect the default display of the ResponseLengthButtonGroup below.
     // It must match a valid value of one of the buttons in the ResponseLengthButtonGroup.tsx file.
     // If you update the default value here, you must also update the default value in the onResponseLengthChange method.
     const [responseLength, setResponseLength] = useState<number>(2048);
-    // Setting responseTemp to 0.4 by default, this will effect the default display of the ResponseTempButtonGroup below.
-    // It must match a valid value of one of the buttons in the ResponseTempButtonGroup.tsx file.
+    // Setting responseTemp to 0.4 by default, this will effect the default display of the ResponseTempSlider below.
     // If you update the default value here, you must also update the default value in the onResponseTempChange method.
     const [responseTemp, setResponseTemp] = useState<number>(0.4);
     const [topP, setTopP] = useState<number>(1.0);
@@ -151,6 +149,7 @@ const Chat = () => {
             });
         };
 
+
         try {
             setIsStreaming(true);
             for await (const event of readNDJSONStream(responseBody)) {
@@ -206,10 +205,14 @@ const Chat = () => {
                         suggest_followup_questions: useSuggestFollowupQuestions,
                         user_persona: userPersona,
                         system_persona: systemPersona,
-                        ai_persona: aiPersona,
                         response_length: responseLength,
                         top_p: topP,
-                        selected_folders: selectedFolders.length == 0 ? "All" : selectedFolders.filter(f => f !== 'selectAll').join(","),
+                        // If no folders selected, or selectAll is selected
+                        // send "all" to prevent unnecessary filtering
+                        selected_folders: selectedFolders.includes('selectAll') || selectedFolders.length === 0 ?
+                            "All" :
+                            selectedFolders.filter(f => f !== 'selectAll').join(","),
+
                         selected_tags: selectedTags.map(tag => tag.name).join(",")
                     }
                 },
@@ -346,11 +349,11 @@ const Chat = () => {
 
     const onStopClick = async () => {
         try {
+            setIsStreaming(false);
             return stopStream();
         } catch (e) {
             console.log(e);
         }
-        setIsStreaming(false);
     };
 
     const onGptDeploymentChange = (deploymentName: string) => {
@@ -372,6 +375,7 @@ const Chat = () => {
             setResponseTemp(template.temperature);
             setTopP(template.top_p);
             setPromptOverride(template.promptOverride);
+            setRetrievalMode(template.retrievalMode);
         }
     };
 
@@ -382,7 +386,8 @@ const Chat = () => {
         setResponseTemp(0.4);
         setTopP(1.0);
         setPromptOverride("");
-    }
+        setRetrievalMode(RetrievalMode.Hybrid);
+    };
 
     useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "smooth" }), [isLoading]);
     useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "auto" }), [streamedAnswers]);
@@ -411,7 +416,7 @@ const Chat = () => {
         { key: "vectors", text: "Vectors", selected: retrievalMode == RetrievalMode.Vectors, data: RetrievalMode.Vectors },
         { key: "text", text: "Text", selected: retrievalMode == RetrievalMode.Text, data: RetrievalMode.Text },
         { key: "none", text: "No Document Search (Chat Direct)", selected: retrievalMode == RetrievalMode.None, data: RetrievalMode.None }
-    ]
+    ];
 
     return (
         <div className={styles.container}>
@@ -584,7 +589,7 @@ const Chat = () => {
                     closeButtonAriaLabel="Close"
                     onRenderFooterContent={() => <DefaultButton onClick={() => setIsConfigPanelOpen(false)}>Close</DefaultButton>}
                     isFooterAtBottom={true}>
-                    <TextField
+                    {/* <TextField
                         className={styles.chatSettingsSeparator}
                         defaultValue={systemPersona}
                         label="System Persona"
@@ -597,7 +602,7 @@ const Chat = () => {
                         label="User Persona"
                         onChange={onUserPersonaChange}
                         errorMessage={userPersona.length == 0 ? "Please provide a value" : undefined}
-                    />
+                    /> */}
                     <Checkbox
                         className={styles.chatSettingsSeparator}
                         checked={useSuggestFollowupQuestions}
