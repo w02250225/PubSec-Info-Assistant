@@ -409,7 +409,8 @@ async def authorized():
         is_admin = any(group.get('displayName', '') == ADMIN_GROUP_NAME for group in group_data.get("value", []))
         
         user_data["is_admin"] = is_admin
-        user_data["tou_accepted"] = is_admin or False # skip TOU for admins
+        user_data["tou_accepted"] = is_admin # skip TOU for admins
+        user_data["tou_accepted_timestamp"] = session_timestamp if is_admin else None
         user_data["session_id"] = session["state"]
         user_data["session_timestamp"] = session_timestamp
 
