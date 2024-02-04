@@ -45,6 +45,7 @@
   "eventHubNamespaces": "evhns-",
   "eventHubNamespacesEventHubs": "evh-",
   "formRecognizer": "fr-",
+  "frontDoor": "fd-",
   "hdInsightClustersHadoop": "hadoop-",
   "hdInsightClustersHbase": "hbase-",
   "hdInsightClustersKafka": "kafka-",

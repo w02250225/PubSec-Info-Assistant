@@ -36,7 +36,6 @@ param storageAccountName string = ''
 param networkSecurityGroupName string = ''
 param vnetName string = ''
 param frontDoorName string = ''
-param frontDoorWafPolicyName string = ''
 param privateLinkScopeName string = ''
 
 @description('The IP address range of the virtual network in CIDR notation. Requires a minimum of /21. Example: 10.0.0.0/21')
@@ -452,6 +451,9 @@ module backend 'core/host/secure-appservice.bicep' = {
     dnsZoneName: privateDnsZoneApp.outputs.name
     subnetResourceIdInbound: network.outputs.subnetIdAppInbound
     subnetResourceIdOutbound: network.outputs.subnetIdAppOutbound
+    frontDoorEndpointName: !empty(frontDoorName) ? frontDoorName : '${prefix}-${abbrs.frontDoor}${randomString}'
+    frontDoorSkuName: 'Standard_AzureFrontDoor'
+    aadClientId: aadWebClientId
   }
   dependsOn: [
     appServicePlan
