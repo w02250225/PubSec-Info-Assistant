@@ -15,6 +15,7 @@
   - [Deploying to Azure](./docs/deployment/deployment.md#deploy-and-configure-azure-resources)
   - [Troubleshooting Deployment & Startup Issues](./docs/deployment/worbook_usage.md)
 - [Enabling optional features](./docs/features/optional_features.md)
+- [Enabling secure upgrade](./docs/features/secure-upgrade.md)
 - [Using the app](/docs/deployment/using_ia_first_time.md)
 - [Responsible AI](#responsible-ai)
   - [Transparency Note](#transparency-note)
