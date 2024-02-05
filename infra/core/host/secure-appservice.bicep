@@ -10,11 +10,14 @@ param frontDoorSkuName string = 'Standard_AzureFrontDoor'
 param frontDoorEndpointName string
 param aadClientId string = ''
 param tenantId string = subscription().tenantId
+param wafMode string = 'Prevention'
 
 var frontDoorProfileName = 'InfoAsstFrontDoor'
 var frontDoorOriginGroupName = 'InfoAsstOriginGroup'
 var frontDoorOriginName = 'InfoAsstAppServiceOrigin'
 var frontDoorRouteName = 'InfoAsstRoute'
+var securityPolicyName = 'wafSecurityPolicy'
+var wafPolicyName = 'wafPolicy'
 
 resource frontDoorProfile 'Microsoft.Cdn/profiles@2021-06-01' = {
   name: frontDoorProfileName
@@ -29,7 +32,7 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
   location: location
   properties: {
     serverFarmId: appServicePlanId
-    publicNetworkAccess: 'Enabled'
+    publicNetworkAccess: 'Disabled'
     virtualNetworkSubnetId: subnetResourceIdOutbound
     siteConfig: {
       detailedErrorLoggingEnabled: true
@@ -76,7 +79,7 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
           }
           validation: {
             allowedAudiences: [
-              'api://${name}', 'https://make ${frontDoorEndpoint.properties.hostName}'
+              'api://${name}', 'https://${frontDoorEndpoint.properties.hostName}'
             ]
             defaultAuthorizationPolicy: {
               allowedApplications: []
@@ -124,6 +127,14 @@ resource frontDoorOrigin 'Microsoft.Cdn/profiles/originGroups/origins@2021-06-01
     originHostHeader: appService.properties.defaultHostName
     priority: 1
     weight: 1000
+    sharedPrivateLinkResource: {
+      groupId: 'sites'
+      privateLink: {
+        id: appService.id
+      }
+      privateLinkLocation: location
+      requestMessage: 'Private Link from AFD'
+    }
   }
 }
 
@@ -150,44 +161,59 @@ resource frontDoorRoute 'Microsoft.Cdn/profiles/afdEndpoints/routes@2021-06-01' 
   }
 }
 
-module privateEndpoint '../network/secure-private_endpoint.bicep' = {
-  name: 'private-endpoint-${name}'
-  params: {
-    name: name
-    location: location
-    tags: tags
-    serviceResourceId: appService.id
-    subnetResourceId: subnetResourceIdInbound
-    groupId: 'sites'
+// WAF Policy with DRS 2.1 and Bot Manager 1.0
+resource wafPolicy 'Microsoft.Network/frontDoorWebApplicationFirewallPolicies@2022-05-01' = {
+  name: wafPolicyName
+  location: 'Global'
+  sku: {
+    name: 'Premium_AzureFrontDoor'
+  }
+  properties: {
+    policySettings: {
+      enabledState: 'Enabled'
+      mode: wafMode
+    }
+    managedRules: {
+      managedRuleSets: [
+        {
+          ruleSetType: 'Microsoft_DefaultRuleSet'
+          ruleSetVersion: '2.1'
+          ruleSetAction: 'Block'
+        }
+        {
+          ruleSetType: 'Microsoft_BotManagerRuleSet'
+          ruleSetVersion: '1.0'
+          ruleSetAction: 'Block'
+        }
+      ]
+    }
   }
 }
 
-module self '../dns/secure-private_dns_zone-record.bicep' = {
-  name: 'a-record-${appService.name}-self'
-  params: {
-    hostname: appService.name
-    groupId: privateEndpoint.outputs.groupId
-    privateEndpointName: privateEndpoint.outputs.name
-    privateDnsZoneName: dnsZoneName
-    ipAddress: privateEndpoint.outputs.ipAddress
+// Attach WAF Policy to endpoint
+resource cdn_waf_security_policy 'Microsoft.Cdn/profiles/securitypolicies@2021-06-01' = {
+  parent: frontDoorProfile
+  name: securityPolicyName
+  properties: {
+    parameters: {
+      wafPolicy: {
+        id: wafPolicy.id
+      }
+      associations: [
+        {
+          domains: [
+            {
+            id: frontDoorEndpoint.id
+            }
+          ]
+          patternsToMatch: [
+            '/*'
+          ]
+        }
+      ]
+      type: 'WebApplicationFirewall'
+    }
   }
-  dependsOn: [
-    privateEndpoint
-  ]
-}
-
-module scm '../dns/secure-private_dns_zone-record.bicep' = {
-  name: 'a-record-${appService.name}-scm'
-  params: {
-    hostname: '${appService.name}.scm'
-    groupId: privateEndpoint.outputs.groupId
-    privateEndpointName: privateEndpoint.outputs.name
-    privateDnsZoneName: dnsZoneName
-    ipAddress: privateEndpoint.outputs.ipAddress
-  }
-  dependsOn: [
-    privateEndpoint
-  ]
 }
 
 resource virtualNetworkConnection 'Microsoft.Web/sites/virtualNetworkConnections@2022-09-01' = {
@@ -199,7 +225,6 @@ resource virtualNetworkConnection 'Microsoft.Web/sites/virtualNetworkConnections
   }
 }
 
-output ipAddress string = privateEndpoint.outputs.ipAddress
 output name string = appService.name
 output id string = appService.id
 output uri string = 'https://${appService.properties.defaultHostName}'

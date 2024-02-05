@@ -31,6 +31,7 @@ param functionsAppName string = ''
 param mediaServiceName string = ''
 param searchServicesName string = ''
 param storageAccountName string = ''
+param aadWebClientId string = ''
 
 // SECURE ENVIRONMENT PARAMETERS
 param networkSecurityGroupName string = ''
@@ -55,7 +56,6 @@ param snetEnrichmentInboundCIDR string = '10.0.4.0/26'
 param snetEnrichmentOutboundCIDR string = '10.0.4.128/26'
 
 //temp add to reuse param file
-param aadWebClientId string = ''
 param aadMgmtClientId string = ''
 @secure()
 param aadMgmtClientSecret string = ''
@@ -452,7 +452,7 @@ module backend 'core/host/secure-appservice.bicep' = {
     subnetResourceIdInbound: network.outputs.subnetIdAppInbound
     subnetResourceIdOutbound: network.outputs.subnetIdAppOutbound
     frontDoorEndpointName: !empty(frontDoorName) ? frontDoorName : '${prefix}-${abbrs.frontDoor}${randomString}'
-    frontDoorSkuName: 'Standard_AzureFrontDoor'
+    frontDoorSkuName: 'Premium_AzureFrontDoor'
     aadClientId: aadWebClientId
   }
   dependsOn: [
