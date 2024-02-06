@@ -637,3 +637,13 @@ module storageRoleFunc 'core/security/role.bicep' = {
     principalType: 'ServicePrincipal'
   }
 }
+
+module storageRoleDocIntel 'core/security/role.bicep' = {
+  scope: rg
+  name: 'storage-role-doc-intel'
+  params: {
+    principalId: formrecognizer.outputs.id
+    roleDefinitionId: azureRoles.StorageBlobDataReader
+    principalType: 'ServicePrincipal'
+  }
+}
