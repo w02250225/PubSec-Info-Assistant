@@ -41,7 +41,6 @@ param privateLinkScopeName string = ''
 
 @description('The IP address range of the virtual network in CIDR notation. Requires a minimum of /21. Example: 10.0.0.0/21')
 param vnetIpAddressCIDR string = '10.0.0.0/21'
-param snetPublicAccessCIDR string = '10.0.0.0/26'
 param snetAzureMonitorCIDR string = '10.0.0.64/26'
 param snetApiManagementCIDR string = '10.0.0.128/26'
 param snetStorageAccountCIDR string = '10.0.1.0/26'
@@ -139,7 +138,6 @@ module network 'core/network/secure-network.bicep' = {
     networkSecurityGroupId: networkSecurityGroup.outputs.id
     tags: tags
     vnetIpAddressCIDR: vnetIpAddressCIDR
-    snetPublicAccessCIDR: snetPublicAccessCIDR
     snetAzureMonitorCIDR: snetAzureMonitorCIDR
     snetApiManagementCIDR: snetApiManagementCIDR
     snetStorageAccountCIDR: snetStorageAccountCIDR

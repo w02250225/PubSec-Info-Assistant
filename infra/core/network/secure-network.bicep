@@ -4,7 +4,6 @@ param tags object = {}
 param networkSecurityGroupId string
 
 param vnetIpAddressCIDR string
-param snetPublicAccessCIDR string
 param snetAzureMonitorCIDR string
 param snetApiManagementCIDR string
 param snetStorageAccountCIDR string
@@ -29,14 +28,6 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
       ]
     }
     subnets: [
-      {
-        name: 'publicAccess'
-        properties: {
-          addressPrefix: snetPublicAccessCIDR
-          serviceEndpoints: [
-          ]
-        }
-      }
       {
         name: 'azureMonitor'
         properties: {
@@ -234,7 +225,6 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
 
 output name string = vnetName
 output id string = vnet.id
-output subnetIdPublicAccess string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'publicAccess')
 output subnetIdApiManagement string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'apiManagement')
 output subnetIdAzureMonitor string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'azureMonitor')
 
