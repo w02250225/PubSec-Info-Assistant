@@ -56,6 +56,20 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
     }
   }
 
+  resource basicPublishingProfileFtp 'basicPublishingCredentialsPolicies' = {
+    name: 'ftp'
+    properties: {
+      allow: false
+    }
+  }
+
+  resource basicPublishingProfileScm 'basicPublishingCredentialsPolicies' = {
+    name: 'scm'
+    properties: {
+      allow: false
+    }
+  }
+
   resource authSettingsV2 'config' = {
     name: 'authsettingsV2'
     properties: {
@@ -228,4 +242,4 @@ resource virtualNetworkConnection 'Microsoft.Web/sites/virtualNetworkConnections
 output name string = appService.name
 output id string = appService.id
 output uri string = 'https://${appService.properties.defaultHostName}'
-output fqdn string = appService.properties.defaultHostName
+output frontDoorEndpointName string = frontDoorEndpoint.properties.hostName
