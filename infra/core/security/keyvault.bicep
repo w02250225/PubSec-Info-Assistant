@@ -25,6 +25,9 @@ resource kv 'Microsoft.KeyVault/vaults@2019-09-01' = {
   location: location
   
   properties: {
+    enableSoftDelete: true
+    enablePurgeProtection: true
+    softDeleteRetentionInDays: 7
     enabledForTemplateDeployment: true
     createMode: 'default'
     sku: {
