@@ -49,3 +49,4 @@ output id string = account.id
 output privateEndpointId string = privateEndpoint.outputs.id
 output privateEndpointName string = privateEndpoint.outputs.name
 output privateEndpointIp string = privateEndpoint.outputs.ipAddress
+output identityPrincipalId string = account.identity.principalId
