@@ -8,22 +8,39 @@ import { UserContext } from "../../components/UserContext";
 
 import styles from "./Terms.module.css";
 
+
+
 const Terms = () => {
     const userContext = useContext(UserContext);
     const { userData, setShouldRefreshContext } = userContext;
     const [termsAccepted, setTermsAccepted] = useState(false);
-    const [terms, setTerms] = useState('');
-    const [termsVersion, setTermsVersion] = useState('');
+    const [terms, setTerms] = useState<TermsOfUse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const navigate = useNavigate();
+
+    DOMPurify.addHook('afterSanitizeAttributes', function (node) {
+        // set all elements owning target to target=_blank
+        if ('target' in node) {
+            node.setAttribute('target', '_blank');
+            node.setAttribute('rel', 'noopener');
+        }
+    });
 
     useEffect(() => {
         async function fetchTerms() {
             try {
                 const response: TermsOfUse = await getTermsOfUse();
                 const sanitizedTerms = DOMPurify.sanitize(response.content);
-                setTerms(sanitizedTerms);
-                setTermsVersion(response.version);
+                const sanitizedAcceptInstructionInline = DOMPurify.sanitize(response.acceptInstructionInline);
+                const sanitizedAcceptInstructionFooter = DOMPurify.sanitize(response.acceptInstructionFooter);
+                setTerms({
+                    ...response,
+                    // Override with sanitized content
+                    content: sanitizedTerms,
+                    acceptInstructionInline: sanitizedAcceptInstructionInline,
+                    acceptInstructionFooter: sanitizedAcceptInstructionFooter,
+                    version: response.version,
+                });
                 setIsLoading(false);
             } catch (error) {
                 console.error('Error fetching terms:', error);
@@ -34,8 +51,14 @@ const Terms = () => {
     }, []);
 
     const handleAccept = async () => {
+        // Ensure that terms is not null or undefined before attempting to access it
+        if (!terms) {
+            console.error('Terms are not loaded');
+            return;
+        }
+
         try {
-            const success = await acceptTermsOfUse(termsVersion);
+            const success = await acceptTermsOfUse(terms?.version);
             if (success) {
                 setTermsAccepted(true);
                 setShouldRefreshContext(true);
@@ -48,7 +71,7 @@ const Terms = () => {
     };
 
     const handleNotAccept = async () => {
-        navigate('/logout');
+        window.location.href = '/logout';
     };
 
     useEffect(() => {
@@ -60,10 +83,7 @@ const Terms = () => {
     const AgreementSection = () => (
         <>
             <Stack.Item className={styles.buttonContainer}>
-                <strong>
-                    Please confirm your understanding of and agreement to these T&Cs by clicking on the "I Understand & Agree" button below.
-                    If you do not wish to assess Coeus, please click on the "I do not agree" button and cease using Coeus.
-                </strong>
+                <div dangerouslySetInnerHTML={{ __html: terms?.acceptInstructionFooter || "" }} />
             </Stack.Item>
             <Stack.Item className={styles.buttonContainer}>
                 <PrimaryButton
@@ -84,14 +104,22 @@ const Terms = () => {
         <Stack className={styles.contentArea}>
             {isLoading ? (
                 <Spinner size={SpinnerSize.large} label="Loading Data..." ariaLive="assertive" labelPosition="right" />
-            ) : (
+            ) : terms?.content ? ( // Ensure terms and content are available
                 <>
-                    <div dangerouslySetInnerHTML={{ __html: terms }} />
+                    <div dangerouslySetInnerHTML={{
+                        __html: terms?.content.replace(
+                            /\$\$acceptInstruction\$\$/g, // Replace with instructions if not accepted
+                            userData?.tou_accepted ? "" : (terms?.acceptInstructionInline || "")
+                        )
+                    }} />
                     {!userData?.tou_accepted && <AgreementSection />}
                 </>
+            ) : (
+                <p>Error Loading Terms of Use</p>
             )}
         </Stack>
     );
+
 }
 
 export default Terms;
