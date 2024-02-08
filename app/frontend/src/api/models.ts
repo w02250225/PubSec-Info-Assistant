@@ -240,6 +240,8 @@ export type PromptTemplate = {
 
 export type TermsOfUse = {
     content: string;
+    acceptInstructionInline: string;
+    acceptInstructionFooter: string;
     version: string;
     error?: string;
 }
