@@ -178,7 +178,7 @@ const Chat = () => {
         } catch (e) {
             if (!signal.aborted) {
                 // Non-abort-related error
-                console.error("An error occurred:", e);
+                throw e;
             }
         }
         finally {
