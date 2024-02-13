@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { Stack, PrimaryButton, IIconProps} from "@fluentui/react";
+import { Stack, PrimaryButton, IIconProps } from "@fluentui/react";
 import { ErrorCircle24Regular } from "@fluentui/react-icons";
 
 import styles from "./Answer.module.css";
@@ -21,7 +21,7 @@ export const AnswerError = ({ error, onRetry }: Props) => {
             <ErrorCircle24Regular aria-hidden="true" aria-label="Error icon" primaryFill="red" />
 
             <Stack.Item grow>
-                <p className={styles.answerText}>{error}</p>
+                <p className={styles.answerTextError}>{error}</p>
             </Stack.Item>
 
             <PrimaryButton iconProps={getIconProps('Refresh')} className={styles.retryButton} onClick={onRetry} text="Retry" />

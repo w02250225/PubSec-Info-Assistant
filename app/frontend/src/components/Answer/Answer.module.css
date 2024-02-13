@@ -21,6 +21,15 @@
     padding-bottom: 16px;
 }
 
+.answerTextError{
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 22px;
+    padding-top: 16px;
+    padding-bottom: 16px;
+    white-space: pre-line;
+}
+
 .answerTextRequestId {
     font-size: 10px;
     cursor: pointer;
