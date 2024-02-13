@@ -56,7 +56,7 @@ from core.status_log import State, StatusClassification, StatusLog
 from core.userdata_log import UserDataLog
 from typing import AsyncGenerator
 
-str_to_bool = {'true': True, 'false': False}
+str_to_bool = {"true": True, "false": False}
 AZURE_BLOB_STORAGE_ACCOUNT = os.environ.get("AZURE_BLOB_STORAGE_ACCOUNT") or "mystorageaccount"
 AZURE_BLOB_STORAGE_ENDPOINT = os.environ.get("AZURE_BLOB_STORAGE_ENDPOINT")
 AZURE_BLOB_STORAGE_KEY = os.environ.get("AZURE_BLOB_STORAGE_KEY")
@@ -109,7 +109,7 @@ COSMOSDB_USER_CONTAINER_NAME = os.environ.get("COSMOSDB_USER_CONTAINER_NAME") or
 
 QUERY_TERM_LANGUAGE = os.environ.get("QUERY_TERM_LANGUAGE") or "English"
 
-ERROR_MESSAGE_TEMPLATE = """The application encountered an error processing your request.\n\nError Message: {error_message}"""
+ERROR_MESSAGE_TEMPLATE = """The application encountered an error processing your request.\n\n{error_message}"""
 ERROR_MESSAGE_FILTER = """Your message contains content that was flagged by the OpenAI content filter."""
 
 # Oauth
@@ -127,7 +127,7 @@ DEBUG = os.getenv("CODESPACES") == "true"
 SCHEME = "http" if DEBUG else "https"
 LOGOUT_URL = os.getenv("LOGOUT_URL") or "https://www.treasury.qld.gov.au/"
 
-os.environ['TZ'] = 'Australia/Brisbane'
+os.environ["TZ"] = "Australia/Brisbane"
 time.tzset()
 
 azure_credential = DefaultAzureCredential()
@@ -195,9 +195,9 @@ EMBEDDING_MODEL_NAME = AZURE_OPENAI_EMBEDDINGS_MODEL_NAME
 EMBEDDING_MODEL_VERSION = AZURE_OPENAI_EMBEDDINGS_MODEL_VERSION
 ALL_GPT_DEPLOYMENTS = []
 GPT_DEPLOYMENT = {
-    'deploymentName': '',
-    'modelName': '',
-    'modelVersion': ''
+    "deploymentName": "",
+    "modelName": "",
+    "modelVersion": ""
 }
 
 async def fetch_deployments():
@@ -212,24 +212,24 @@ async def fetch_deployments():
         account_name=AZURE_OPENAI_ACCOUNT_NAME):
 
         capabilities = deployment.properties.capabilities
-        if capabilities.get('chatCompletion'):
+        if capabilities.get("chatCompletion"):
             ALL_GPT_DEPLOYMENTS.append({
-                'deploymentName': deployment.name,
-                'modelName': deployment.properties.model.name,
-                'modelVersion': deployment.properties.model.version
+                "deploymentName": deployment.name,
+                "modelName": deployment.properties.model.name,
+                "modelVersion": deployment.properties.model.version
             })
         
         if deployment.name == AZURE_OPENAI_CHATGPT_DEPLOYMENT:
-            GPT_DEPLOYMENT['deploymentName'] = deployment.name
-            GPT_DEPLOYMENT['modelName'] = deployment.properties.model.name
-            GPT_DEPLOYMENT['modelVersion'] = deployment.properties.model.version
+            GPT_DEPLOYMENT["deploymentName"] = deployment.name
+            GPT_DEPLOYMENT["modelName"] = deployment.properties.model.name
+            GPT_DEPLOYMENT["modelVersion"] = deployment.properties.model.version
         
         if USE_AZURE_OPENAI_EMBEDDINGS and deployment.name == EMBEDDING_DEPLOYMENT_NAME:
             EMBEDDING_MODEL_NAME = deployment.properties.model.name
             EMBEDDING_MODEL_VERSION = deployment.properties.model.version
 
     # Sort the GPT_DEPLOYMENTS list for the UI
-    ALL_GPT_DEPLOYMENTS.sort(key=lambda x: x['deploymentName'])
+    ALL_GPT_DEPLOYMENTS.sort(key=lambda x: x["deploymentName"])
 
 bp = Blueprint("routes", __name__, static_folder="static")
 mimetypes.add_type("application/javascript", ".js")
@@ -245,17 +245,41 @@ def token_is_valid():
         return current_time < expiration_time  # Check if token has expired
     return False  # Token expiration time not found in session
 
+def acquire_token_silently():
+    # Check if the session already has a user account to try acquiring token silently
+    if "user_data" in session and "userPrincipalName" in session["user_data"]:
+        username = session["user_data"]["userPrincipalName"]
+        accounts = MSAL_CLIENT.get_accounts(username=username)
+        if accounts:  # Check if the list is not empty
+            account = accounts[0]  # Safely get the first account
+            result = MSAL_CLIENT.acquire_token_silent(SCOPES, account=account)
+
+            if result and "access_token" in result:
+                current_time = time.time()
+                # Only update if the token is different or has expired/near expiry
+                if ("access_token" not in session or 
+                    session["access_token"] != result["access_token"] or 
+                    "token_expires_at" not in session or 
+                    session["token_expires_at"] - current_time <= 300):  # 300 seconds (5 minutes) buffer for token expiry
+                    
+                    session["access_token"] = result["access_token"]
+                    session["token_expires_at"] = result["expires_in"] + current_time
+                    
+                return True
+    return False
+
 
 def before_request():
-    non_auth_endpoints = ['routes.authorized', 'routes.login', 'routes.logout']
-    
-    if request.endpoint not in non_auth_endpoints and not token_is_valid():
-        if request.accept_mimetypes.best == 'application/json':
+    non_auth_endpoints = ["routes.authorized", "routes.login", "routes.logout"]
+    if request.endpoint not in non_auth_endpoints and not acquire_token_silently():
+        # Store request URL for after login
+        session["redirect_url"] = request.url
+        if request.accept_mimetypes.best == "application/json":
             # Return a JSON response for API calls
-            return jsonify({'error': 'Unauthorized'}), 401
+            return jsonify({"error": "Unauthorized"}), 401
         else:
             # Return a redirect for regular web requests
-            return redirect(url_for('routes.login'))
+            return redirect(url_for("routes.login"))
 
 
 def error_dict(error: Exception) -> dict:
@@ -264,10 +288,10 @@ def error_dict(error: Exception) -> dict:
     
     error_message = str(error)
 
-    # Check if error has an attribute named 'body'
-    if hasattr(error, 'body') and isinstance(error.body, dict):
+    # Check if error has an attribute named "body"
+    if hasattr(error, "body") and isinstance(error.body, dict):
         error_body = error.body
-        error_message = error_body.get('message', error_message)
+        error_message = error_body.get("message", error_message)
     
     return { "error": ERROR_MESSAGE_TEMPLATE.format(error_message = error_message) }
 
@@ -286,7 +310,7 @@ async def format_response(session_id: str,
     try:
         accumulated_content = ""
         error_message = ""
-        request_doc.setdefault('response', {})
+        request_doc.setdefault("response", {})
         request_id = request_doc["request_id"]
         completion_tokens = 0
         async for event in result:
@@ -313,10 +337,10 @@ async def format_response(session_id: str,
 
             followup_questions = context.get("followup_questions")
             if followup_questions:
-                request_doc["response"].setdefault('followup_questions', followup_questions)
+                request_doc["response"].setdefault("followup_questions", followup_questions)
             
             if session_id not in active_sessions:
-                request_doc["response"].setdefault('cancelled', True)
+                request_doc["response"].setdefault("cancelled", True)
                 break
 
             yield json.dumps(event, ensure_ascii=False) + "\n"
@@ -330,8 +354,8 @@ async def format_response(session_id: str,
     finally:
         if accumulated_content:
             # Add the full answer to the request_doc
-            request_doc["response"].setdefault('completion_tokens', completion_tokens)
-            request_doc["response"].setdefault('answer', accumulated_content)
+            request_doc["response"].setdefault("completion_tokens", completion_tokens)
+            request_doc["response"].setdefault("answer", accumulated_content)
 
         # Add error_message to request_doc
         if error_message:
@@ -387,7 +411,7 @@ async def authorized():
         if "error" in token_response:
             return "Error: " + token_response["error_description"]
 
-        session_timestamp = str(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        session_timestamp = str(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         session["access_token"] = token_response["access_token"]
         session["token_expires_at"] = token_response["expires_in"] + time.time()
 
@@ -396,7 +420,7 @@ async def authorized():
             timeout=30,
             headers={"Authorization": "Bearer " + session["access_token"]},
         ).json()
-        user_data['user_id'] = user_data.pop('id')
+        user_data["user_id"] = user_data.pop("id")
 
         group_data = requests.get(
             "https://graph.microsoft.com/v1.0/me/memberOf",
@@ -404,7 +428,7 @@ async def authorized():
             headers={"Authorization": "Bearer " + session["access_token"]},
         ).json()
 
-        is_admin = any(group.get('displayName', '') == ADMIN_GROUP_NAME for group in group_data.get("value", []))
+        is_admin = any(group.get("displayName", "") == ADMIN_GROUP_NAME for group in group_data.get("value", []))
         
         user_data["is_admin"] = is_admin
         user_data["tou_accepted"] = is_admin # skip TOU for admins
@@ -415,7 +439,10 @@ async def authorized():
         session["user_data"] = user_data
         await current_app.userdata_log.upsert_user_session()
         
-        return redirect("/")
+        # Redirect user to the stored URL or a default one if not available
+        redirect_url = session.pop("redirect_url", "/")
+        
+        return redirect(redirect_url)
 
     return redirect(url_for("routes.login"))
 
@@ -429,7 +456,7 @@ async def logout():
 @bp.route("/", defaults={"path": "index.html"})
 @bp.route("/<path:path>")
 async def static_file(path):
-    """Serve static files from the 'static' directory"""
+    """Serve static files from the "static" directory"""
     return await bp.send_static_file(path)
 
 
@@ -446,7 +473,7 @@ async def chat():
     start_time = datetime.now()
 
     try:
-        session_gpt_deployment = session.get('gpt_deployment', GPT_DEPLOYMENT)
+        session_gpt_deployment = session.get("gpt_deployment", GPT_DEPLOYMENT)
 
         # Log the request to CosmosDB
         request_log = current_app.request_log
@@ -507,16 +534,14 @@ async def chat():
         return error_response(error, "/chat")
 
 
-@bp.route('/stopStream', methods=['POST'])
+@bp.route("/stopStream", methods=["POST"])
 async def stop_stream():
-    # request_json = await request.get_json()
-    # request_id = request_json.get("request_id", "")
     session_id = session["state"]
     if session_id in active_sessions:
         active_sessions.pop(session_id, None)
-        return json.dumps({'status': 'Stop request sent'})
+        return json.dumps({"status": "Stop request sent"})
     else:
-        return json.dumps({'status': f'Session ID {session_id} not found in active_sessions'})
+        return json.dumps({"status": f"Session ID {session_id} not found in active_sessions"})
 
 
 @bp.route("/getBlobClientUrl")
@@ -545,25 +570,35 @@ async def get_blob_client_url():
 @bp.route("/getBlobUrl", methods=["POST"])
 async def get_blob_sas():
     request_data = await request.json
-    file_name = urllib.parse.unquote(request_data["file_name"])
-    sas_token = generate_blob_sas(
-        account_name=AZURE_BLOB_STORAGE_ACCOUNT,
-        container_name=AZURE_BLOB_UPLOAD_CONTAINER,
-        blob_name=file_name,
-        account_key=AZURE_BLOB_STORAGE_KEY,
-        permission=BlobSasPermissions(
-            read=True,
-            write=False,
-            list=False,
-            delete=False,
-            add=False,
-            create=False,
-            update=False,
-            process=False,
-        ),
-        expiry=datetime.utcnow() + timedelta(minutes=15),
-    )
-    return jsonify({"url": f"{BLOB_CLIENT.url}{AZURE_BLOB_UPLOAD_CONTAINER}/{file_name}?{sas_token}"})
+    user_folder_pattern = re.compile(r"^[^@]+@[^@]+\.[^@]+$")
+    user_id = session["user_data"].get("userPrincipalName", "Unknown User")
+    is_admin = session["user_data"].get("is_admin", False)
+    file_path = urllib.parse.unquote(request_data["file_path"])
+    file_path_parts = file_path.split("/")
+    folder_name = file_path_parts[1] if len(file_path_parts) > 2 else None
+
+    # If user is admin or accessing a file from their own folder
+    if is_admin or (folder_name and user_folder_pattern.match(folder_name) and folder_name == user_id):
+        sas_token = generate_blob_sas(
+            account_name=AZURE_BLOB_STORAGE_ACCOUNT,
+            container_name=AZURE_BLOB_UPLOAD_CONTAINER,
+            blob_name=file_path,
+            account_key=AZURE_BLOB_STORAGE_KEY,
+            permission=BlobSasPermissions(
+                read=True,
+                write=False,
+                list=False,
+                delete=False,
+                add=False,
+                create=False,
+                update=False,
+                process=False,
+            ),
+            expiry=datetime.utcnow() + timedelta(minutes=15),
+        )
+        return jsonify({"url": f"{BLOB_CLIENT.url}{AZURE_BLOB_UPLOAD_CONTAINER}/{file_path}?{sas_token}"})
+    else:
+        return jsonify({"error": "You do not have access to this file"})
 
 
 @bp.route("/getAllUploadStatus", methods=["GET"])
@@ -609,7 +644,7 @@ async def log_status():
 @bp.route("/getInfoData")
 async def get_info_data():
     """Get the info data for the app"""
-    session_gpt_deployment = session.get('gpt_deployment', GPT_DEPLOYMENT)
+    session_gpt_deployment = session.get("gpt_deployment", GPT_DEPLOYMENT)
 
     response = jsonify(
         {
@@ -642,8 +677,8 @@ async def get_user_data():
         )
 
         if photo_data.status_code == 200:
-            base64_image = base64.b64encode(photo_data.content).decode('utf-8')
-            user_data['base64_image'] = base64_image
+            base64_image = base64.b64encode(photo_data.content).decode("utf-8")
+            user_data["base64_image"] = base64_image
 
         return jsonify(user_data)
     
@@ -688,17 +723,17 @@ async def get_citation():
         return jsonify({"error": str(error)}), 500
 
 
-@bp.route('/exportAnswer', methods=["POST"])
+@bp.route("/exportAnswer", methods=["POST"])
 async def export():
     try:
         request_data = await request.json
-        session_gpt_deployment = session.get('gpt_deployment', GPT_DEPLOYMENT)
+        session_gpt_deployment = session.get("gpt_deployment", GPT_DEPLOYMENT)
         file_name, export_file = await exporthelper.export_to_blob(
                                     request_data,
                                     BLOB_CONTAINER_EXPORT,
                                     OPENAI_CLIENT,
-                                    session_gpt_deployment.get('deploymentName'),
-                                    session_gpt_deployment.get('modelName'))
+                                    session_gpt_deployment.get("deploymentName"),
+                                    session_gpt_deployment.get("modelName"))
 
         return await send_file( export_file,
                                 as_attachment = True,
@@ -745,20 +780,20 @@ async def get_gpt_deployments():
 async def set_gpt_deployment():
     """Update the GPT deployment model/version etc."""
     request_data = await request.json
-    session.setdefault('gpt_deployment', {})
-    keys = ['deploymentName', 'modelName', 'modelVersion']
+    session.setdefault("gpt_deployment", {})
+    keys = ["deploymentName", "modelName", "modelVersion"]
 
     if all(key in request_data for key in keys):
         for key in keys:
-            session['gpt_deployment'][key] = request_data[key]
+            session["gpt_deployment"][key] = request_data[key]
 
         session.modified = True
         
-        return jsonify({'message': 'GPT Deployment information updated successfully'}), 200
+        return jsonify({"message": "GPT Deployment information updated successfully"}), 200
     else:
         # If some keys are missing, return an error
         missing_keys = [key for key in keys if key not in request_data]
-        return jsonify({'error': 'Missing required information', 'missing_keys': missing_keys}), 400
+        return jsonify({"error": "Missing required information", "missing_keys": missing_keys}), 400
 
 @bp.route("/getPromptTemplates", methods=["GET"])
 async def get_prompt_templates():
@@ -773,20 +808,20 @@ async def get_prompt_templates():
         return jsonify({"error": str(error)}), 500
 
 
-@bp.route('/termsOfUse', methods=['GET', 'POST'])
+@bp.route("/termsOfUse", methods=["GET", "POST"])
 async def terms():
     try:
-        # If it's a POST request, set tou_accepted to True
-        if request.method == 'POST':
+        # If it"s a POST request, set tou_accepted to True
+        if request.method == "POST":
             request_data = await request.json
-            timestamp = str(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-            version_pattern = r'^\d+(\.\d+)*$'
+            timestamp = str(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            version_pattern = r"^\d+(\.\d+)*$"
             tou_version = request_data["tou_version"]
 
             if re.match(version_pattern, tou_version):
                 session["user_data"]["tou_version"] = tou_version
             else:
-                return jsonify({'error': 'Invalid tou_version format'}), 400
+                return jsonify({"error": "Invalid tou_version format"}), 400
 
             session["user_data"]["tou_accepted"] = True
             session["user_data"]["tou_accepted_timestamp"] = timestamp
@@ -794,34 +829,34 @@ async def terms():
             
             await current_app.userdata_log.upsert_user_session()
 
-            return jsonify({'message': 'Terms of Use acceptance recorded successfully'}), 200
+            return jsonify({"message": "Terms of Use acceptance recorded successfully"}), 200
         
-        # If it's a GET request, display the terms to the user
-        elif request.method == 'GET':
+        # If it"s a GET request, display the terms to the user
+        elif request.method == "GET":
             blob_name = "terms.json"
             tou_data = await get_website_blob_json(blob_name)
             return jsonify(tou_data)
         
         else:
-            return jsonify({'error': 'Method not allowed'}), 405
+            return jsonify({"error": "Method not allowed"}), 405
     
     except Exception as error:
         logging.exception("Exception in /termsOfUse")
         return jsonify({"error": str(error)}), 500
     
 
-@bp.route('/deleteFile', methods=['POST'])
+@bp.route("/deleteFile", methods=["POST"])
 async def delete_file():
     try:
         request_data = await request.json
         user_id = session["user_data"].get("userPrincipalName", "Unknown User")
         is_admin = session["user_data"].get("is_admin", False)
         file_path = request_data["file_path"]
-        file_path_parts = file_path.split('/')
+        file_path_parts = file_path.split("/")
         folder_name = file_path_parts[1] if len(file_path_parts) > 2 else None
 
         if not is_admin and folder_name != user_id:
-            return jsonify({'error': 'Only Admin users can edit this file'}), 400
+            return jsonify({"error": "Only Admin users can edit this file"}), 400
         
         await current_app.status_log.upsert_document(
                             document_path = file_path,
@@ -844,26 +879,26 @@ async def delete_file():
         # delete upload blob?
         # delete content blobs?
 
-        return jsonify({'message': "File deleted successfully"}), 200
+        return jsonify({"message": "File deleted successfully"}), 200
     
     except Exception as error:
         logging.exception("Exception in /deleteFile")
         return jsonify({"error": str(error)}), 500
 
 
-@bp.route('/updateFileTags', methods=['POST'])
+@bp.route("/updateFileTags", methods=["POST"])
 async def update_file_tags():
     try:
         request_data = await request.json
         user_id = session["user_data"].get("userPrincipalName", "Unknown User")
         is_admin = session["user_data"].get("is_admin", False)
         file_path = request_data["file_path"]
-        file_path_parts = file_path.split('/')
+        file_path_parts = file_path.split("/")
         folder_name = file_path_parts[1] if len(file_path_parts) > 2 else None
         new_tags = request_data["tags"]
 
         if not is_admin and folder_name != user_id:
-            return jsonify({'error': 'Only Admin users can edit this file'}), 400
+            return jsonify({"error": "Only Admin users can edit this file"}), 400
         
         await current_app.status_log.upsert_document(
                             document_path = file_path,
@@ -883,14 +918,14 @@ async def update_file_tags():
         # Queue a message for the tags to be updated in the Vector DB
         await QUEUE_CLIENT.send_message(message_string)
 
-        return jsonify({'message': 'Tags updated successfully'}), 200
+        return jsonify({"message": "Tags updated successfully"}), 200
     
     except Exception as error:
         logging.exception("Exception in /updateFileTags")
         return jsonify({"error": str(error)}), 500
 
 
-@bp.route('/getFaq', methods=['GET'])
+@bp.route("/getFaq", methods=["GET"])
 async def get_faq():
     try:
         blob_name = "faq.json"
@@ -904,9 +939,9 @@ async def get_faq():
 
 def create_app():
     app = Quart(__name__)
-    app.config['SECRET_KEY'] = APP_SECRET
-    app.config['SESSION_PERMANENT'] = True
-    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
+    app.config["SECRET_KEY"] = APP_SECRET
+    app.config["SESSION_PERMANENT"] = True
+    app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=8)
     
     request_log = RequestLog(COSMOSDB_URL, COSMODB_KEY, COSMOSDB_REQUESTLOG_DATABASE_NAME, COSMOSDB_REQUESTLOG_CONTAINER_NAME)
     status_log = StatusLog(COSMOSDB_URL, COSMODB_KEY, COSMOSDB_LOG_DATABASE_NAME, COSMOSDB_LOG_CONTAINER_NAME)
@@ -959,7 +994,7 @@ def create_app():
 
     # Level should be one of https://docs.python.org/3/library/logging.html#logging-levels
     default_level = "DEBUG"  # In development, log more verbosely
-    if os.getenv("WEBSITE_HOSTNAME"):  # In production, don't log as heavily
+    if os.getenv("WEBSITE_HOSTNAME"):  # In production, don"t log as heavily
         default_level = "INFO"
     logging.basicConfig(level = os.getenv("APP_LOG_LEVEL", default_level))
 
