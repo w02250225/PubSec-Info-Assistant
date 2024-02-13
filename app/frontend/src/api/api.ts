@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import {
-    ChatAppRequest, BlobClientUrlResponse, AllFilesUploadStatus, GetInfoResponse, ActiveCitation, GetWarningBanner, ExportRequest,
+    ChatAppRequest, BlobClientUrlResponse, BlobUrlResponse, AllFilesUploadStatus, GetInfoResponse, ActiveCitation, GetWarningBanner, ExportRequest,
     StatusLogEntry, StatusLogResponse, ApplicationTitle, GetTagsResponse, GptDeployment, UserData, PromptTemplate, TermsOfUse, FaqContent
 } from "./models";
 
@@ -105,23 +105,23 @@ export async function getBlobClientUrl(): Promise<string> {
     return parsedResponse.url;
 };
 
-export async function getBlobUrl(filename: string): Promise<string> {
+export async function getBlobUrl(file_path: string): Promise<BlobUrlResponse> {
     const response = await fetchWithSessionCheck("/getBlobUrl", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
-            file_name: filename
+            file_path: file_path
         })
     });
 
-    const parsedResponse: BlobClientUrlResponse = await response.json();
+    const parsedResponse: BlobUrlResponse = await response.json();
     if (response.status > 299 || !response.ok) {
         throw Error(parsedResponse.error || "Unknown error");
     }
 
-    return parsedResponse.url;
+    return parsedResponse;
 };
 
 export async function getAllUploadStatus(): Promise<AllFilesUploadStatus> {

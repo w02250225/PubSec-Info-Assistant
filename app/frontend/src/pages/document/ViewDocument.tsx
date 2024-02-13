@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { getBlobUrl } from "../../api"
+import { BlobUrlResponse, getBlobUrl } from "../../api"
 import { Spinner } from '@fluentui/react-components';
 
 import styles from "./ViewDocument.module.css";
@@ -8,6 +8,7 @@ import styles from "./ViewDocument.module.css";
 const ViewDocument = () => {
     const location = useLocation();
     const [blobUrl, setBlobUrl] = useState<string | undefined>(undefined);
+    const [error, setError] = useState<string | undefined>(undefined);
     const queryParams = new URLSearchParams(location.search);
 
     const iframeHeight: string = "760px";
@@ -19,10 +20,16 @@ const ViewDocument = () => {
 
     async function fetchBlobUrl() {
         try {
-            const url = await getBlobUrl(documentName)
-            setBlobUrl(url);
+            const response: BlobUrlResponse = await getBlobUrl(documentName)
+            if (response.error) {
+                setError(response.error);
+
+            } else {
+                setBlobUrl(response.url);
+            }
+
         } catch (error) {
-            // Handle the error here
+            setError("An unexpected error occurred while fetching the document.");
             console.log(error);
         }
     }
@@ -31,6 +38,10 @@ const ViewDocument = () => {
         fetchBlobUrl();
     }, [documentName]);
 
+    // Render error message if there's an error
+    if (error) {
+        return <div className={styles.error}>Error: {error}</div>;
+    }
 
     const viewer = blobUrl === undefined ? (
         <Spinner size="huge" label="Loading..." />

@@ -100,6 +100,11 @@ export type BlobClientUrlResponse = {
     error?: string;
 };
 
+export type BlobUrlResponse = {
+    url?: string;
+    error?: string;
+};
+
 export type FileUploadBasicStatus = {
     id: string;
     file_path: string;
