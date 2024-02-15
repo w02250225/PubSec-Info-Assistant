@@ -450,7 +450,11 @@ const Chat = () => {
                 <div className={styles.chatContainer}>
                     {!lastQuestionRef.current ? (
                         <div className={styles.chatEmptyState}>
-                            <img src={Coeus} className={styles.chatLogo} />
+                            <img 
+                                src={Coeus} 
+                                className={styles.chatLogo} 
+                                title="What is Coeus?"
+                                onClick={() => onExampleClicked("What is Coeus?")} />
                             <h3 className={styles.chatEmptyStateSubtitle}>Ask anything or try an example</h3>
                             <ExampleList onExampleClicked={onExampleClicked} />
                         </div>
