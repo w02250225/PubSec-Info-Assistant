@@ -236,7 +236,7 @@ module privateDnsZoneStorageAccountBlob 'core/dns/secure-private_dns_zone.bicep'
   name: 'secure-private-dns-zone-storage-account-blob'
   params: {
     name: 'privatelink.blob.${environment().suffixes.storage}'
-    vnetLinkName: '${prefix}-link-storate-account-${randomString}'
+    vnetLinkName: '${prefix}-link-storage-account-${randomString}'
     location: 'global'
     tags: tags
     vnetResourceId: network.outputs.id
@@ -251,7 +251,7 @@ module privateDnsZoneStorageAccountFile 'core/dns/secure-private_dns_zone.bicep'
   name: 'secure-private-dns-zone-storage-account-file'
   params: {
     name: 'privatelink.file.${environment().suffixes.storage}'
-    vnetLinkName: '${prefix}-link-storate-account-${randomString}'
+    vnetLinkName: '${prefix}-link-storage-account-${randomString}'
     location: 'global'
     tags: tags
     vnetResourceId: network.outputs.id
@@ -266,7 +266,7 @@ module privateDnsZoneStorageAccountTable 'core/dns/secure-private_dns_zone.bicep
   name: 'secure-private-dns-zone-storage-account-table'
   params: {
     name: 'privatelink.table.${environment().suffixes.storage}'
-    vnetLinkName: '${prefix}-link-storate-account-${randomString}'
+    vnetLinkName: '${prefix}-link-storage-account-${randomString}'
     location: 'global'
     tags: tags
     vnetResourceId: network.outputs.id
@@ -281,7 +281,7 @@ module privateDnsZoneStorageAccountQueue 'core/dns/secure-private_dns_zone.bicep
   name: 'secure-private-dns-zone-storage-account-queue'
   params: {
     name: 'privatelink.queue.${environment().suffixes.storage}'
-    vnetLinkName: '${prefix}-link-storate-account-${randomString}'
+    vnetLinkName: '${prefix}-link-storage-account-${randomString}'
     location: 'global'
     tags: tags
     vnetResourceId: network.outputs.id
@@ -606,7 +606,7 @@ module functions 'core/function/secure-function.bicep' = {
     name: !empty(functionsAppName) ? functionsAppName : '${prefix}-${abbrs.webSitesFunctions}${randomString}'
     location: location
     tags: tags
-    appServicePlanId: appServicePlan.outputs.id
+    appServicePlanId: funcServicePlan.outputs.id
     dnsZoneName: privateDnsZoneApp.outputs.name
     subnetResourceIdInbound: network.outputs.subnetIdFunctionInbound
     subnetResourceIdOutbound: network.outputs.subnetIdFunctionOutbound
