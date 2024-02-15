@@ -214,6 +214,13 @@ def main(msg: func.QueueMessage) -> None:
             block_blob_client = blob_service_client.get_blob_client(container=azure_blob_content_storage_container, blob=chunk.name)
             block_blob_client.upload_blob(json_str, overwrite=True)
                 
+        statusLog.upsert_document(
+            blob_path,
+            f"{FUNCTION_NAME} - Text enrichment is complete",
+            StatusClassification.DEBUG,
+            State.QUEUED,
+        )
+        
         # Queue message to embeddings queue for downstream processing
         queue_client = QueueClient.from_connection_string(azure_blob_connection_string, queueName, message_encode_policy=TextBase64EncodePolicy())
         embeddings_queue_backoff =  random.randint(1, 60)
@@ -222,10 +229,11 @@ def main(msg: func.QueueMessage) -> None:
    
         statusLog.upsert_document(
             blob_path,
-            f"{FUNCTION_NAME} - Text enrichment is complete",
+            f"{FUNCTION_NAME} - message sent to embeddings queue",
             StatusClassification.DEBUG,
             State.QUEUED,
         )
+        
    
     except Exception as error:
         statusLog.upsert_document(

@@ -271,7 +271,7 @@ def acquire_token_silently():
 
 def before_request():
     non_auth_endpoints = ["routes.authorized", "routes.login", "routes.logout"]
-    if request.endpoint not in non_auth_endpoints and not acquire_token_silently():
+    if request.endpoint not in non_auth_endpoints and not token_is_valid():
         # Store request URL for after login
         session["redirect_url"] = request.url
         if request.accept_mimetypes.best == "application/json":
@@ -440,7 +440,7 @@ async def authorized():
         await current_app.userdata_log.upsert_user_session()
         
         # Redirect user to the stored URL or a default one if not available
-        redirect_url = session.pop("redirect_url", "/")
+        redirect_url = "/" # session.pop("redirect_url", "/")
         
         return redirect(redirect_url)
 

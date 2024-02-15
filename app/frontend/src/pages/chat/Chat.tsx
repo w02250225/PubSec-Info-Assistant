@@ -227,7 +227,9 @@ const Chat = () => {
                         top_p: topP,
                         // If no folders selected, or selectAll is selected
                         // send "all" to prevent unnecessary filtering
-                        selected_folders: selectedFolders.includes('selectAll') || selectedFolders.length === 0 ?
+                        // unless user is not admin
+                        selected_folders: userData.is_admin && 
+                            (selectedFolders.includes('selectAll') || selectedFolders.length === 0) ?
                             "All" :
                             selectedFolders.filter(f => f !== 'selectAll').join(","),
 
