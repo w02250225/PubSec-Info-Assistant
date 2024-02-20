@@ -3,10 +3,11 @@
 
 import { useRef, useState, useEffect, useContext } from "react";
 import Coeus from "../../assets/coeus.png";
-import { Checkbox, Panel, DefaultButton, TextField, SpinButton, Separator, PanelType, IComboBoxOption, SelectableOptionMenuItemType, IDropdownOption, Dropdown } from "@fluentui/react";
+import { Checkbox, Panel, DefaultButton, SpinButton, Separator, PanelType, IDropdownOption, Dropdown } from "@fluentui/react";
 import { ITag } from '@fluentui/react/lib/Pickers';
 import readNDJSONStream from "ndjson-readablestream";
 import { BlobServiceClient } from "@azure/storage-blob";
+import { v4 as uuidv4 } from 'uuid';
 
 import styles from "./Chat.module.css";
 import rlbgstyles from "../../components/ResponseLengthButtonGroup/ResponseLengthButtonGroup.module.css";
@@ -15,7 +16,8 @@ import { UserContext } from "../../components/UserContext";
 import {
     chatApi, RetrievalMode, ChatAppResponse, ChatAppResponseOrError, ChatAppRequest, ResponseMessage,
     GptDeployment, getGptDeployments, setGptDeployment, getInfoData, GetInfoResponse, PromptTemplate,
-    getPromptTemplates, getBlobClientUrl, stopStream, UserData
+    getPromptTemplates, getBlobClientUrl, stopStream, UserData, getConversation, getConversationHistory,
+    AllChatHistory
 } from "../../api";
 import { Answer, AnswerError, AnswerLoading } from "../../components/Answer";
 import { QuestionInput } from "../../components/QuestionInput";
@@ -36,12 +38,15 @@ import { FolderPicker } from "../../components/FolderPicker";
 import { TagPickerInline } from "../../components/TagPicker";
 import { ModelPicker } from "../../components/ModelPicker";
 import { PromptTemplatePicker } from "../../components/PromptTemplatePicker";
+import { ChatHistoryPanel } from "../../components/ChatHistoryPanel"
+import { ChatHistoryButton } from "../../components/ChatHistoryButton";
 
 const Chat = () => {
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
     const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
     const [isModelConfigPanelOpen, setIsModelConfigPanelOpen] = useState(false);
     const [isAnalysisPanelOpen, setIsAnalysisPanelOpen] = useState(false);
+    const [isChatHistoryPanelOpen, setIsChatHistoryPanelOpen] = useState(false);
     const [promptOverride, setPromptOverride] = useState<string>("");
     const [retrieveCount, setRetrieveCount] = useState<number>(5);
     const [retrievalMode, setRetrievalMode] = useState<RetrievalMode>(RetrievalMode.Hybrid);
@@ -63,6 +68,8 @@ const Chat = () => {
 
     const lastQuestionRef = useRef<string>("");
     const chatMessageStreamEnd = useRef<HTMLDivElement | null>(null);
+    const [conversationId, setConversationId] = useState<string>(uuidv4());
+    const [chatHistory, setChatHistory] = useState<AllChatHistory | undefined>(undefined);
 
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isStreaming, setIsStreaming] = useState<boolean>(false);
@@ -134,7 +141,6 @@ const Chat = () => {
     const handleAsyncRequest = async (
         question: string,
         answers: [string, ChatAppResponse][],
-        setAnswers: Function,
         responseBody: ReadableStream<any>,
         signal: AbortSignal
     ) => {
@@ -209,6 +215,7 @@ const Chat = () => {
             ]);
 
             const request: ChatAppRequest = {
+                conversation_id: conversationId,
                 messages: [...messages, { content: question, role: "user" }],
                 stream: shouldStream,
                 context: {
@@ -228,11 +235,10 @@ const Chat = () => {
                         // If no folders selected, or selectAll is selected
                         // send "all" to prevent unnecessary filtering
                         // unless user is not admin
-                        selected_folders: userData.is_admin && 
+                        selected_folders: userData.is_admin &&
                             (selectedFolders.includes('selectAll') || selectedFolders.length === 0) ?
                             "All" :
                             selectedFolders.filter(f => f !== 'selectAll').join(","),
-
                         selected_tags: selectedTags.map(tag => tag.name).join(",")
                     }
                 },
@@ -244,7 +250,7 @@ const Chat = () => {
                 throw Error("No response body");
             }
             if (shouldStream) {
-                const parsedResponse: ChatAppResponse = await handleAsyncRequest(question, answers, setAnswers, response.body, controller.signal);
+                const parsedResponse: ChatAppResponse = await handleAsyncRequest(question, answers, response.body, controller.signal);
                 setAnswers([...answers, [question, parsedResponse]]);
             } else {
                 const parsedResponse: ChatAppResponseOrError = await response.json();
@@ -261,6 +267,7 @@ const Chat = () => {
     };
 
     const clearChat = () => {
+        setConversationId(uuidv4());
         lastQuestionRef.current = "";
         error && setError(undefined);
         setActiveCitation(undefined);
@@ -367,6 +374,38 @@ const Chat = () => {
         setActiveAnalysisPanelTab(undefined);
     };
 
+    const onChatHistoryOpen = async () => {
+        setIsChatHistoryPanelOpen(true);
+        const chatHistory: AllChatHistory = await getConversationHistory(userData.userPrincipalName)
+        setChatHistory(chatHistory);
+    };
+
+    const onConversationClicked = async (conversation_id: string) => {
+        try {
+            setIsChatHistoryPanelOpen(false);
+            const response = await getConversation(userData.userPrincipalName, conversation_id);
+            const data = await response.json();
+            const formattedHistory: [string, ChatAppResponse][] = data.map((item: { question: any; response: ChatAppResponse; }) => {
+                // Extract question and the response from each item
+                const userQuestion = item.question;
+                const chatAppResponse: ChatAppResponse = {
+                    ...item.response, // Spread the response object to match ChatAppResponse type
+                };
+                return [userQuestion, chatAppResponse];
+            });
+
+            if (formattedHistory.length > 0) {
+                setAnswers(formattedHistory);
+                setStreamedAnswers(formattedHistory);
+                const mostRecentQuestion = formattedHistory[formattedHistory.length - 1][0];
+                lastQuestionRef.current = mostRecentQuestion; // Update the ref to the most recent question
+            }
+
+        } catch (error) {
+            console.error('There was a problem with your fetch operation:', error);
+        }
+    };
+
     const onStopClick = async () => {
         try {
             if (abortController) {
@@ -443,6 +482,7 @@ const Chat = () => {
     return (
         <div className={styles.container}>
             <div className={styles.commandsContainer}>
+                <ChatHistoryButton className={styles.commandButton} onClick={onChatHistoryOpen} disabled={isLoading || isStreaming}/>
                 <ClearChatButton className={styles.commandButton} onClick={clearChat} disabled={!lastQuestionRef.current || isLoading || isStreaming} />
                 <ModelSettingsButton className={styles.commandButton} onClick={() => setIsModelConfigPanelOpen(!isModelConfigPanelOpen)} disabled={isLoading || isStreaming} />
                 <SettingsButton className={styles.commandButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} disabled={isLoading || isStreaming} />
@@ -452,9 +492,9 @@ const Chat = () => {
                 <div className={styles.chatContainer}>
                     {!lastQuestionRef.current ? (
                         <div className={styles.chatEmptyState}>
-                            <img 
-                                src={Coeus} 
-                                className={styles.chatLogo} 
+                            <img
+                                src={Coeus}
+                                className={styles.chatLogo}
                                 title="What is Coeus?"
                                 onClick={() => onExampleClicked("What is Coeus?")} />
                             <h3 className={styles.chatEmptyStateSubtitle}>Ask anything or try an example</h3>
@@ -559,6 +599,21 @@ const Chat = () => {
                 )}
                 <Panel
                     type={PanelType.smallFixedFar}
+                    headerText="Chat History"
+                    isOpen={isChatHistoryPanelOpen}
+                    isBlocking={true}
+                    onDismiss={() => setIsChatHistoryPanelOpen(false)}
+                    closeButtonAriaLabel="Close"
+                    onRenderFooterContent={() => <DefaultButton onClick={() => setIsChatHistoryPanelOpen(false)}>Close</DefaultButton>}
+                    isFooterAtBottom={true}>
+                    <ChatHistoryPanel
+                        className={styles.chatSettingsSeparator}
+                        chatHistory={chatHistory}
+                        onConversationClicked={c => onConversationClicked(c)}
+                    />
+                </Panel>
+                <Panel
+                    type={PanelType.smallFixedFar}
                     headerText="Model Settings"
                     isOpen={isModelConfigPanelOpen}
                     isBlocking={true}
@@ -615,20 +670,6 @@ const Chat = () => {
                     closeButtonAriaLabel="Close"
                     onRenderFooterContent={() => <DefaultButton onClick={() => setIsConfigPanelOpen(false)}>Close</DefaultButton>}
                     isFooterAtBottom={true}>
-                    {/* <TextField
-                        className={styles.chatSettingsSeparator}
-                        defaultValue={systemPersona}
-                        label="System Persona"
-                        onChange={onSystemPersonaChange}
-                        errorMessage={systemPersona.length == 0 ? "Please provide a value" : undefined}
-                    />
-                    <TextField
-                        className={styles.chatSettingsSeparator}
-                        defaultValue={userPersona}
-                        label="User Persona"
-                        onChange={onUserPersonaChange}
-                        errorMessage={userPersona.length == 0 ? "Please provide a value" : undefined}
-                    /> */}
                     <Checkbox
                         className={styles.chatSettingsSeparator}
                         checked={useSuggestFollowupQuestions}

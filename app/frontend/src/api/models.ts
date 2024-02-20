@@ -6,7 +6,7 @@ export const enum RetrievalMode {
     Vectors = "vectors",
     Text = "text",
     None = "none"
-}
+};
 
 export type ChatAppRequestOverrides = {
     retrieval_mode?: RetrievalMode;
@@ -24,7 +24,7 @@ export type ChatAppRequestOverrides = {
     response_length?: number;
     top_p?: number;
     selected_folders?: string;
-    selected_tags?: string;  
+    selected_tags?: string;
 };
 
 export type ResponseMessage = {
@@ -63,32 +63,19 @@ export type ChatAppRequestContext = {
 };
 
 export type ChatAppRequest = {
+    conversation_id: string;
     messages: ResponseMessage[];
     context?: ChatAppRequestContext;
     stream?: boolean;
     session_state: any;
 };
 
-export type AskResponse = {
-    answer: string;
-    thoughts: string | null;
-    data_points: string[];
-    citation_lookup: { [key: string]: { citation: string; source_path: string; page_number: string } };
-    request_id: string;
-    error?: string;
-};
-
-export type ChatTurn = {
-    user: string;
-    bot?: string;
-};
-
-export type ExportRequest ={
+export type ExportRequest = {
     request_id: string;
     question: string;
     answer: string;
     citations: string;
-}
+};
 
 export type ExportResponse = {
     link: string;
@@ -115,11 +102,11 @@ export type FileUploadBasicStatus = {
     start_timestamp: string;
     state_description: string;
     state_timestamp: string;
-}
+};
 
 export type AllFilesUploadStatus = {
     statuses: FileUploadBasicStatus[];
-}
+};
 
 // These keys need to match case with the defined Enum in the
 // shared code (functions/shared_code/status_log.py)
@@ -130,7 +117,7 @@ export const enum FileState {
     Queued = "QUEUED",
     Complete = "COMPLETE",
     Error = "ERROR"
-}
+};
 
 export type UserData = {
     user_id: string;
@@ -189,7 +176,7 @@ export const enum StatusLogClassification {
     Debug = "Debug",
     Info = "Info",
     Error = "Error"
-}
+};
 
 // These keys need to match case with the defined Enum in the
 // shared code (functions/shared_code/status_log.py)
@@ -202,7 +189,7 @@ export const enum StatusLogState {
     Throttled = "Throttled",
     Uploaded = "Uploaded",
     All = "All"
-}
+};
 
 export type StatusLogEntry = {
     path: string;
@@ -210,12 +197,12 @@ export type StatusLogEntry = {
     status_classification: StatusLogClassification;
     state: StatusLogState;
     tags: string[];
-}
+};
 
 export type StatusLogResponse = {
     status: number;
     error?: string;
-}
+};
 
 export type ApplicationTitle = {
     APPLICATION_TITLE: string;
@@ -225,13 +212,13 @@ export type ApplicationTitle = {
 export type GetTagsResponse = {
     tags: string;
     error?: string;
-}
+};
 
 export type GptDeployment = {
     deploymentName: string;
     modelName: string;
     modelVersion: string;
-}
+};
 
 export type PromptTemplate = {
     displayName: string;
@@ -241,7 +228,7 @@ export type PromptTemplate = {
     temperature: number;
     top_p: number;
     retrievalMode: RetrievalMode;
-}
+};
 
 export type TermsOfUse = {
     content: string;
@@ -249,16 +236,30 @@ export type TermsOfUse = {
     acceptInstructionFooter: string;
     version: string;
     error?: string;
-}
+};
 
 export type FaqContent = {
     content: string;
     questions: FaqQuestion[];
     version: string;
     error?: string;
-}
+};
 
 export type FaqQuestion = {
     question: string;
     answer: string;
+};
+
+export type AllChatHistory = {
+    history: ChatHistory[];
+    error?: string;
 }
+
+export type ChatHistory = {
+    user_id: string,
+    session_id: string,
+    conversation_id: string,
+    conversation_name: string,
+    conversation_start: string,
+    date_category: string
+};

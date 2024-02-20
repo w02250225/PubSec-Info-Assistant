@@ -1,0 +1,11 @@
+.container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
