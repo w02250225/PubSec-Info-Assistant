@@ -382,7 +382,11 @@ const Chat = () => {
 
     const onConversationClicked = async (conversation_id: string) => {
         try {
+            clearChat();
+            setConversationId(conversation_id);
+            lastQuestionRef.current = "Loading Conversation from History..."
             setIsChatHistoryPanelOpen(false);
+
             const response = await getConversation(userData.userPrincipalName, conversation_id);
             const data = await response.json();
             const formattedHistory: [string, ChatAppResponse][] = data.map((item: { question: any; response: ChatAppResponse; }) => {
@@ -402,6 +406,7 @@ const Chat = () => {
             }
 
         } catch (error) {
+            lastQuestionRef.current = "An error occurred loading Conversation from History..."
             console.error('There was a problem with your fetch operation:', error);
         }
     };
@@ -482,8 +487,8 @@ const Chat = () => {
     return (
         <div className={styles.container}>
             <div className={styles.commandsContainer}>
-                <ChatHistoryButton className={styles.commandButton} onClick={onChatHistoryOpen} disabled={isLoading || isStreaming}/>
                 <ClearChatButton className={styles.commandButton} onClick={clearChat} disabled={!lastQuestionRef.current || isLoading || isStreaming} />
+                <ChatHistoryButton className={styles.commandButton} onClick={onChatHistoryOpen} disabled={isLoading || isStreaming}/>
                 <ModelSettingsButton className={styles.commandButton} onClick={() => setIsModelConfigPanelOpen(!isModelConfigPanelOpen)} disabled={isLoading || isStreaming} />
                 <SettingsButton className={styles.commandButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} disabled={isLoading || isStreaming} />
                 <InfoButton className={styles.commandButton} onClick={() => setIsInfoPanelOpen(!isInfoPanelOpen)} disabled={isLoading || isStreaming} />

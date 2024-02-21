@@ -40,7 +40,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             <div className={styles.container}>
                 <img src={Coeus} className={styles.chatLogo} />
                 <div className={styles.spinnerContainer}>
-                    <Spinner size={SpinnerSize.large} label="Loading application..." ariaLive="assertive" labelPosition="right" />
+                    <Spinner size={SpinnerSize.large} label="Loading application..." ariaLive="assertive" />
                 </div>
             </div>
         );

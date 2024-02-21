@@ -2,10 +2,9 @@
 # Licensed under the MIT license.
 
 import re
-import json
 import logging
-import urllib.parse
-from datetime import datetime, timedelta
+import requests
+
 from typing import Any, AsyncGenerator, Coroutine, Literal, Optional, Union, overload
 from openai import AsyncOpenAI, AsyncStream
 from openai.types.chat import (
@@ -16,14 +15,8 @@ from approaches.approach import Approach
 from azure.search.documents.aio import SearchClient
 from azure.search.documents.models import QueryType, VectorizedQuery, VectorQuery
 from azure.storage.blob.aio import BlobServiceClient
-from azure.storage.blob import (
-    AccountSasPermissions,
-    ResourceTypes,
-    generate_account_sas,
-)
-from text import nonewlines
 from core.modelhelper import get_token_limit
-import requests
+from urllib.parse import unquote, urlparse
 
 # Simple retrieve-then-read implementation, using the Cognitive Search and
 # OpenAI APIs directly. It first retrieves top documents from search,
@@ -203,7 +196,7 @@ Always include citations if you reference the source documents. Use square brack
 
             if has_vector:
                 # Generate embedding using REST API
-                url = f'{self.embedding_service_url}/models/{self.escaped_target_model}/embed'
+                url = f"{self.embedding_service_url}/models/{self.escaped_target_model}/embed"
                 data = [f'"{generated_query}"']
                 headers = {
                         'Accept': 'application/json',
@@ -213,11 +206,11 @@ Always include citations if you reference the source documents. Use square brack
                 response = requests.post(url, json=data, headers=headers, timeout=60)
                 if response.status_code == 200:
                     response_data = response.json()
-                    embedded_query_vector = response_data.get('data')
+                    embedded_query_vector = response_data.get("data")
                     vectors.append(VectorizedQuery(vector = embedded_query_vector, k_nearest_neighbors = 50,  fields = "contentVector"))
                 else:
                     logging.error(f"Error generating embedding: {response.text}")
-                    raise Exception('Error generating embedding')
+                    raise Exception("Error generating embedding")
 
             # Only keep the text query if the retrieval mode uses text, otherwise drop it
             if not has_text:
@@ -262,18 +255,12 @@ Always include citations if you reference the source documents. Use square brack
             idx = 0
             async for doc in r:  # for each document in the search results
                 # include the "FileX" moniker in the prompt, and the actual file name in the response
-                results.append(
-                    f"File{idx} " + "| " + nonewlines(doc[self.content_field])
-                )
-                data_points.append(
-                "/".join(urllib.parse.unquote(doc[self.source_file_field]).split("/")[4:]
-                    ) + "| " + nonewlines(doc[self.content_field])
-                    )
-
-                # add the "FileX" moniker and full file name to the citation lookup
+                results.append(f"File{idx} " + "| " + self.nonewlines(doc[self.content_field]))
+                file_uri_parsed = urlparse(doc[self.source_file_field])
+                data_points.append("/".join(unquote(file_uri_parsed.path).split("/")[2:]) + " | " + self.nonewlines(doc[self.content_field]))
                 citation_lookup[f"File{idx}"] = {
-                    "citation": urllib.parse.unquote("https://" + doc[self.source_file_field].split("/")[2] + f"/{self.content_storage_container}/" + doc[self.chunk_file_field]),
-                    "source_path": self.get_source_file_with_sas(doc[self.source_file_field]),
+                    "citation": unquote(f"https://{file_uri_parsed.netloc}/{self.content_storage_container}/{doc[self.chunk_file_field]}"),
+                    "source_path": "/".join(file_uri_parsed.path.split("/")[2:]), # remove 'upload' from the file uri
                     "page_number": str(doc[self.page_number_field][0]) or "0",
                 }
 
@@ -368,10 +355,10 @@ Always include citations if you reference the source documents. Use square brack
             error_message = str(error)
 
             # Check if error has an attribute named 'body'
-            if hasattr(error, 'body') and isinstance(error.body, dict):
+            if hasattr(error, "body") and isinstance(error.body, dict):
                 error_body = error.body
-                error_code = error_body.get('code', error_code)
-                error_message = error_body.get('message', error_message)
+                error_code = error_body.get("code", error_code)
+                error_message = error_body.get("message", error_message)
 
             extra_info = {
                 "error_message": error_message,
@@ -489,27 +476,5 @@ Always include citations if you reference the source documents. Use square brack
         else:
             return self.run_with_streaming(messages, overrides, session_state)
 
-
-    def get_source_file_with_sas(self, source_file: str) -> str:
-        """ Function to return the source file with a SAS token"""
-        try:
-            sas_token = generate_account_sas(
-                self.blob_client.account_name,
-                self.blob_client.credential.account_key,
-                resource_types=ResourceTypes(object=True, service=True, container=True),
-                permission=AccountSasPermissions(
-                    read=True,
-                    write=False,
-                    list=True,
-                    delete=False,
-                    add=False,
-                    create=False,
-                    update=False,
-                    process=False,
-                ),
-                expiry=datetime.utcnow() + timedelta(hours=1),
-            )
-            return source_file + "?" + sas_token
-        except Exception as error:
-            logging.error(f"Unable to parse source file name: {str(error)}")
-            return ""
+    def nonewlines(s: str) -> str:
+        return s.replace("\n", " ").replace("\r", " ")

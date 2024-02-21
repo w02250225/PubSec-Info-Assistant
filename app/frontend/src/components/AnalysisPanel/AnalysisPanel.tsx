@@ -2,16 +2,14 @@
 // Licensed under the MIT license.
 
 import { useEffect, useState } from "react";
-import { DefaultButton, Pivot, PivotItem, Text } from "@fluentui/react";
-import { Label } from '@fluentui/react/lib/Label';
-import { Separator } from '@fluentui/react/lib/Separator';
+import { Label, Pivot, PivotItem, Separator, Spinner, SpinnerSize, Text } from "@fluentui/react";
 import DOMPurify from "dompurify";
 
 import styles from "./AnalysisPanel.module.css";
 
-import { SupportingContent } from "../SupportingContent";
-import { ChatAppResponse, ActiveCitation, getCitationObj } from "../../api";
 import { AnalysisPanelTabs } from "./AnalysisPanelTabs";
+import { SupportingContent } from "../SupportingContent";
+import { ChatAppResponse, ActiveCitation, getCitationObj, BlobUrlResponse, getBlobUrl } from "../../api";
 
 interface Props {
     activeTab?: AnalysisPanelTabs;
@@ -20,17 +18,18 @@ interface Props {
     sourceFile: string | undefined;
     pageNumber: string | undefined;
     answer: ChatAppResponse;
-}
+};
 
 const pivotItemDisabledStyle = { disabled: true, style: { color: "grey" } };
 
 export const AnalysisPanel = ({ answer, activeTab, activeCitation, sourceFile, pageNumber, onActiveTabChanged }: Props) => {
+    const [blobUrl, setBlobUrl] = useState<string | undefined>(undefined);
+    const [error, setError] = useState<string | undefined>(undefined);
     const [activeCitationObj, setActiveCitationObj] = useState<ActiveCitation>();
     const isDisabledThoughtProcessTab: boolean = !answer.choices[0].context.thoughts;
     const isDisabledSupportingContentTab: boolean = !answer.choices[0].context.data_points.length;
     const isDisabledCitationTab: boolean = !activeCitation;
-    // the first split on ? separates the file from the sas token, then the second split on . separates the file extension
-    const sourceFileExt: any = sourceFile?.split("?")[0].split(".").pop();
+    const sourceFileExt: any = sourceFile?.split(".").pop();
     const sanitizedThoughts = DOMPurify.sanitize(answer.choices[0].context.thoughts!);
 
     async function fetchActiveCitationObj() {
@@ -44,9 +43,30 @@ export const AnalysisPanel = ({ answer, activeTab, activeCitation, sourceFile, p
         }
     };
 
+    async function fetchBlobUrl() {
+        try {
+            if (sourceFile) {
+                const response: BlobUrlResponse = await getBlobUrl(sourceFile)
+                if (response.error) {
+                    setError(response.error);
+
+                } else {
+                    setBlobUrl(response.url);
+                }
+            }
+        } catch (error) {
+            setError("An unexpected error occurred while fetching the document.");
+            console.log(error);
+        }
+    };
+
     useEffect(() => {
         fetchActiveCitationObj();
     }, [activeCitation]);
+
+    useEffect(() => {
+        fetchBlobUrl();
+    }, [sourceFile]);
 
     return (
         <div>
@@ -71,18 +91,22 @@ export const AnalysisPanel = ({ answer, activeTab, activeCitation, sourceFile, p
                     headerButtonProps={isDisabledCitationTab ? pivotItemDisabledStyle : undefined}>
                     <Pivot>
                         <PivotItem itemKey="rawFile" headerText="Document">
-                            {sourceFileExt === "pdf" ? (
+                            {error ? (
+                                <Text>{error}</Text>
+                            ) : !blobUrl ? (
+                                <Spinner size={SpinnerSize.large} label="Loading..." />
+                            ) : sourceFileExt === "pdf" ? (
                                 //use object tag for pdfs because iframe does not support page numbers
-                                <object data={sourceFile + "#page=" + pageNumber} type="application/pdf" width="100%" height="760px" />
+                                <object data={blobUrl + "#page=" + pageNumber} type="application/pdf" width="100%" height="760px" />
                             ) : (sourceFileExt === "docx" || sourceFileExt === "xlsx" ? (
-                                <iframe title="Source File" src={'https://view.officeapps.live.com/op/view.aspx?src=' + encodeURIComponent(sourceFile as string) + "&action=embedview&wdStartOn=" + pageNumber} width="100%" height="760px" />
+                                <iframe title="Source File" src={'https://view.officeapps.live.com/op/view.aspx?src=' + encodeURIComponent(blobUrl as string) + "&action=embedview&wdStartOn=" + pageNumber} width="100%" height="760px" />
                             ) : (
-                                <iframe title="Source File" src={sourceFile} width="100%" height="760px" />
+                                <iframe title="Source File" src={blobUrl} width="100%" height="760px" />
                             ))}
                         </PivotItem>
                         <PivotItem itemKey="indexedFile" headerText="Document Section">
                             {activeCitationObj === undefined ? (
-                                <Text>Loading...</Text>
+                                <Spinner size={SpinnerSize.large} label="Loading..." />
                             ) : (
                                 <div>
                                     <Separator>Metadata</Separator>

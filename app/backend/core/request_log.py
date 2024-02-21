@@ -4,7 +4,6 @@ import logging
 import pandas as pd
 from azure.cosmos.aio import CosmosClient
 from azure.cosmos import PartitionKey, exceptions
-from datetime import datetime, timedelta
 from quart import session
 from typing import Any, Dict, List
 
@@ -47,14 +46,19 @@ class RequestLog:
         
         logging.info('Logging Request ID %s for Session ID %s', request_id, session_id)
 
-        json_document = ""
+        json_document = None
         try:
-            # if the document exists and if this is the first call from the parent,
-            # then retrieve the stored document from cosmos, otherwise, use the log stored in self
-            if self._log_document.get(document_id, "") == "":
-                json_document = await self.container.read_item(item=document_id, partition_key=user_id)
-            else:
+            # Check if the log document exists in memory, otherwise fetch from Cosmos DB
+            if document_id in self._log_document and self._log_document[document_id]:
                 json_document = self._log_document[document_id]
+            else:
+                # Fetch the document from Cosmos DB
+                cosmos_response = await self.container.read_item(item=document_id, partition_key=user_id)
+                json_document = cosmos_response  
+
+            # Ensure json_document has a 'history' key and it's a list
+            if 'history' not in json_document or not isinstance(json_document['history'], list):
+                json_document['history'] = []
 
             history = json_document["history"]
             new_request = {
@@ -70,14 +74,16 @@ class RequestLog:
 
         except exceptions.CosmosResourceNotFoundError:
             # this is a new document
-            json_document = self._create_new_json_document(openai_client,
-                                                           user_id,
-                                                           document_id, 
-                                                           session_id,
-                                                           conversation_id,
-                                                           request_id, gpt_deployment,
-                                                           request_body,
-                                                           start_time)
+            json_document = await self._create_new_json_document(
+                openai_client,
+                user_id,
+                document_id, 
+                session_id,
+                conversation_id,
+                request_id,
+                gpt_deployment,
+                request_body,
+                start_time)
         except Exception as ex:
             logging.exception("Exception in log_request. Error: %s", str(ex))
 
@@ -97,8 +103,11 @@ class RequestLog:
                                   gpt_deployment,
                                   request_body,
                                   start_time):
-        conversation_title = await self.generate_conversation_title(openai_client, 
-                                                                    request_body['messages'][0]['content'])
+        conversation_title = await self.generate_conversation_title(
+            openai_client, 
+            gpt_deployment,
+            request_body['messages'][0]['content'])
+        
         return {
                 "id": document_id,
                 "user_id": user_id,
@@ -133,7 +142,7 @@ class RequestLog:
             for request in json_document["history"]:
                 if request.get("request_id") == request_id:
                     request["response"] = response
-                    request["finish_time"] = str(finish_time.strftime('%Y-%m-%d %H:%M:%S'))
+                    request["finish_timestamp"] = str(finish_time.strftime('%Y-%m-%d %H:%M:%S'))
                     break  # request_id is unique, break after finding the match
 
             await self.save_document(log_id)
@@ -170,9 +179,6 @@ ORDER BY c.history[0].start_timestamp DESC
 
         # Convert to DataFrame for easier manipulation
         df = pd.DataFrame(items)
-    
-        # Convert conversation_start to datetime
-        df['conversation_start'] = pd.to_datetime(df['conversation_start'])
 
         # Get today's date
         today = pd.to_datetime('today').normalize()
@@ -196,7 +202,7 @@ ORDER BY c.history[0].start_timestamp DESC
                 return 'Older'
         
         # Apply categorization
-        df['date_category'] = df['conversation_start'].apply(group_date)
+        df['date_category'] = pd.to_datetime(df['conversation_start']).apply(group_date)
         
         # Convert DataFrame back to list of dicts
         grouped_items = df.to_dict('records')

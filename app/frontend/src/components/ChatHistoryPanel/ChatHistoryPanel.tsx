@@ -3,7 +3,7 @@ import { IGroup } from '@fluentui/react/lib/GroupedList';
 
 import { AllChatHistory } from "../../api"
 import styles from "./ChatHistoryPanel.module.css";
-import { MessageBar, MessageBarType, Spinner, SpinnerSize } from '@fluentui/react';
+import { MessageBar, MessageBarType, Spinner, SpinnerSize, TooltipHost } from '@fluentui/react';
 
 interface Props {
   className?: string;
@@ -29,7 +29,7 @@ export const ChatHistoryPanel = ({ className, chatHistory, onConversationClicked
   // Early return for loading state when chatHistory is undefined or null
   if (chatHistory?.history === undefined || chatHistory.history === null) {
     return (<div className={className}>
-      <Spinner size={SpinnerSize.large} label="Loading chat history..." ariaLive="assertive" labelPosition="bottom" />
+      <Spinner size={SpinnerSize.large} label="Loading chat history..." ariaLive="assertive" />
     </div>
     )
   };
@@ -73,6 +73,44 @@ export const ChatHistoryPanel = ({ className, chatHistory, onConversationClicked
     },
   ];
 
+  const onRenderItemColumn = (item?: any, index?: number, column?: IColumn) => {
+    if (item && column) {
+
+      const handleClick = () => {
+        // Check if the item has a conversation_id and call onConversationClicked
+        if (item.conversation_id) {
+          onConversationClicked(item.conversation_id);
+        }
+      };
+
+      // Prepare Tooltip content
+      const tooltipContent = (
+        <>
+          {item.conversation_name}
+          {item.conversation_start && (
+            <>
+              <br />
+              {item.conversation_start}
+            </>
+          )}
+        </>
+      );
+
+      return (
+        <TooltipHost
+          content={tooltipContent}
+          calloutProps={{ gapSpace: 0 }}
+          styles={{ root: { display: 'inline-block', cursor: 'pointer', maxWidth: '100%' } }}
+        >
+          <div onClick={handleClick} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {item[column.fieldName as keyof typeof item]}
+          </div>
+        </TooltipHost>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className={className}>
       <DetailsList
@@ -82,7 +120,7 @@ export const ChatHistoryPanel = ({ className, chatHistory, onConversationClicked
         groups={groups}
         indentWidth={0}
         selectionMode={SelectionMode.none}
-        onItemInvoked={(item) => onConversationClicked(item.conversation_id)}
+        onRenderItemColumn={onRenderItemColumn}
         isHeaderVisible={false} // Hide column headers
       />
     </div>
