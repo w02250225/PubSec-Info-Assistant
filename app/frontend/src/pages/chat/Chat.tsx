@@ -17,7 +17,7 @@ import {
     chatApi, RetrievalMode, ChatAppResponse, ChatAppResponseOrError, ChatAppRequest, ResponseMessage,
     GptDeployment, getGptDeployments, setGptDeployment, getInfoData, GetInfoResponse, PromptTemplate,
     getPromptTemplates, getBlobClientUrl, stopStream, UserData, getConversation, getConversationHistory,
-    AllChatHistory
+    ConversationHistory, updateConversation, ChatAppRequestOverrides
 } from "../../api";
 import { Answer, AnswerError, AnswerLoading } from "../../components/Answer";
 import { QuestionInput } from "../../components/QuestionInput";
@@ -54,7 +54,7 @@ const Chat = () => {
     const [useSemanticCaptions, setUseSemanticCaptions] = useState<boolean>(false);
     const [shouldStream, setShouldStream] = useState<boolean>(true);
     const [excludeCategory, setExcludeCategory] = useState<string>("");
-    const [useSuggestFollowupQuestions, setUseSuggestFollowupQuestions] = useState<boolean>(true);
+    const [suggestFollowupQuestions, setSuggestFollowupQuestions] = useState<boolean>(true);
     const [userPersona, setUserPersona] = useState<string>("an analyst");
     const [systemPersona, setSystemPersona] = useState<string>("an Assistant");
     // Setting responseLength to 2048 by default, this will effect the default display of the ResponseLengthButtonGroup below.
@@ -69,7 +69,7 @@ const Chat = () => {
     const lastQuestionRef = useRef<string>("");
     const chatMessageStreamEnd = useRef<HTMLDivElement | null>(null);
     const [conversationId, setConversationId] = useState<string>(uuidv4());
-    const [chatHistory, setChatHistory] = useState<AllChatHistory | undefined>(undefined);
+    const [chatHistory, setChatHistory] = useState<ConversationHistory | undefined>(undefined);
 
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isStreaming, setIsStreaming] = useState<boolean>(false);
@@ -227,7 +227,7 @@ const Chat = () => {
                         top: retrieveCount,
                         temperature: responseTemp,
                         prompt_template: promptOverride.length === 0 ? undefined : promptOverride,
-                        suggest_followup_questions: useSuggestFollowupQuestions,
+                        suggest_followup_questions: suggestFollowupQuestions,
                         user_persona: userPersona,
                         system_persona: systemPersona,
                         response_length: responseLength,
@@ -338,8 +338,8 @@ const Chat = () => {
         setSystemPersona(newValue || "");
     }
 
-    const onUseSuggestFollowupQuestionsChange = (_ev?: React.FormEvent<HTMLElement | HTMLInputElement>, checked?: boolean) => {
-        setUseSuggestFollowupQuestions(!!checked);
+    const onSuggestFollowupQuestionsChange = (_ev?: React.FormEvent<HTMLElement | HTMLInputElement>, checked?: boolean) => {
+        setSuggestFollowupQuestions(!!checked);
     };
 
     const onExampleClicked = (example: string) => {
@@ -376,8 +376,31 @@ const Chat = () => {
 
     const onChatHistoryOpen = async () => {
         setIsChatHistoryPanelOpen(true);
-        const chatHistory: AllChatHistory = await getConversationHistory(userData.userPrincipalName)
+        const chatHistory: ConversationHistory = await getConversationHistory(userData.userPrincipalName)
         setChatHistory(chatHistory);
+    };
+
+    const onConversationRenamed = async (conversation_id: string, new_name: string) => {
+        try {
+            // Update conversation name locally
+            setChatHistory(history => {
+                if (history) {
+                    const updatedHistory = history.history.map(conversation => {
+                        if (conversation.conversation_id === conversation_id) {
+                            // Found the conversation that was renamed, update its name
+                            return { ...conversation, conversation_name: new_name };
+                        }
+                        return conversation; // Return all other conversations unchanged
+                    });
+                    return { ...history, history: updatedHistory }; // Return new state with updated history
+                }
+            });
+
+            // Update in Cosmos
+            await updateConversation(userData.userPrincipalName, conversation_id, new_name);
+        } catch (error) {
+            console.error("An error occurred updating the conversation: ", error);
+        }
     };
 
     const onConversationClicked = async (conversation_id: string) => {
@@ -385,30 +408,57 @@ const Chat = () => {
             clearChat();
             setConversationId(conversation_id);
             lastQuestionRef.current = "Loading Conversation from History..."
+            setIsLoading(true);
             setIsChatHistoryPanelOpen(false);
 
-            const response = await getConversation(userData.userPrincipalName, conversation_id);
-            const data = await response.json();
-            const formattedHistory: [string, ChatAppResponse][] = data.map((item: { question: any; response: ChatAppResponse; }) => {
-                // Extract question and the response from each item
-                const userQuestion = item.question;
-                const chatAppResponse: ChatAppResponse = {
-                    ...item.response, // Spread the response object to match ChatAppResponse type
-                };
-                return [userQuestion, chatAppResponse];
-            });
+            const data = await getConversation(userData.userPrincipalName, conversation_id);
 
-            if (formattedHistory.length > 0) {
+            // Set Gpt Deployment
+            if (data.gpt_deployment) {
+                onGptDeploymentChange(data.gpt_deployment);
+            };
+
+            // Set overrides
+            if (data.overrides) {
+                setOverrides(data.overrides)
+            };
+
+            // Set answers/conversation
+            if (data.history) {
+                const formattedHistory: [string, ChatAppResponse][] = data.history.response.map(response => {
+                    return [data.history.question, response];
+                });
+
                 setAnswers(formattedHistory);
                 setStreamedAnswers(formattedHistory);
+
                 const mostRecentQuestion = formattedHistory[formattedHistory.length - 1][0];
                 lastQuestionRef.current = mostRecentQuestion; // Update the ref to the most recent question
-            }
-
+            };
         } catch (error) {
             lastQuestionRef.current = "An error occurred loading Conversation from History..."
-            console.error('There was a problem with your fetch operation:', error);
+            console.error(lastQuestionRef.current, error);
         }
+        finally {
+            setIsLoading(false);
+        }
+    };
+
+    const setOverrides = (overrides: ChatAppRequestOverrides) => {
+        setResponseLength(overrides.response_length || responseLength);
+        setResponseTemp(overrides.temperature || responseTemp);
+        setSuggestFollowupQuestions(overrides.suggest_followup_questions || suggestFollowupQuestions);
+        setTopP(overrides.top_p || topP);
+        setPromptOverride(overrides.prompt_template || promptOverride);
+        setRetrievalMode(overrides.retrieval_mode || retrievalMode);
+        setSelectedFolders(overrides.selected_folders?.split(',') || selectedFolders);
+        if (overrides.selected_tags) {
+            const tagsArray: ITag[] = overrides.selected_tags.split(',').map((name, index) => ({
+                key: `key${index}`,
+                name: name
+            }));
+            setSelectedTags(tagsArray);
+        };
     };
 
     const onStopClick = async () => {
@@ -425,7 +475,7 @@ const Chat = () => {
     const onGptDeploymentChange = (deploymentName: string) => {
         const deploymentToUpdate = allGptDeployments.find(d => d.deploymentName === deploymentName);
 
-        if (deploymentToUpdate) {
+        if (deploymentToUpdate && selectedGptDeployment !== deploymentName) {
             setSelectedGptDeployment(deploymentName);
             setGptDeployment(deploymentToUpdate);
         }
@@ -435,13 +485,17 @@ const Chat = () => {
         const template = promptTemplates.find(d => d.displayName === promptTemplateName);
 
         if (template) {
+            const overrides: ChatAppRequestOverrides = {
+                response_length: template.response_length,
+                temperature: template.temperature,
+                top_p: template.top_p,
+                prompt_template: template.promptOverride,
+                retrieval_mode: template.retrievalMode
+
+            };
+            setOverrides(overrides);
             setSelectedPromptTemplate(template.displayName);
             onGptDeploymentChange(template.deploymentName);
-            setResponseLength(template.response_length);
-            setResponseTemp(template.temperature);
-            setTopP(template.top_p);
-            setPromptOverride(template.promptOverride);
-            setRetrievalMode(template.retrievalMode);
         }
     };
 
@@ -488,7 +542,7 @@ const Chat = () => {
         <div className={styles.container}>
             <div className={styles.commandsContainer}>
                 <ClearChatButton className={styles.commandButton} onClick={clearChat} disabled={!lastQuestionRef.current || isLoading || isStreaming} />
-                <ChatHistoryButton className={styles.commandButton} onClick={onChatHistoryOpen} disabled={isLoading || isStreaming}/>
+                <ChatHistoryButton className={styles.commandButton} onClick={onChatHistoryOpen} disabled={isLoading || isStreaming} />
                 <ModelSettingsButton className={styles.commandButton} onClick={() => setIsModelConfigPanelOpen(!isModelConfigPanelOpen)} disabled={isLoading || isStreaming} />
                 <SettingsButton className={styles.commandButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} disabled={isLoading || isStreaming} />
                 <InfoButton className={styles.commandButton} onClick={() => setIsInfoPanelOpen(!isInfoPanelOpen)} disabled={isLoading || isStreaming} />
@@ -521,7 +575,7 @@ const Chat = () => {
                                                 onThoughtProcessClicked={() => onToggleTab(AnalysisPanelTabs.ThoughtProcessTab, index)}
                                                 onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab, index)}
                                                 onFollowupQuestionClicked={q => makeApiRequest(q)}
-                                                showFollowupQuestions={useSuggestFollowupQuestions && answers.length - 1 === index}
+                                                showFollowupQuestions={suggestFollowupQuestions && answers.length - 1 === index}
                                                 onAdjustClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
                                                 onRegenerateClick={() => makeApiRequest(answers[index][0])}
                                             />
@@ -543,7 +597,7 @@ const Chat = () => {
                                                 onThoughtProcessClicked={() => onToggleTab(AnalysisPanelTabs.ThoughtProcessTab, index)}
                                                 onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab, index)}
                                                 onFollowupQuestionClicked={q => makeApiRequest(q)}
-                                                showFollowupQuestions={useSuggestFollowupQuestions && answers.length - 1 === index}
+                                                showFollowupQuestions={suggestFollowupQuestions && answers.length - 1 === index}
                                                 onAdjustClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
                                                 onRegenerateClick={() => makeApiRequest(answers[index][0])}
                                             />
@@ -615,6 +669,7 @@ const Chat = () => {
                         className={styles.chatSettingsSeparator}
                         chatHistory={chatHistory}
                         onConversationClicked={c => onConversationClicked(c)}
+                        onConversationRenamed={(c, n) => onConversationRenamed(c, n)}
                     />
                 </Panel>
                 <Panel
@@ -677,9 +732,9 @@ const Chat = () => {
                     isFooterAtBottom={true}>
                     <Checkbox
                         className={styles.chatSettingsSeparator}
-                        checked={useSuggestFollowupQuestions}
+                        checked={suggestFollowupQuestions}
                         label="Suggest follow-up questions"
-                        onChange={onUseSuggestFollowupQuestionsChange}
+                        onChange={onSuggestFollowupQuestionsChange}
                     />
                     <Dropdown
                         label="Document search mode"

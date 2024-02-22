@@ -10,6 +10,34 @@
     cursor: not-allowed;
 }
 
-.chatHistoryList {
+.rowCell {
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.conversationText {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.editIcon {
+    visibility: hidden;
+    cursor: pointer;
+    color: #666;
+    /* Default icon color */
+}
+
+.rowCell:hover .editIcon {
+    visibility: visible;
+    color: #106ebe;
+    /* Icon color on hover to indicate it's clickable */
+}
+
+.editIcon:hover {
+    color: #005a9e;
+    /* Darker color on direct hover over the icon */
 }

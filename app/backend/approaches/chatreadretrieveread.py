@@ -476,5 +476,5 @@ Always include citations if you reference the source documents. Use square brack
         else:
             return self.run_with_streaming(messages, overrides, session_state)
 
-    def nonewlines(s: str) -> str:
+    def nonewlines(self, s: str) -> str:
         return s.replace("\n", " ").replace("\r", " ")

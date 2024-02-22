@@ -1,18 +1,24 @@
-import { DetailsList, IColumn, SelectionMode } from '@fluentui/react/lib/DetailsList';
-import { IGroup } from '@fluentui/react/lib/GroupedList';
+import {
+  Dialog, DialogType, DialogFooter, PrimaryButton, TextField, DetailsList, DetailsRow,
+  IDetailsRowProps, IColumn, IGroup, SelectionMode
+} from '@fluentui/react';
 
-import { AllChatHistory } from "../../api"
+import { ConversationHistory, Conversation } from "../../api"
 import styles from "./ChatHistoryPanel.module.css";
-import { MessageBar, MessageBarType, Spinner, SpinnerSize, TooltipHost } from '@fluentui/react';
+import { IRenderFunction, Icon, MessageBar, MessageBarType, Spinner, SpinnerSize, TooltipHost } from '@fluentui/react';
+import { useState } from 'react';
 
 interface Props {
   className?: string;
-  chatHistory: AllChatHistory | undefined;
+  chatHistory: ConversationHistory | undefined;
   onConversationClicked: (conversation_id: string) => void;
-  disabled?: boolean;
-}
+  onConversationRenamed: (conversation_id: string, new_name: string) => void;
+};
 
-export const ChatHistoryPanel = ({ className, chatHistory, onConversationClicked, disabled }: Props) => {
+export const ChatHistoryPanel = ({ className, chatHistory, onConversationClicked, onConversationRenamed }: Props) => {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingText, setEditingText] = useState('');
+  const [editingItemId, setEditingItemId] = useState('');
 
   // Early return for error
   if (chatHistory?.error) {
@@ -65,7 +71,7 @@ export const ChatHistoryPanel = ({ className, chatHistory, onConversationClicked
 
   const columns: IColumn[] = [
     {
-      key: 'columnConversationName',
+      key: 'conversation_name',
       name: 'Conversation',
       fieldName: 'conversation_name',
       minWidth: 100,
@@ -73,56 +79,107 @@ export const ChatHistoryPanel = ({ className, chatHistory, onConversationClicked
     },
   ];
 
-  const onRenderItemColumn = (item?: any, index?: number, column?: IColumn) => {
-    if (item && column) {
+  const showDialog = (item: Conversation, event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation(); // Prevents the click event from bubbling up to the parent elements
+    setEditingText(item.conversation_name);
+    setEditingItemId(item.conversation_id);
+    setIsDialogOpen(true);
+  };
 
-      const handleClick = () => {
-        // Check if the item has a conversation_id and call onConversationClicked
-        if (item.conversation_id) {
-          onConversationClicked(item.conversation_id);
-        }
-      };
+  const closeDialog = () => {
+    setIsDialogOpen(false);
+  };
 
-      // Prepare Tooltip content
-      const tooltipContent = (
-        <>
-          {item.conversation_name}
-          {item.conversation_start && (
-            <>
-              <br />
-              {item.conversation_start}
-            </>
-          )}
-        </>
-      );
+  const saveEdit = () => {
+    const currentConversation = chatHistory?.history.find(item => item.conversation_id === editingItemId);
 
+    // Check if the conversation name has changed
+    if (currentConversation && editingText !== currentConversation.conversation_name) {
+      onConversationRenamed(editingItemId, editingText);
+    };
+
+    setEditingItemId('');
+    setEditingText('');
+    setIsDialogOpen(false);
+  };
+
+  const onRenderItemColumn = (item?: Conversation, index?: number, column?: IColumn) => {
+    if (item && column && column.fieldName) {
       return (
-        <TooltipHost
-          content={tooltipContent}
-          calloutProps={{ gapSpace: 0 }}
-          styles={{ root: { display: 'inline-block', cursor: 'pointer', maxWidth: '100%' } }}
-        >
-          <div onClick={handleClick} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {item[column.fieldName as keyof typeof item]}
-          </div>
-        </TooltipHost>
+        <div className={styles.rowCell}>
+          <span className={styles.conversationText}>
+            {item[column.fieldName as keyof Conversation]}
+          </span>
+          <TooltipHost content="Rename" styles={{ root: { display: 'inline-block' } }}>
+            <Icon iconName="Edit" onClick={(event) => showDialog(item, event)} className={styles.editIcon} />
+          </TooltipHost>
+        </div>
       );
     }
     return null;
   };
 
+  const onRenderRow: IRenderFunction<IDetailsRowProps> = (props?: IDetailsRowProps): JSX.Element | null => {
+    // This allows the whole row/cell to be clickable
+    if (!props) {
+      return null;
+    };
+
+    const onRowClick = () => {
+      if (props.item && props.item.conversation_id) {
+        onConversationClicked(props.item.conversation_id);
+      }
+    };
+
+    // Prepare Tooltip content
+    const tooltipContent = (
+      <>
+        <b>{props.item.conversation_name}</b>
+        <br />
+        {props.item.conversation_end}
+      </>
+    );
+
+    return (
+      <TooltipHost content={tooltipContent} className={styles.tooltip}>
+        <div className={styles.conversationRow} onClick={onRowClick}>
+          <DetailsRow {...props} onRenderItemColumn={onRenderItemColumn} />
+        </div>
+      </TooltipHost>
+    );
+  };
+
   return (
-    <div className={className}>
-      <DetailsList
-        className={styles.chatHistoryList}
-        items={chatHistory.history}
-        columns={columns}
-        groups={groups}
-        indentWidth={0}
-        selectionMode={SelectionMode.none}
-        onRenderItemColumn={onRenderItemColumn}
-        isHeaderVisible={false} // Hide column headers
-      />
-    </div>
+    <>
+      <div className={className}>
+        <DetailsList
+          items={chatHistory.history}
+          columns={columns}
+          groups={groups}
+          indentWidth={0}
+          selectionMode={SelectionMode.none}
+          onRenderRow={onRenderRow}
+          isHeaderVisible={false} // Hide column headers
+        />
+      </div>
+      <Dialog
+        hidden={!isDialogOpen}
+        onDismiss={closeDialog}
+        dialogContentProps={{
+          type: DialogType.normal,
+          title: 'Edit Conversation Name',
+        }}
+        modalProps={{
+          isBlocking: true,
+          styles: { main: { maxWidth: 450 } },
+        }}
+      >
+        <TextField value={editingText} onChange={(e, newValue) => setEditingText(newValue || '')} />
+        <DialogFooter>
+          <PrimaryButton onClick={saveEdit} text="Save" />
+          <PrimaryButton onClick={closeDialog} text="Cancel" />
+        </DialogFooter>
+      </Dialog>
+    </>
   );
 };

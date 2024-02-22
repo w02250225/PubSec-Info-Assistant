@@ -976,13 +976,39 @@ async def get_conversation():
         request_user_id = request_data.get("user_id")
 
         if is_admin or request_user_id == user_id:
-            return await current_app.request_log.get_conversation(conversation_id)
+            return await current_app.request_log.get_conversation(request_user_id, conversation_id)
         else:
             return jsonify({"error": "You do not have access to this data"})
         
     except Exception as error:
         logging.exception("Exception in /getConversation")
         return jsonify({"error": str(error)}), 500
+
+
+@bp.route("/updateConversation", methods=["POST"])
+async def update_conversation():
+    """Update a conversation in CosmosDB"""
+    try:
+        request_data = await request.json
+        user_id = session["user_data"].get("userPrincipalName", "Unknown User")
+        is_admin = session["user_data"].get("is_admin", False)
+        conversation_id = request_data.get("conversation_id")
+        request_user_id = request_data.get("user_id")
+        new_conversation_name = request_data.get("name")
+
+        if is_admin or request_user_id == user_id:
+            await current_app.request_log.update_conversation(
+                request_user_id,
+                conversation_id,
+                new_conversation_name)
+            return jsonify({"status": "Conversation name updated successfully"})
+        else:
+            return jsonify({"error": "You do not have access to this data"})
+        
+    except Exception as error:
+        logging.exception("Exception in /updateConversation")
+        return jsonify({"error": str(error)}), 500
+
 
 def create_app():
     app = Quart(__name__)
@@ -1040,10 +1066,8 @@ def create_app():
         app.asgi_app = OpenTelemetryMiddleware(app.asgi_app)  # type: ignore[method-assign]
 
     # Level should be one of https://docs.python.org/3/library/logging.html#logging-levels
-    default_level = "DEBUG"  # In development, log more verbosely
-    if os.getenv("WEBSITE_HOSTNAME"):  # In production, don"t log as heavily
-        default_level = "INFO"
-    logging.basicConfig(level = os.getenv("APP_LOG_LEVEL", default_level))
+    log_Level = os.getenv("LOG_LEVEL") or "DEBUG"
+    logging.basicConfig(level = os.getenv("APP_LOG_LEVEL", log_Level))
     
     cors(app, allow_origin = "*")
 

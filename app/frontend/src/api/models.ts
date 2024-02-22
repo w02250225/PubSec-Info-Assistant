@@ -250,16 +250,23 @@ export type FaqQuestion = {
     answer: string;
 };
 
-export type AllChatHistory = {
-    history: ChatHistory[];
+export type ConversationHistory = {
+    history: Conversation[];
     error?: string;
-}
+};
 
-export type ChatHistory = {
+export type Conversation = {
     user_id: string,
     session_id: string,
     conversation_id: string,
     conversation_name: string,
     conversation_start: string,
+    conversation_end: string,
     date_category: string
+};
+
+export type HistoricConversation = {
+    history: { question: string, response: ChatAppResponse[] };
+    gpt_deployment?: string;
+    overrides?: ChatAppRequestOverrides;
 };
