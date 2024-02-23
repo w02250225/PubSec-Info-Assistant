@@ -47,7 +47,9 @@ then
 fi
 
 # deploy the zip file to the webapp
-az webapp deploy --name $AZURE_WEBAPP_NAME/staging --resource-group $RESOURCE_GROUP_NAME --type zip --src-path webapp.zip --async true --timeout 600000 --verbose
+# az webapp deploy --name $AZURE_WEBAPP_NAME/staging --resource-group $RESOURCE_GROUP_NAME --type zip --src-path webapp.zip --async true --timeout 600000 --verbose
+az webapp deployment source config-zip --resource-group $RESOURCE_GROUP_NAME --name $AZURE_WEBAPP_NAME --src webapp.zip --slot staging
+
 
 # AZURE_WEBAPP_NAME_GPT4="${AZURE_WEBAPP_NAME/web/web-gpt4}"
 # az webapp deploy --name $AZURE_WEBAPP_NAME_GPT4 --resource-group $RESOURCE_GROUP_NAME --type zip --src-path webapp.zip --async true --timeout 600000 --verbose

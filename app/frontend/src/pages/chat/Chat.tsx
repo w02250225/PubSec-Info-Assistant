@@ -381,24 +381,36 @@ const Chat = () => {
         setChatHistory(chatHistory);
     };
 
-    const onConversationRenamed = async (conversation_id: string, new_name: string) => {
+    const onConversationUpdated = async (conversation_id: string, new_name?: string, archived?: boolean) => {
         try {
-            // Update conversation name locally
+            // Update conversation details locally
             setChatHistory(history => {
                 if (history) {
-                    const updatedHistory = history.history.map(conversation => {
-                        if (conversation.conversation_id === conversation_id) {
-                            // Found the conversation that was renamed, update its name
-                            return { ...conversation, conversation_name: new_name };
-                        }
-                        return conversation; // Return all other conversations unchanged
-                    });
-                    return { ...history, history: updatedHistory }; // Return new state with updated history
-                }
+                    let updatedHistory = history.history;
+                    
+                    // If the conversation is being archived, filter it out
+                    if (archived) {
+                        updatedHistory = updatedHistory.filter(conversation => conversation.conversation_id !== conversation_id);
+                    }
+                    // Otherwise, if a new name is provided, update the conversation name
+                    else if (new_name) {
+                        updatedHistory = updatedHistory.map(conversation => {
+                            if (conversation.conversation_id === conversation_id) {
+                                // Found the conversation that was renamed, update its name
+                                return { ...conversation, conversation_name: new_name };
+                            }
+                            return conversation; // Return all other conversations unchanged
+                        });
+                    }
+    
+                    // Return new state with updated or filtered history
+                    return { ...history, history: updatedHistory };
+                };
+                return history; // In case there's no update needed, return the original history
             });
 
             // Update in Cosmos
-            await updateConversation(userData.userPrincipalName, conversation_id, new_name);
+            await updateConversation(userData.userPrincipalName, conversation_id, new_name, archived);
         } catch (error) {
             console.error("An error occurred updating the conversation: ", error);
         }
@@ -677,7 +689,7 @@ const Chat = () => {
                         className={styles.chatSettingsSeparator}
                         chatHistory={chatHistory}
                         onConversationClicked={c => onConversationClicked(c)}
-                        onConversationRenamed={(c, n) => onConversationRenamed(c, n)}
+                        onConversationUpdated={(c, n, a) => onConversationUpdated(c, n, a)}
                     />
                 </Panel>
                 <Panel

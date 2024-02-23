@@ -12,11 +12,12 @@ interface Props {
   className?: string;
   chatHistory: ConversationHistory | undefined;
   onConversationClicked: (conversation_id: string) => void;
-  onConversationRenamed: (conversation_id: string, new_name: string) => void;
+  onConversationUpdated: (conversation_id: string, new_name?: string, archived?: boolean) => void;
 };
 
-export const ChatHistoryPanel = ({ className, chatHistory, onConversationClicked, onConversationRenamed }: Props) => {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+export const ChatHistoryPanel = ({ className, chatHistory, onConversationClicked, onConversationUpdated }: Props) => {
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
   const [editingText, setEditingText] = useState('');
   const [editingItemId, setEditingItemId] = useState('');
 
@@ -70,68 +71,94 @@ export const ChatHistoryPanel = ({ className, chatHistory, onConversationClicked
     }) : []; // Return an empty array if chatHistory is not available
 
   const columns: IColumn[] = [
+    // Existing columns...
     {
       key: 'conversation_name',
       name: 'Conversation',
       fieldName: 'conversation_name',
-      minWidth: 100,
-      maxWidth: 300,
+      minWidth: 280,
+      maxWidth: 280,
+      data: 'string',
+    },
+    {
+      key: 'edit',
+      name: '',
+      fieldName: 'edit',
+      minWidth: 20,
+      maxWidth: 20,
+      onRender: (item?: Conversation) => {
+        return (
+          <div className={styles.editIconCell}>
+            <TooltipHost content="Rename">
+              <Icon iconName="Edit" onClick={(event) => showEditDialog(item!, event)} className={styles.editIcon} />
+            </TooltipHost>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'archive',
+      name: '',
+      fieldName: 'archive',
+      minWidth: 20,
+      maxWidth: 20,
+      onRender: (item?: Conversation) => {
+        return (
+          <div className={styles.archiveIconCell}>
+            <TooltipHost content="Archive">
+              <Icon iconName="Archive" onClick={(event) => showArchiveDialog(item!, event)} className={styles.archiveIcon} />
+            </TooltipHost>
+          </div>
+        );
+      },
     },
   ];
 
-  const showDialog = (item: Conversation, event: React.MouseEvent<HTMLElement>) => {
+  const showEditDialog = (item: Conversation, event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation(); // Prevents the click event from bubbling up to the parent elements
     setEditingText(item.conversation_name);
     setEditingItemId(item.conversation_id);
-    setIsDialogOpen(true);
+    setIsEditDialogOpen(true);
   };
 
-  const closeDialog = () => {
-    setIsDialogOpen(false);
-  };
-
-  const saveEdit = () => {
+  const onSaveEdit = () => {
     const currentConversation = chatHistory?.history.find(item => item.conversation_id === editingItemId);
 
     // Check if the conversation name has changed
     if (currentConversation && editingText !== currentConversation.conversation_name) {
-      onConversationRenamed(editingItemId, editingText);
+      onConversationUpdated(editingItemId, editingText, undefined);
     };
 
     setEditingItemId('');
     setEditingText('');
-    setIsDialogOpen(false);
+    setIsEditDialogOpen(false);
   };
 
-  const onRenderItemColumn = (item?: Conversation, index?: number, column?: IColumn) => {
-    if (item && column && column.fieldName) {
-      return (
-        <div className={styles.rowCell}>
-          <span className={styles.conversationText}>
-            {item[column.fieldName as keyof Conversation]}
-          </span>
-          <TooltipHost content="Rename" styles={{ root: { display: 'inline-block' } }}>
-            <Icon iconName="Edit" onClick={(event) => showDialog(item, event)} className={styles.editIcon} />
-          </TooltipHost>
-        </div>
-      );
-    }
-    return null;
+  const showArchiveDialog = (item: Conversation, event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation(); // Prevents the click event from bubbling up to the parent elements
+    setEditingItemId(item.conversation_id);
+    setIsArchiveDialogOpen(true);
+  };
+
+  const onArchiveConfirmed = () => {
+    onConversationUpdated(editingItemId, undefined, true);
+    setEditingItemId('');
+    setIsArchiveDialogOpen(false);
   };
 
   const onRenderRow: IRenderFunction<IDetailsRowProps> = (props?: IDetailsRowProps): JSX.Element | null => {
-    // This allows the whole row/cell to be clickable
     if (!props) {
       return null;
     };
 
-    const onRowClick = () => {
-      if (props.item && props.item.conversation_id) {
+    const onRowClick = (event: React.MouseEvent<HTMLElement>) => {
+      // This checks if the click is from an element that is not an icon or tooltip for icons
+      if (!(event.target as HTMLElement).closest(`.${styles.iconClass}`)) {
         onConversationClicked(props.item.conversation_id);
       }
     };
 
-    // Prepare Tooltip content
+    // Prepare Tooltip content for the conversation
     const tooltipContent = (
       <>
         <b>{props.item.conversation_name}</b>
@@ -140,12 +167,14 @@ export const ChatHistoryPanel = ({ className, chatHistory, onConversationClicked
       </>
     );
 
+    // Apply the TooltipHost only to the clickable part of the row
     return (
-      <TooltipHost content={tooltipContent} className={styles.tooltip}>
-        <div className={styles.conversationRow} onClick={onRowClick}>
-          <DetailsRow {...props} onRenderItemColumn={onRenderItemColumn} />
-        </div>
-      </TooltipHost>
+      <div className={styles.conversationRow} onClick={onRowClick}>
+        <TooltipHost content={tooltipContent} className={styles.tooltip}>
+          <DetailsRow {...props} />
+        </TooltipHost>
+        {/* Icons are rendered in their own columns now and have their own Tooltips */}
+      </div>
     );
   };
 
@@ -163,26 +192,40 @@ export const ChatHistoryPanel = ({ className, chatHistory, onConversationClicked
         />
       </div>
       <Dialog
-        hidden={!isDialogOpen}
-        onDismiss={closeDialog}
+        hidden={!isEditDialogOpen}
+        onDismiss={() => setIsEditDialogOpen(false)}
         dialogContentProps={{
           type: DialogType.normal,
           title: 'Edit Conversation Name',
         }}
         modalProps={{
           isBlocking: true,
-          styles: { 
-            main: { 
-              maxWidth: '750px !important', 
-              minWidth: '500px !important', 
+          styles: {
+            main: {
+              maxWidth: '750px !important',
+              minWidth: '500px !important',
             },
           },
         }}
       >
         <TextField value={editingText} onChange={(e, newValue) => setEditingText(newValue || '')} />
         <DialogFooter>
-          <PrimaryButton onClick={saveEdit} text="Save" />
-          <PrimaryButton onClick={closeDialog} text="Cancel" />
+          <PrimaryButton onClick={onSaveEdit} text="Save" />
+          <PrimaryButton onClick={() => setIsEditDialogOpen(false)} text="Cancel" />
+        </DialogFooter>
+      </Dialog>
+      <Dialog
+        hidden={!isArchiveDialogOpen}
+        onDismiss={() => setIsArchiveDialogOpen(false)}
+        dialogContentProps={{
+          type: DialogType.normal,
+          title: 'Are you sure you want to archive this conversation?',
+        }}
+        modalProps={{ isBlocking: true }}
+      >
+        <DialogFooter>
+          <PrimaryButton onClick={onArchiveConfirmed} text="Yes" />
+          <PrimaryButton onClick={() => setIsArchiveDialogOpen(false)} text="No" />
         </DialogFooter>
       </Dialog>
     </>

@@ -238,12 +238,13 @@ mimetypes.add_type("text/css", ".css")
 # Dictionary to track streaming sessions
 active_sessions = {}
 
-# def token_is_valid():
-#     if "token_expires_at" in session:
-#         expiration_time = session["token_expires_at"]
-#         current_time = time.time()
-#         return current_time < expiration_time  # Check if token has expired
-#     return False  # Token expiration time not found in session
+def token_is_valid():
+    if "token_expires_at" in session:
+        expiration_time = session["token_expires_at"]
+        current_time = time.time()
+        return current_time < expiration_time  # Check if token has expired
+    return acquire_token_silently()  # Token expiration time not found in session
+
 
 def acquire_token_silently():
     # Check if the session already has a user account to try acquiring token silently
@@ -270,7 +271,7 @@ def acquire_token_silently():
 
 def before_request():
     non_auth_endpoints = ["routes.authorized", "routes.login", "routes.logout"]
-    if request.endpoint not in non_auth_endpoints and not acquire_token_silently():
+    if request.endpoint not in non_auth_endpoints and not token_is_valid():
         # Store request URL for after login
         session["redirect_url"] = request.url
         if request.accept_mimetypes.best == "application/json":
@@ -998,13 +999,15 @@ async def update_conversation():
         conversation_id = request_data.get("conversation_id")
         request_user_id = request_data.get("user_id")
         new_conversation_name = request_data.get("name")
+        archived = request_data.get("archived")
 
         if is_admin or request_user_id == user_id:
             await current_app.request_log.update_conversation(
                 request_user_id,
                 conversation_id,
-                new_conversation_name)
-            return jsonify({"status": "Conversation name updated successfully"})
+                new_conversation_name,
+                archived)
+            return jsonify({"status": "Conversation updated successfully"})
         else:
             return jsonify({"error": "You do not have access to this data"})
         

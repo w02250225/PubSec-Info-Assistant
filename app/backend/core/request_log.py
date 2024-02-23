@@ -1,11 +1,10 @@
 import base64
-import json
 import logging
-import pandas as pd
+from datetime import datetime, timedelta
 from azure.cosmos.aio import CosmosClient
 from azure.cosmos import PartitionKey, exceptions
 from quart import session
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 class RequestLog:
 
@@ -177,6 +176,7 @@ class RequestLog:
         c.conversation_end
     FROM   c
     WHERE  c.user_id = '{user_id}'
+        AND (NOT IS_DEFINED(c.archived) OR c.archived = false)
         AND IS_DEFINED(c.conversation_name)
         AND EXISTS (
             SELECT VALUE h
@@ -187,37 +187,36 @@ class RequestLog:
             
             items = [item async for item in self.container.query_items(query = query)]
 
-            # Convert to DataFrame for easier manipulation
-            df = pd.DataFrame(items)
+            # Define date groups
+            today = datetime.now().date()
+            yesterday = today - timedelta(days=1)
+            start_of_week = today - timedelta(days=today.weekday())
+            start_of_last_week = start_of_week - timedelta(weeks=1)
+            start_of_last_month = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
 
-            # Get today's date
-            today = pd.to_datetime('today').normalize()
-            
-            # Define the start of the week, last week, and last month
-            start_of_week = today - pd.Timedelta(days=today.weekday())
-            start_of_last_week = start_of_week - pd.Timedelta(weeks=1)
-            start_of_last_month = (today.replace(day=1) - pd.Timedelta(days=1)).replace(day=1)
-            
             # Function to categorize each date
             def group_date(date):
-                if date >= today:
+                if date == today:
                     return 'Today'
+                elif date == yesterday:
+                    return 'Yesterday'
                 elif date >= start_of_week:
-                    return 'This Week'
+                    return 'Earlier This Week'
                 elif date >= start_of_last_week:
                     return 'Last Week'
                 elif date >= start_of_last_month:
                     return 'Last Month'
                 else:
                     return 'Older'
-            
-            # Apply categorization
-            df['date_category'] = pd.to_datetime(df['conversation_end']).apply(group_date)
-            
-            # Convert DataFrame back to list of dicts
-            grouped_items = df.to_dict('records')
-            
-            return grouped_items
+
+            for item in items:
+                # Convert string date to datetime
+                item_date = datetime.strptime(item['conversation_end'], '%Y-%m-%d %H:%M:%S').date()
+
+                # Apply date grouping
+                item['date_category'] = group_date(item_date)
+
+            return items
 
         except Exception as ex:
             logging.exception("Exception in get_conversation_history. Error: %s", str(ex))
@@ -311,7 +310,11 @@ class RequestLog:
         }
 
 
-    async def update_conversation(self, user_id, conversation_id, conversation_name):
+    async def update_conversation(self,
+                                  user_id: str,
+                                  conversation_id: str,
+                                  conversation_name: str,
+                                  archived: Optional[bool] = None):
         json_document = None
         try:
             document_id = self.encode_document_id(user_id, conversation_id)
@@ -323,7 +326,11 @@ class RequestLog:
                 cosmos_response = await self.container.read_item(item=document_id, partition_key=user_id)
                 json_document = cosmos_response
 
-            json_document["conversation_name"] = conversation_name            
+            if conversation_name:
+                json_document["conversation_name"] = conversation_name
+            
+            if archived is not None:
+                json_document["archived"] = archived
 
         except exceptions.CosmosResourceNotFoundError:
             logging.debug("Document not found. This shouldn't happen...")

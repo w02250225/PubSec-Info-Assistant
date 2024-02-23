@@ -447,12 +447,12 @@ export async function getConversation(user_id: string, conversation_id: string):
 };
 
 
-export async function updateConversation(user_id: string, conversation_id: string, name: string): Promise<Response> {
+export async function updateConversation(user_id: string, conversation_id: string, name?: string, archived?: boolean): Promise<Response> {
     return await fetchWithSessionCheck(`/updateConversation`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({ user_id, conversation_id, name })
+        body: JSON.stringify({ user_id, conversation_id, archived, name })
     });
 };

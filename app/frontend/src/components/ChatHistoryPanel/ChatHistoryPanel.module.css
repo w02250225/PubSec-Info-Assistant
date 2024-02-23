@@ -10,8 +10,9 @@
     cursor: not-allowed;
 }
 
-.rowCell {
+.conversationRow {
     cursor: pointer;
+    padding: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -24,20 +25,23 @@
     white-space: nowrap;
 }
 
-.editIcon {
-    visibility: hidden;
+.editIconCell .editIcon,
+.archiveIconCell .archiveIcon {
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     color: #666;
-    /* Default icon color */
 }
 
-.rowCell:hover .editIcon {
-    visibility: visible;
+.editIconCell:hover .editIcon,
+.archiveIconCell:hover .archiveIcon {
     color: #106ebe;
-    /* Icon color on hover to indicate it's clickable */
 }
 
-.editIcon:hover {
+/* Change icon color when directly hovered */
+.editIcon:hover,
+.archiveIcon:hover {
     color: #005a9e;
-    /* Darker color on direct hover over the icon */
 }
