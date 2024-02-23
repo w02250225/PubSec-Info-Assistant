@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { BlobUrlResponse, getBlobUrl } from "../../api"
-import { Spinner } from '@fluentui/react-components';
+import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 
 import styles from "./ViewDocument.module.css";
 
@@ -32,7 +32,7 @@ const ViewDocument = () => {
             setError("An unexpected error occurred while fetching the document.");
             console.log(error);
         }
-    }
+    };
 
     useEffect(() => {
         fetchBlobUrl();
@@ -44,7 +44,7 @@ const ViewDocument = () => {
     }
 
     const viewer = blobUrl === undefined ? (
-        <Spinner size="huge" label="Loading..." />
+        <Spinner size={SpinnerSize.large} label="Loading..." />
     ) : (
         documentExt === "pdf" ? (
             <object data={blobUrl + "#page=" + pageNumber} type="application/pdf" width="100%" height={iframeHeight} />

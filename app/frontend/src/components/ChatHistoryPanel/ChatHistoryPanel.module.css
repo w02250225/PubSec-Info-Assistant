@@ -1,0 +1,47 @@
+.container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.conversationRow {
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.conversationText {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.editIconCell .editIcon,
+.archiveIconCell .archiveIcon {
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #666;
+}
+
+.editIconCell:hover .editIcon,
+.archiveIconCell:hover .archiveIcon {
+    color: #106ebe;
+}
+
+/* Change icon color when directly hovered */
+.editIcon:hover,
+.archiveIcon:hover {
+    color: #005a9e;
+}

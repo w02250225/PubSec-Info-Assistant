@@ -118,7 +118,7 @@ CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 TENANT_ID = os.getenv("TENANT_ID")
 REDIRECT_URI = os.getenv("REDIRECT_URI") or "http://localhost:5000/authorized"
 AUTHORITY = os.getenv("AUTHORITY") or f"https://login.microsoftonline.com/{TENANT_ID}"
-SCOPES = ["User.Read"]
+SCOPES = [".default"] #["User.Read"]
 ADMIN_GROUP_NAME = os.getenv("ADMIN_GROUP_NAME")
 
 # Misc app settings
@@ -243,7 +243,8 @@ def token_is_valid():
         expiration_time = session["token_expires_at"]
         current_time = time.time()
         return current_time < expiration_time  # Check if token has expired
-    return False  # Token expiration time not found in session
+    return acquire_token_silently()  # Token expiration time not found in session
+
 
 def acquire_token_silently():
     # Check if the session already has a user account to try acquiring token silently
@@ -256,9 +257,8 @@ def acquire_token_silently():
 
             if result and "access_token" in result:
                 current_time = time.time()
-                # Only update if the token is different or has expired/near expiry
+                # Only update if the token missing or has expired/near expiry
                 if ("access_token" not in session or 
-                    session["access_token"] != result["access_token"] or 
                     "token_expires_at" not in session or 
                     session["token_expires_at"] - current_time <= 300):  # 300 seconds (5 minutes) buffer for token expiry
                     
@@ -303,15 +303,15 @@ def error_response(error: Exception, route: str, status_code: int = 500):
     return jsonify(error_dict(error)), status_code
 
 
-async def format_response(session_id: str, 
-                          result: AsyncGenerator[dict, None], 
-                          request_log: RequestLog, 
-                          request_doc: dict) -> AsyncGenerator[str, None]:
+async def format_response(log_id: str,
+                          session_id: str,
+                          request_id: str,
+                          request_log: RequestLog,
+                          result: AsyncGenerator[dict, None] ) -> AsyncGenerator[str, None]:
     try:
         accumulated_content = ""
         error_message = ""
-        request_doc.setdefault("response", {})
-        request_id = request_doc["request_id"]
+        response = {}
         completion_tokens = 0
         async for event in result:
             completion_tokens += 1
@@ -320,12 +320,12 @@ async def format_response(session_id: str,
             context = choice.get("context", {})
             delta = choice.get("delta", {})
             
-            # Update request_doc with data from each event
+            # Update response with data from each event
             # Check if generated_query is set context as this chunk
             # will contain the extra info we need, data_points/citations etc.
             if context.get("generated_query"):
                 for key, value in context.items():
-                    request_doc["response"][key] = value
+                    response[key] = value
 
             if context.get("error_message"):
                 error_message = context["error_message"]
@@ -337,33 +337,36 @@ async def format_response(session_id: str,
 
             followup_questions = context.get("followup_questions")
             if followup_questions:
-                request_doc["response"].setdefault("followup_questions", followup_questions)
+                response.setdefault("followup_questions", followup_questions)
             
             if session_id not in active_sessions:
-                request_doc["response"].setdefault("cancelled", True)
+                response.setdefault("cancelled", True)
                 break
 
             yield json.dumps(event, ensure_ascii=False) + "\n"
 
     except Exception as e:
         error_message = str(e)
-        request_doc["response"]["error_message"] = error_message
+        response["error_message"] = error_message
         logging.exception("Exception while generating response stream. %s", e)
         yield json.dumps(error_dict(e))
 
     finally:
         if accumulated_content:
-            # Add the full answer to the request_doc
-            request_doc["response"].setdefault("completion_tokens", completion_tokens)
-            request_doc["response"].setdefault("answer", accumulated_content)
+            # Add the full answer to the response
+            response.setdefault("completion_tokens", completion_tokens)
+            response.setdefault("answer", accumulated_content)
 
-        # Add error_message to request_doc
+        # Add error_message to response
         if error_message:
-            request_doc["response"]["error_message"] = error_message
+            response["error_message"] = error_message
 
         # active_sessions.pop(request_id, None)
         finish_time = datetime.now()
-        await request_log.log_response(request_id, request_doc, finish_time)
+        await request_log.log_response(log_id,
+                                       request_id,
+                                       response,
+                                       finish_time)
 
 
 async def get_website_blob_json(blob_name: str):
@@ -440,7 +443,7 @@ async def authorized():
         await current_app.userdata_log.upsert_user_session()
         
         # Redirect user to the stored URL or a default one if not available
-        redirect_url = "/" # session.pop("redirect_url", "/")
+        redirect_url = session.pop("redirect_url", "/")
         
         return redirect(redirect_url)
 
@@ -469,6 +472,7 @@ async def chat():
     active_sessions[session_id] = True
     request_json = await request.get_json()
     request_context = request_json.get("context", {})
+    conversation_id = request_json.pop("conversation_id", str(uuid.uuid4()))
     request_id = str(uuid.uuid4())
     start_time = datetime.now()
 
@@ -477,11 +481,13 @@ async def chat():
 
         # Log the request to CosmosDB
         request_log = current_app.request_log
-        request_doc = await request_log.log_request(
-                request_id, 
-                session_gpt_deployment, 
-                request_json, 
-                start_time)
+        log_id = await request_log.log_request(
+                        OPENAI_CLIENT,
+                        conversation_id,
+                        request_id, 
+                        session_gpt_deployment, 
+                        request_json, 
+                        start_time)
         
         retrieval_mode = request_context.get("overrides", {}).get("retrieval_mode", "none")
 
@@ -512,7 +518,7 @@ async def chat():
             )
         
         result = await approach.run(
-            request_json["messages"],
+            request_json.get("messages"),
             stream = request_json.get("stream", False),
             context = request_context,
             session_state = request_json.get("session_state"),
@@ -525,7 +531,11 @@ async def chat():
             result["request_id"] = request_id
             return jsonify(result)
         else:
-            response = await make_response(format_response(session_id, result, request_log, request_doc))
+            response = await make_response(format_response(log_id,
+                                                           session_id,
+                                                           request_id,
+                                                           request_log,
+                                                           result))
             response.timeout = None
             response.mimetype = "application/json-lines"
             return response
@@ -573,7 +583,7 @@ async def get_blob_sas():
     user_folder_pattern = re.compile(r"^[^@]+@[^@]+\.[^@]+$")
     user_id = session["user_data"].get("userPrincipalName", "Unknown User")
     is_admin = session["user_data"].get("is_admin", False)
-    file_path = urllib.parse.unquote(request_data["file_path"])
+    file_path = urllib.parse.unquote(request_data.get("file_path"))
     file_path_parts = file_path.split("/")
     folder_name = file_path_parts[1] if len(file_path_parts) > 2 else None
 
@@ -619,11 +629,11 @@ async def log_status():
     """Log the status of a file upload to CosmosDB"""
     request_data = await request.json
     try:
-        path = request_data["path"]
-        status = request_data["status"]
-        tags = request_data["tags"]
-        status_classification = StatusClassification[request_data["status_classification"].upper()]
-        state = State[request_data["state"].upper()]
+        path = request_data.get("path")
+        status = request_data.get("status")
+        tags = request_data.get("tags")
+        status_classification = StatusClassification[request_data.get("status_classification").upper()]
+        state = State[request_data.get("state").upper()]
 
         await current_app.status_log.upsert_document(
                             document_path = path,
@@ -785,7 +795,7 @@ async def set_gpt_deployment():
 
     if all(key in request_data for key in keys):
         for key in keys:
-            session["gpt_deployment"][key] = request_data[key]
+            session["gpt_deployment"][key] = request_data.get(key)
 
         session.modified = True
         
@@ -816,7 +826,7 @@ async def terms():
             request_data = await request.json
             timestamp = str(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             version_pattern = r"^\d+(\.\d+)*$"
-            tou_version = request_data["tou_version"]
+            tou_version = request_data.get("tou_version")
 
             if re.match(version_pattern, tou_version):
                 session["user_data"]["tou_version"] = tou_version
@@ -851,7 +861,7 @@ async def delete_file():
         request_data = await request.json
         user_id = session["user_data"].get("userPrincipalName", "Unknown User")
         is_admin = session["user_data"].get("is_admin", False)
-        file_path = request_data["file_path"]
+        file_path = request_data.get("file_path")
         file_path_parts = file_path.split("/")
         folder_name = file_path_parts[1] if len(file_path_parts) > 2 else None
 
@@ -892,10 +902,10 @@ async def update_file_tags():
         request_data = await request.json
         user_id = session["user_data"].get("userPrincipalName", "Unknown User")
         is_admin = session["user_data"].get("is_admin", False)
-        file_path = request_data["file_path"]
+        file_path = request_data.get("file_path")
         file_path_parts = file_path.split("/")
         folder_name = file_path_parts[1] if len(file_path_parts) > 2 else None
-        new_tags = request_data["tags"]
+        new_tags = request_data.get("tags")
 
         if not is_admin and folder_name != user_id:
             return jsonify({"error": "Only Admin users can edit this file"}), 400
@@ -934,6 +944,75 @@ async def get_faq():
         
     except Exception as error:
         logging.exception("Exception in /getFaq")
+        return jsonify({"error": str(error)}), 500
+
+
+@bp.route("/getConversationHistory", methods=["POST"])
+async def get_conversation_history():
+    """Get a list of conversations in CosmosDB"""
+    try:
+        request_data = await request.json
+        user_id = session["user_data"].get("userPrincipalName", "Unknown User")
+        is_admin = session["user_data"].get("is_admin", False)
+        request_user_id = request_data.get("user_id")
+
+        if is_admin or request_user_id == user_id:
+            return await current_app.request_log.get_conversation_history(user_id)
+        else:
+            return jsonify({"error": "You do not have access to this data"})
+       
+    except Exception as error:
+        logging.exception("Exception in /getConversation")
+        return jsonify({"error": str(error)}), 500
+
+
+@bp.route("/getConversation", methods=["POST"])
+async def get_conversation():
+    """Get a conversation from history in CosmosDB"""
+    try:
+        request_data = await request.json
+        user_id = session["user_data"].get("userPrincipalName", "Unknown User")
+        is_admin = session["user_data"].get("is_admin", False)
+        conversation_id = request_data.get("conversation_id")
+        request_user_id = request_data.get("user_id")
+
+        if is_admin or request_user_id == user_id:
+            formatted_history = await current_app.request_log.get_conversation(
+                request_user_id,
+                conversation_id)
+            return jsonify(formatted_history)
+        else:
+            return jsonify({"error": "You do not have access to this data"})
+        
+    except Exception as error:
+        logging.exception("Exception in /getConversation")
+        return jsonify({"error": str(error)}), 500
+
+
+@bp.route("/updateConversation", methods=["POST"])
+async def update_conversation():
+    """Update a conversation in CosmosDB"""
+    try:
+        request_data = await request.json
+        user_id = session["user_data"].get("userPrincipalName", "Unknown User")
+        is_admin = session["user_data"].get("is_admin", False)
+        conversation_id = request_data.get("conversation_id")
+        request_user_id = request_data.get("user_id")
+        new_conversation_name = request_data.get("name")
+        archived = request_data.get("archived")
+
+        if is_admin or request_user_id == user_id:
+            await current_app.request_log.update_conversation(
+                request_user_id,
+                conversation_id,
+                new_conversation_name,
+                archived)
+            return jsonify({"status": "Conversation updated successfully"})
+        else:
+            return jsonify({"error": "You do not have access to this data"})
+        
+    except Exception as error:
+        logging.exception("Exception in /updateConversation")
         return jsonify({"error": str(error)}), 500
 
 
@@ -993,12 +1072,12 @@ def create_app():
         app.asgi_app = OpenTelemetryMiddleware(app.asgi_app)  # type: ignore[method-assign]
 
     # Level should be one of https://docs.python.org/3/library/logging.html#logging-levels
-    default_level = "DEBUG"  # In development, log more verbosely
-    if os.getenv("WEBSITE_HOSTNAME"):  # In production, don"t log as heavily
-        default_level = "INFO"
-    logging.basicConfig(level = os.getenv("APP_LOG_LEVEL", default_level))
+    log_Level = os.getenv("LOG_LEVEL") or "DEBUG"
+    logging.basicConfig(level = os.getenv("APP_LOG_LEVEL", log_Level))
+    
+    cors(app, allow_origin = "*")
 
-    if allowed_origin := os.getenv("ALLOWED_ORIGIN"):
-        app.logger.info("CORS enabled for %s", allowed_origin)
-        cors(app, allow_origin = "*", allow_methods=["GET", "POST"])
+    # if allowed_origin := os.getenv("ALLOWED_ORIGIN"):
+    #     app.logger.info("CORS enabled for %s", allowed_origin)
+    #     cors(app, allow_origin = "*", allow_methods=["GET", "POST"])
     return app

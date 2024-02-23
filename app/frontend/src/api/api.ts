@@ -3,7 +3,8 @@
 
 import {
     ChatAppRequest, BlobClientUrlResponse, BlobUrlResponse, AllFilesUploadStatus, GetInfoResponse, ActiveCitation, GetWarningBanner, ExportRequest,
-    StatusLogEntry, StatusLogResponse, ApplicationTitle, GetTagsResponse, GptDeployment, UserData, PromptTemplate, TermsOfUse, FaqContent
+    StatusLogEntry, StatusLogResponse, ApplicationTitle, GetTagsResponse, GptDeployment, UserData, PromptTemplate, TermsOfUse, FaqContent,
+    ConversationHistory, HistoricConversation
 } from "./models";
 
 async function fetchWithSessionCheck(url: string, options: RequestInit) {
@@ -44,10 +45,10 @@ export async function chatApi(request: ChatAppRequest): Promise<Response> {
 
 export async function downloadFileFromResponse(response: Response): Promise<void> {
     try {
-        if (response.status > 299 || !response.ok) {
-            const errorData = await response.json();
-            throw Error(errorData.error || "Unknown error");
-        }
+        if (!response.ok) {
+            const errorResponse = await response.json();
+            throw new Error(errorResponse.error || 'An unknown error occurred');
+        };
 
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -97,11 +98,12 @@ export async function getBlobClientUrl(): Promise<string> {
         }
     });
 
-    const parsedResponse: BlobClientUrlResponse = await response.json();
-    if (response.status > 299 || !response.ok) {
-        throw Error(parsedResponse.error || "Unknown error");
+    if (!response.ok) {
+        const errorResponse = await response.json();
+        throw new Error(errorResponse.error || 'An unknown error occurred');
     }
 
+    const parsedResponse: BlobClientUrlResponse = await response.json();
     return parsedResponse.url;
 };
 
@@ -111,16 +113,15 @@ export async function getBlobUrl(file_path: string): Promise<BlobUrlResponse> {
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-            file_path: file_path
-        })
+        body: JSON.stringify({ file_path })
     });
 
-    const parsedResponse: BlobUrlResponse = await response.json();
-    if (response.status > 299 || !response.ok) {
-        throw Error(parsedResponse.error || "Unknown error");
+    if (!response.ok) {
+        const errorResponse = await response.json();
+        throw new Error(errorResponse.error || 'An unknown error occurred');
     }
 
+    const parsedResponse: BlobUrlResponse = await response.json();
     return parsedResponse;
 };
 
@@ -133,9 +134,13 @@ export async function getAllUploadStatus(): Promise<AllFilesUploadStatus> {
     });
 
     const parsedResponse: any = await response.json();
-    if (response.status > 299 || !response.ok) {
-        throw Error(parsedResponse.error || "Unknown error");
-    }
+
+    if (!response.ok) {
+
+        const errorResponse = await response.json();
+        throw new Error(errorResponse.error || 'An unknown error occurred');
+    };
+
     const results: AllFilesUploadStatus = { statuses: parsedResponse };
     return results;
 };
@@ -155,11 +160,12 @@ export async function logStatus(status_log_entry: StatusLogEntry): Promise<Statu
         })
     });
 
-    var parsedResponse: StatusLogResponse = await response.json();
-    if (response.status > 299 || !response.ok) {
-        throw Error(parsedResponse.error || "Unknown error");
+    if (!response.ok) {
+        const errorResponse = await response.json();
+        throw new Error(errorResponse.error || 'An unknown error occurred');
     }
 
+    var parsedResponse: StatusLogResponse = await response.json();
     var results: StatusLogResponse = { status: parsedResponse.status };
     return results;
 };
@@ -171,11 +177,13 @@ export async function getInfoData(): Promise<GetInfoResponse> {
             "Content-Type": "application/json"
         }
     });
+
+    if (!response.ok) {
+        const errorResponse = await response.json();
+        throw new Error(errorResponse.error || 'An unknown error occurred');
+    };
+
     const parsedResponse: GetInfoResponse = await response.json();
-    if (response.status > 299 || !response.ok) {
-        console.log(response);
-        throw Error(parsedResponse.error || "Unknown error");
-    }
     return parsedResponse;
 };
 
@@ -186,11 +194,13 @@ export async function getWarningBanner(): Promise<GetWarningBanner> {
             "Content-Type": "application/json"
         }
     });
+
+    if (!response.ok) {
+        const errorResponse = await response.json();
+        throw new Error(errorResponse.error || 'An unknown error occurred');
+    };
+
     const parsedResponse: GetWarningBanner = await response.json();
-    if (response.status > 299 || !response.ok) {
-        console.log(response);
-        throw Error(parsedResponse.error || "Unknown error");
-    }
     return parsedResponse;
 };
 
@@ -200,15 +210,15 @@ export async function getCitationObj(citation: string): Promise<ActiveCitation> 
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-            citation: citation
-        })
+        body: JSON.stringify({ citation })
     });
+
+    if (!response.ok) {
+        const errorResponse = await response.json();
+        throw new Error(errorResponse.error || 'An unknown error occurred');
+    };
+
     const parsedResponse: ActiveCitation = await response.json();
-    if (response.status > 299 || !response.ok) {
-        console.log(response);
-        throw Error(parsedResponse.error || "Unknown error");
-    }
     return parsedResponse;
 };
 
@@ -220,14 +230,14 @@ export async function getApplicationTitle(): Promise<ApplicationTitle> {
         }
     });
 
+    if (!response.ok) {
+        const errorResponse = await response.json();
+        throw new Error(errorResponse.error || 'An unknown error occurred');
+    };
+
     const parsedResponse: ApplicationTitle = await response.json();
-    if (response.status > 299 || !response.ok) {
-        console.log(response);
-        throw Error(parsedResponse.error || "Unknown error");
-    }
-    console.log(parsedResponse);
     return parsedResponse;
-}
+};
 
 export async function getAllTags(): Promise<GetTagsResponse> {
     const response = await fetchWithSessionCheck("/getAllTags", {
@@ -238,13 +248,16 @@ export async function getAllTags(): Promise<GetTagsResponse> {
     });
 
     const parsedResponse: any = await response.json();
-    if (response.status > 299 || !response.ok) {
-        console.log(response);
-        throw Error(parsedResponse.error || "Unknown error");
-    }
-    var results: GetTagsResponse = { tags: parsedResponse };
+
+    if (!response.ok) {
+
+        const errorResponse = await response.json();
+        throw new Error(errorResponse.error || 'An unknown error occurred');
+    };
+
+    const results: GetTagsResponse = { tags: parsedResponse };
     return results;
-}
+};
 
 export async function getGptDeployments(): Promise<GptDeployment[]> {
     const response = await fetchWithSessionCheck("/getGptDeployments", {
@@ -261,9 +274,8 @@ export async function getGptDeployments(): Promise<GptDeployment[]> {
     }
 
     const parsedResponse: GptDeployment[] = await response.json();
-
     return parsedResponse;
-}
+};
 
 export async function setGptDeployment(deployment: GptDeployment): Promise<void> {
     const response = await fetchWithSessionCheck("/setGptDeployment", {
@@ -273,18 +285,17 @@ export async function setGptDeployment(deployment: GptDeployment): Promise<void>
         },
         body: JSON.stringify(deployment)
     });
+
     const parsedResponse = await response.json();
-    if (response.status > 299 || !response.ok) {
-        console.log(response);
-        throw Error(parsedResponse.error || "Unknown error");
+    if (!response.ok) {
+        throw Error(parsedResponse.error || "An unknown error occurred");
     }
 }
 
 export async function logout() {
     const response = await fetchWithSessionCheck("/logout", { method: "GET" });
 
-    if (response.status > 299 || !response.ok) {
-        console.error(response);
+    if (!response.ok) {
         throw new Error(response.statusText || "Unknown error");
     }
 }
@@ -296,11 +307,13 @@ export async function getUserData(): Promise<UserData> {
             "Content-Type": "application/json"
         }
     });
+
+    if (!response.ok) {
+        const errorResponse = await response.json();
+        throw new Error(errorResponse.error || 'An unknown error occurred');
+    };
+
     const parsedResponse: UserData = await response.json();
-    if (response.status > 299 || !response.ok) {
-        console.log(response);
-        throw Error(parsedResponse.error || "Unknown error");
-    }
     return parsedResponse;
 }
 
@@ -313,13 +326,11 @@ export async function getPromptTemplates(): Promise<PromptTemplate[]> {
     });
 
     if (!response.ok) {
-        console.log(response);
         const errorResponse = await response.json();
         throw new Error(errorResponse.error || 'An unknown error occurred');
     }
 
     const parsedResponse: PromptTemplate[] = await response.json();
-
     return parsedResponse;
 }
 
@@ -339,11 +350,13 @@ export async function getTermsOfUse(): Promise<TermsOfUse> {
             "Content-Type": "application/json"
         }
     });
+
+    if (!response.ok) {
+        const errorResponse = await response.json();
+        throw new Error(errorResponse.error || 'An unknown error occurred');
+    };
+
     const parsedResponse: TermsOfUse = await response.json();
-    if (response.status > 299 || !response.ok) {
-        console.log(response);
-        throw Error(parsedResponse.error || "Unknown error");
-    }
     return parsedResponse;
 }
 
@@ -353,9 +366,7 @@ export async function acceptTermsOfUse(tou_version: string): Promise<Response> {
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-            "tou_version": tou_version
-        })
+        body: JSON.stringify({ tou_version })
     });
 }
 
@@ -365,22 +376,17 @@ export async function deleteFile(file_path: string): Promise<Response> {
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-            "file_path": file_path
-        })
+        body: JSON.stringify({ file_path })
     });
 }
 
-export async function updateFileTags(file_path: string, newTags: string[]): Promise<Response> {
+export async function updateFileTags(file_path: string, tags: string[]): Promise<Response> {
     return await fetchWithSessionCheck(`/updateFileTags`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-            "file_path": file_path,
-            "tags": newTags,
-        })
+        body: JSON.stringify({ file_path, tags })
     });
 }
 
@@ -391,10 +397,62 @@ export async function getFaq(): Promise<FaqContent> {
             "Content-Type": "application/json"
         }
     });
+
+    if (!response.ok) {
+        const errorResponse = await response.json();
+        throw new Error(errorResponse.error || 'An unknown error occurred');
+    };
+
     const parsedResponse: FaqContent = await response.json();
-    if (response.status > 299 || !response.ok) {
-        console.log(response);
-        throw Error(parsedResponse.error || "Unknown error");
-    }
     return parsedResponse;
-}
+};
+
+export async function getConversationHistory(user_id: string): Promise<ConversationHistory> {
+    const response = await fetchWithSessionCheck(`/getConversationHistory`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ user_id })
+    });
+
+    const parsedResponse = await response.json();
+
+    if (!response.ok) {
+        return { history: [], error: parsedResponse.error || 'An unknown error occurred' };
+    };
+
+    const results: ConversationHistory = { history: parsedResponse };
+    return results;
+};
+
+export async function getConversation(user_id: string, conversation_id: string): Promise<HistoricConversation> {
+    const response = await fetchWithSessionCheck(`/getConversation`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ user_id, conversation_id })
+    });
+
+    const parsedResponse = await response.json();
+
+    if (!response.ok) {
+        const errorResponse = await response.json();
+        throw new Error(errorResponse.error || 'An unknown error occurred');
+    }
+
+    const results: HistoricConversation = parsedResponse;
+    return results;
+};
+
+
+export async function updateConversation(user_id: string, conversation_id: string, name?: string, archived?: boolean): Promise<Response> {
+    return await fetchWithSessionCheck(`/updateConversation`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ user_id, conversation_id, archived, name })
+    });
+};
