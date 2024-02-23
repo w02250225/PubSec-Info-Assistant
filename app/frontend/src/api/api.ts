@@ -446,6 +446,7 @@ export async function getConversation(user_id: string, conversation_id: string):
     return results;
 };
 
+
 export async function updateConversation(user_id: string, conversation_id: string, name: string): Promise<Response> {
     return await fetchWithSessionCheck(`/updateConversation`, {
         method: "POST",

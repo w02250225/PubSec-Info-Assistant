@@ -171,7 +171,12 @@ export const ChatHistoryPanel = ({ className, chatHistory, onConversationClicked
         }}
         modalProps={{
           isBlocking: true,
-          styles: { main: { maxWidth: 450 } },
+          styles: { 
+            main: { 
+              maxWidth: '750px !important', 
+              minWidth: '500px !important', 
+            },
+          },
         }}
       >
         <TextField value={editingText} onChange={(e, newValue) => setEditingText(newValue || '')} />

@@ -976,7 +976,10 @@ async def get_conversation():
         request_user_id = request_data.get("user_id")
 
         if is_admin or request_user_id == user_id:
-            return await current_app.request_log.get_conversation(request_user_id, conversation_id)
+            formatted_history = await current_app.request_log.get_conversation(
+                request_user_id,
+                conversation_id)
+            return jsonify(formatted_history)
         else:
             return jsonify({"error": "You do not have access to this data"})
         

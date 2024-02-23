@@ -3,14 +3,14 @@
 	"configurations": [
 		{
 			"name": "Python: Current File",
-			"type": "python",
+			"type": "debugpy",
 			"request": "launch",
 			"program": "${file}",
 			"console": "integratedTerminal"
 		},
         {
             "name": "Python: Quart",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "quart",
             "cwd": "${workspaceFolder}/app/backend",
@@ -27,11 +27,11 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "envFile": "${workspaceFolder}/scripts/environments/infrastructure.debug.env",
-            "preLaunchTask": "pip_install"
+            // "preLaunchTask": "pip_install"
         },
         {
             "name": "Python: Enrichment Webapp",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "uvicorn",
             "args": [
@@ -72,7 +72,7 @@
 		},
 		{
 			"name": "Attach to Python Functions",
-			"type": "python",
+			"type": "debugpy",
 			"request": "attach",
 			"port": 9091,
 			"justMyCode": false,
@@ -105,7 +105,7 @@
 		},
         {
             "name": "Python: FastAPI - enrichment app",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "debug_tests.py",
             "args": [

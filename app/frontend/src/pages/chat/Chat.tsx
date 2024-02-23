@@ -3,7 +3,7 @@
 
 import { useRef, useState, useEffect, useContext } from "react";
 import Coeus from "../../assets/coeus.png";
-import { Checkbox, Panel, DefaultButton, SpinButton, Separator, PanelType, IDropdownOption, Dropdown } from "@fluentui/react";
+import { Checkbox, Panel, DefaultButton, SpinButton, Separator, PanelType, IDropdownOption, Dropdown, Spinner, SpinnerSize } from "@fluentui/react";
 import { ITag } from '@fluentui/react/lib/Pickers';
 import readNDJSONStream from "ndjson-readablestream";
 import { BlobServiceClient } from "@azure/storage-blob";
@@ -72,6 +72,7 @@ const Chat = () => {
     const [chatHistory, setChatHistory] = useState<ConversationHistory | undefined>(undefined);
 
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
     const [isStreaming, setIsStreaming] = useState<boolean>(false);
     const [error, setError] = useState<unknown>();
 
@@ -408,7 +409,7 @@ const Chat = () => {
             clearChat();
             setConversationId(conversation_id);
             lastQuestionRef.current = "Loading Conversation from History..."
-            setIsLoading(true);
+            setIsLoadingHistory(true);
             setIsChatHistoryPanelOpen(false);
 
             const data = await getConversation(userData.userPrincipalName, conversation_id);
@@ -425,14 +426,10 @@ const Chat = () => {
 
             // Set answers/conversation
             if (data.history) {
-                const formattedHistory: [string, ChatAppResponse][] = data.history.response.map(response => {
-                    return [data.history.question, response];
-                });
-
+                const formattedHistory: [string, ChatAppResponse][] = data.history.map(item => [item.user, item.response]);
+                const mostRecentQuestion = formattedHistory[formattedHistory.length - 1][0];
                 setAnswers(formattedHistory);
                 setStreamedAnswers(formattedHistory);
-
-                const mostRecentQuestion = formattedHistory[formattedHistory.length - 1][0];
                 lastQuestionRef.current = mostRecentQuestion; // Update the ref to the most recent question
             };
         } catch (error) {
@@ -440,7 +437,7 @@ const Chat = () => {
             console.error(lastQuestionRef.current, error);
         }
         finally {
-            setIsLoading(false);
+            setIsLoadingHistory(false);
         }
     };
 
@@ -448,10 +445,15 @@ const Chat = () => {
         setResponseLength(overrides.response_length || responseLength);
         setResponseTemp(overrides.temperature || responseTemp);
         setSuggestFollowupQuestions(overrides.suggest_followup_questions || suggestFollowupQuestions);
+        setRetrieveCount(overrides.top || retrieveCount);
         setTopP(overrides.top_p || topP);
         setPromptOverride(overrides.prompt_template || promptOverride);
         setRetrievalMode(overrides.retrieval_mode || retrievalMode);
-        setSelectedFolders(overrides.selected_folders?.split(',') || selectedFolders);
+        setSelectedFolders(
+            overrides.selected_folders === "All"
+                ? ['selectAll'] // Set the state to ['selectAll']
+                : (overrides.selected_folders || '').split(',').filter(Boolean) // Otherwise, split and filter
+        );
         if (overrides.selected_tags) {
             const tagsArray: ITag[] = overrides.selected_tags.split(',').map((name, index) => ({
                 key: `key${index}`,
@@ -541,11 +543,11 @@ const Chat = () => {
     return (
         <div className={styles.container}>
             <div className={styles.commandsContainer}>
-                <ClearChatButton className={styles.commandButton} onClick={clearChat} disabled={!lastQuestionRef.current || isLoading || isStreaming} />
-                <ChatHistoryButton className={styles.commandButton} onClick={onChatHistoryOpen} disabled={isLoading || isStreaming} />
-                <ModelSettingsButton className={styles.commandButton} onClick={() => setIsModelConfigPanelOpen(!isModelConfigPanelOpen)} disabled={isLoading || isStreaming} />
-                <SettingsButton className={styles.commandButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} disabled={isLoading || isStreaming} />
-                <InfoButton className={styles.commandButton} onClick={() => setIsInfoPanelOpen(!isInfoPanelOpen)} disabled={isLoading || isStreaming} />
+                <ClearChatButton className={styles.commandButton} onClick={clearChat} disabled={!lastQuestionRef.current || isLoading || isLoadingHistory || isStreaming} />
+                <ChatHistoryButton className={styles.commandButton} onClick={onChatHistoryOpen} disabled={isLoading || isLoadingHistory || isStreaming} />
+                <ModelSettingsButton className={styles.commandButton} onClick={() => setIsModelConfigPanelOpen(!isModelConfigPanelOpen)} disabled={isLoading || isLoadingHistory || isStreaming} />
+                <SettingsButton className={styles.commandButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} disabled={isLoading || isLoadingHistory || isStreaming} />
+                <InfoButton className={styles.commandButton} onClick={() => setIsInfoPanelOpen(!isInfoPanelOpen)} disabled={isLoading || isLoadingHistory || isStreaming} />
             </div>
             <div className={styles.chatRoot}>
                 <div className={styles.chatContainer}>
@@ -612,6 +614,11 @@ const Chat = () => {
                                     </div>
                                 </>
                             )}
+                            {isLoadingHistory && (
+                                <div className={styles.chatEmptyState}>
+                                    <Spinner size={SpinnerSize.large} label={lastQuestionRef.current} ariaLive="assertive" />
+                                </div>
+                            )}
                             {error ? (
                                 <>
                                     <UserChatMessage message={lastQuestionRef.current} />
@@ -657,7 +664,8 @@ const Chat = () => {
                     </Panel>
                 )}
                 <Panel
-                    type={PanelType.smallFixedFar}
+                    type={PanelType.custom}
+                    customWidth="450px"
                     headerText="Chat History"
                     isOpen={isChatHistoryPanelOpen}
                     isBlocking={true}

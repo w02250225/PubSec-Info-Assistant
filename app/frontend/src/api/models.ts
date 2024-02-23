@@ -266,7 +266,7 @@ export type Conversation = {
 };
 
 export type HistoricConversation = {
-    history: { question: string, response: ChatAppResponse[] };
+    history: {user: string, response: ChatAppResponse}[]
     gpt_deployment?: string;
     overrides?: ChatAppRequestOverrides;
 };

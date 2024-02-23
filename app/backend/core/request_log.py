@@ -232,9 +232,9 @@ class RequestLog:
             document = items[0] if items else ""
             
             # Format the response for the frontend
-            chat_app_responses = self.format_conversation_history(document)
+            formatted_history = self.format_conversation_history(document)
 
-            return json.dumps(chat_app_responses, indent=4)
+            return formatted_history
 
         except Exception as ex:
             logging.exception("Exception in get_conversation. Error: %s", str(ex))
@@ -279,7 +279,7 @@ class RequestLog:
             # Only include if there was an answer
             if response.get("answer", "").strip():
                 item = {
-                    'question': request["messages"][-1]["content"],
+                    'user': request["messages"][-1]["content"],
                     'response': {
                         'choices': [{
                             'index': 0,  
