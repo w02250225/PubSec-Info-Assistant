@@ -249,14 +249,8 @@ export type TermsOfUse = {
 
 export type FaqContent = {
     content: string;
-    questions: FaqQuestion[];
     version: string;
     error?: string;
-};
-
-export type FaqQuestion = {
-    question: string;
-    answer: string;
 };
 
 export type ConversationHistory = {
