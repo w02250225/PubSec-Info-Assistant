@@ -17,7 +17,6 @@ type CitationLookup = Record<string, {
     page_number: string;
 }>;
 
-
 export function parseAnswerToHtml(answer: string, isStreaming: boolean, citation_lookup: CitationLookup): HtmlParsedAnswer {
 
     const citations: string[] = [];

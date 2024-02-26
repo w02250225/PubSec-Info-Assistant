@@ -9,29 +9,29 @@ from docx.shared import Pt
 from docx.enum.dml import MSO_THEME_COLOR_INDEX
 from azure.storage.blob.aio import ContainerClient
 from openai import AsyncOpenAI
-from quart import session
+from quart import request, session
+from typing import List, Dict, Union
 
-
-async def export_to_blob(request: str,
-                   container_client: ContainerClient,
+async def export_to_blob(container_client: ContainerClient,
                    openai_client: AsyncOpenAI,
                    gpt_deployment: str,
                    gpt_model_name: str
                    ):
     try:
+        request_data = await request.json
         user_id = session.get('user_data', {}).get('userPrincipalName') or "Unknown User"
 
-        title = await generate_document_title(request["question"],
+        title = await generate_document_title(request_data["question"],
                                               openai_client,
                                               gpt_deployment,
                                               gpt_model_name)
 
-        export = create_docx(title,
-                                   request["answer"],
-                                   request["citations"])
+        export = await create_docx(title,
+                                   request_data["answer"],
+                                   request_data["citations"])
 
         await upload_to_blob(export,
-                             request["request_id"],
+                             request_data["request_id"],
                              user_id,
                              container_client)
 
@@ -177,7 +177,7 @@ def add_html_to_docx(html: str, doc, heading=None):
             para.add_run(run)
 
 
-def create_docx(title: str, answer: str, citations: str) -> io.BytesIO():
+async def create_docx(title: str, answer: str, citations: List[Dict[str, Union[str, int]]]):
     try:
         soup_answer = BeautifulSoup(answer, "lxml")
 
@@ -193,8 +193,13 @@ def create_docx(title: str, answer: str, citations: str) -> io.BytesIO():
             '</sup><sup>', '</sup> <sup>')
         add_html_to_docx(html_answer, doc)
 
-        # Add citations to the document
-        html_citations = citations
+        # Construct citations from the citations array
+        server_hostname = request.url_root
+        html_citations = ''
+        for citation in citations:
+            link = f'{server_hostname}/#/ViewDocument?documentName={citation["sourceFile"]}&pageNumber={citation["pageNumber"]}'
+            html_citations += f'<a href="{link}">{citation["label"]}</a>\n'
+
         add_html_to_docx(html_citations, doc, "Citations")
 
         stream = io.BytesIO()
@@ -208,7 +213,7 @@ def create_docx(title: str, answer: str, citations: str) -> io.BytesIO():
         return str(ex)
 
 
-async def upload_to_blob(input_stream: io.BytesIO(),
+async def upload_to_blob(input_stream: io.BytesIO,
                          request_id: str,
                          user_id: str,
                          container_client: ContainerClient) -> str:

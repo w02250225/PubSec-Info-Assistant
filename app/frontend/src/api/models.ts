@@ -74,12 +74,21 @@ export type ExportRequest = {
     request_id: string;
     question: string;
     answer: string;
-    citations: string;
+    citations: CitationLink[];
 };
 
 export type ExportResponse = {
     link: string;
     error?: string;
+};
+
+export type CitationLink = {
+    key: number;
+    sourceFile: string;
+    pageNumber: number;
+    title: string;
+    onClick: () => void;
+    label: string;
 };
 
 export type BlobClientUrlResponse = {
@@ -266,7 +275,7 @@ export type Conversation = {
 };
 
 export type HistoricConversation = {
-    history: {user: string, response: ChatAppResponse}[]
+    history: { user: string, response: ChatAppResponse }[]
     gpt_deployment?: string;
     overrides?: ChatAppRequestOverrides;
 };

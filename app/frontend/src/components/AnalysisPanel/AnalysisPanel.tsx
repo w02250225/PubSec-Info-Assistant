@@ -110,8 +110,7 @@ export const AnalysisPanel = ({ answer, activeTab, activeCitation, sourceFile, p
                             ) : (
                                 <div>
                                     <Separator>Metadata</Separator>
-                                    <Label>File Name</Label><Text>{activeCitationObj.file_name}</Text>
-                                    <Label>File URI</Label><Text>{activeCitationObj.file_uri}</Text>
+                                    <Label>File Name</Label><Text>{activeCitationObj.file_name.split('/').slice(1).join('/')}</Text>
                                     <Label>Title</Label><Text>{activeCitationObj.title}</Text>
                                     <Label>Section</Label><Text>{activeCitationObj.section}</Text>
                                     <Label>Page Number(s)</Label><Text>{activeCitationObj.pages?.join(",")}</Text>

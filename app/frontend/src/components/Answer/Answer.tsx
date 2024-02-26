@@ -10,7 +10,7 @@ import rehypeRaw from 'rehype-raw';
 
 import styles from "./Answer.module.css";
 
-import { ChatAppResponse, getCitationFilePath, ExportRequest, exportAnswer } from "../../api";
+import { CitationLink, ChatAppResponse, getCitationFilePath, ExportRequest, exportAnswer } from "../../api";
 import { parseAnswerToHtml } from "./AnswerParser";
 import { AnswerIcon } from "./AnswerIcon";
 import { RAIPanel } from "../RAIPanel";
@@ -27,7 +27,7 @@ interface Props {
     showFollowupQuestions?: boolean;
     onAdjustClick?: () => void;
     onRegenerateClick?: () => void;
-}
+};
 
 export const Answer = ({
     question,
@@ -50,14 +50,6 @@ export const Answer = ({
     const sanitizedAnswerHtml = DOMPurify.sanitize(parsedAnswer.answerHtml);
     const [isCopied, setIsCopied] = useState(false);
 
-    interface CitationLink {
-        key: number;
-        href: string;
-        title: string;
-        onClick: () => void;
-        label: string;
-    }
-
     let citationLinks: CitationLink[] = [];
     if (parsedAnswer.citations.length > 0) {
         parsedAnswer.citations.forEach((x, i) => {
@@ -65,32 +57,25 @@ export const Answer = ({
             const originalFile = x.split("/")[1];
             const pageNumbers = parsedAnswer.pageNumbers[x];
             const sourceFiles = parsedAnswer.sourceFiles[x];
-            const href = `${window.location.origin}/#/ViewDocument?documentName=${encodeURIComponent(originalFile)}&pageNumber=${pageNumbers}`
             const linkName = `${originalFile} ${!isNaN(pageNumbers) ? `(Page ${pageNumbers})` : ''}`;
 
             citationLinks.push({
                 key: i,
-                href: href,
+                sourceFile: sourceFiles,
+                pageNumber: pageNumbers,
                 title: originalFile,
                 onClick: () => onCitationClicked(path, sourceFiles as any, pageNumbers as any),
                 label: `${++i}. ${linkName}`,
             });
         });
     };
-
-    const concatenatedCitationLinks = citationLinks
-        .map((link, i) => {
-            return `<a href="${link.href}" title="${link.title}">${link.label}</a>\n`;
-        })
-        .join(''); // Join the HTML strings into a single string
-
     const onExportClick = async () => {
         try {
             const request: ExportRequest = {
                 request_id: request_id,
                 question: question as string,
                 answer: sanitizedAnswerHtml,
-                citations: concatenatedCitationLinks,
+                citations: citationLinks,
             };
             return exportAnswer(request);
         } catch (e) {
@@ -117,7 +102,7 @@ export const Answer = ({
 
     const onCopyRequestIdClick = async (text: string) => {
         try {
-            await handleCopyToClipboard(text);
+            handleCopyToClipboard(text);
 
             setIsCopied(true);
             setTimeout(() => {
@@ -184,7 +169,6 @@ export const Answer = ({
             </Stack.Item>
 
             <Stack.Item grow>
-                {/* <div className={styles.answerText} dangerouslySetInnerHTML={{ __html: sanitizedAnswerHtml }}></div> */}
                 <Markdown
                     className={styles.answerText}
                     rehypePlugins={[rehypeRaw]}>

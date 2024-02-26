@@ -736,10 +736,8 @@ async def get_citation():
 @bp.route("/exportAnswer", methods=["POST"])
 async def export():
     try:
-        request_data = await request.json
         session_gpt_deployment = session.get("gpt_deployment", GPT_DEPLOYMENT)
         file_name, export_file = await exporthelper.export_to_blob(
-                                    request_data,
                                     BLOB_CONTAINER_EXPORT,
                                     OPENAI_CLIENT,
                                     session_gpt_deployment.get("deploymentName"),

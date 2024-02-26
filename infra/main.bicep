@@ -28,7 +28,7 @@ param formRecognizerName string = ''
 param enrichmentName string = ''
 param formRecognizerSkuName string = 'S0'
 #disable-next-line no-unused-params
-param encichmentSkuName string = 'S0'
+param enrichmentSkuName string = 'S0'
 param appServicePlanName string = ''
 param enrichmentAppServicePlanName string = ''
 param resourceGroupName string = ''
@@ -350,7 +350,7 @@ module formrecognizer 'core/ai/formrecognizer.bicep' = {
 //     name: !empty(enrichmentName) ? enrichmentName : '${prefix}-enrichment-${abbrs.cognitiveServicesAccounts}${randomString}'
 //     location: location
 //     tags: tags
-//     sku: encichmentSkuName
+//     sku: enrichmentSkuName
 //     isGovCloudDeployment: isGovCloudDeployment
 //   }
 // }
