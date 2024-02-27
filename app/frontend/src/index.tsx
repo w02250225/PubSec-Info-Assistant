@@ -8,6 +8,7 @@ import { HashRouter, Routes, Route } from "react-router-dom";
 import { initializeIcons } from "@fluentui/react";
 
 import "./index.css";
+import 'react-toastify/dist/ReactToastify.css';
 
 import { UserProvider } from "./components/UserContext";
 import Layout from "./pages/layout/Layout";
@@ -37,7 +38,7 @@ export default function App() {
             </HashRouter>
         </UserProvider>
     );
-}
+};
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <React.StrictMode>

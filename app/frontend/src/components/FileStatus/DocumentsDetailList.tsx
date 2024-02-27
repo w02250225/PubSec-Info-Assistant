@@ -119,7 +119,7 @@ export const DocumentsDetailList = ({ items, onFilesSorted, onFileDelete, onSave
     }
 
     function viewFile(item: any): string {
-        return `${window.location.origin}/#/ViewDocument?documentName=${encodeURIComponent(item.folder_name)}/${encodeURIComponent(item.name)}`;
+        return `${window.location.origin}/#/ViewDocument?documentName=${encodeURIComponent(item.file_path)}`;
     }
 
     function renderTagsColumn(item: IDocument): JSX.Element {

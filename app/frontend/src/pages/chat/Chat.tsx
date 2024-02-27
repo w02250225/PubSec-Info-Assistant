@@ -2,23 +2,27 @@
 // Licensed under the MIT license.
 
 import { useRef, useState, useEffect, useContext } from "react";
-import Coeus from "../../assets/coeus.png";
-import { Checkbox, Panel, DefaultButton, SpinButton, Separator, PanelType, IDropdownOption, Dropdown, Spinner, SpinnerSize } from "@fluentui/react";
+import { toast } from 'react-toastify';
+import {
+    Checkbox, Panel, DefaultButton, SpinButton, Separator, PanelType, IDropdownOption, Dropdown, Spinner,
+    SpinnerSize, PrimaryButton, Dialog, TextField, DialogFooter, DialogType
+} from "@fluentui/react";
 import { ITag } from '@fluentui/react/lib/Pickers';
 import readNDJSONStream from "ndjson-readablestream";
 import { BlobServiceClient } from "@azure/storage-blob";
 import { v4 as uuidv4 } from 'uuid';
 
+import Coeus from "../../assets/coeus.png";
 import styles from "./Chat.module.css";
 import rlbgstyles from "../../components/ResponseLengthButtonGroup/ResponseLengthButtonGroup.module.css";
 
-import { UserContext } from "../../components/UserContext";
 import {
     chatApi, RetrievalMode, ChatAppResponse, ChatAppResponseOrError, ChatAppRequest, ResponseMessage,
     GptDeployment, getGptDeployments, setGptDeployment, getInfoData, GetInfoResponse, PromptTemplate,
-    getPromptTemplates, getBlobClientUrl, stopStream, UserData, getConversation, getConversationHistory,
-    ConversationHistory, updateConversation, ChatAppRequestOverrides
+    getPromptTemplates, upsertPromptTemplate, getBlobClientUrl, stopStream, UserData, getConversation,
+    getConversationHistory, ConversationHistory, updateConversation, ChatAppRequestOverrides
 } from "../../api";
+import { UserContext } from "../../components/UserContext";
 import { Answer, AnswerError, AnswerLoading } from "../../components/Answer";
 import { QuestionInput } from "../../components/QuestionInput";
 import { ExampleList } from "../../components/Example";
@@ -89,14 +93,36 @@ const Chat = () => {
     const [abortController, setAbortController] = useState<AbortController | null>(null);
 
     const [allGptDeployments, setAllGptDeployments] = useState<GptDeployment[]>([]);
-    const [defaultGptDeployment, setdefaultGptDeployment] = useState<string | undefined>(undefined);
+    const [defaultGptDeployment, setdefaultGptDeployment] = useState<string>('');
     const [selectedGptDeployment, setSelectedGptDeployment] = useState<string | undefined>(undefined);
 
     const [promptTemplates, setPromptTemplates] = useState<PromptTemplate[]>([]);
-    const [selectedPromptTemplate, setSelectedPromptTemplate] = useState<string | null>(null);
+    const [selectedPromptTemplate, setSelectedPromptTemplate] = useState<PromptTemplate | null>(null);
+    const [isTemplateSaveDialogOpen, setIsTemplateSaveDialogOpen] = useState(false);
+    const [templateSaveName, setTemplateSaveName] = useState('');
+    const [isTemplateSaving, setIsTemplateSaving] = useState(false);
 
     const userContext = useContext(UserContext);
     const userData = userContext?.userData as UserData;
+
+    function handleError(error: any, message: string) {
+        let errorMessage = message;
+        // Determine the specific error message
+        let specificErrorMessage = "An unexpected error occurred";
+        if (typeof error === 'string') {
+            specificErrorMessage = error;
+        } else if (error instanceof Error) {
+            specificErrorMessage = error.message;
+        } else if (typeof error === 'object' && error !== null) {
+            const err = error as { response?: { data?: { error?: string; message?: string } } };
+            if (err.response && err.response.data) {
+                specificErrorMessage = err.response.data.error || err.response.data.message || specificErrorMessage;
+            }
+        }
+        // Display the error message as a toast notification
+        errorMessage = `${errorMessage}: ${specificErrorMessage}`;
+        toast.error(errorMessage);
+    };
 
     async function fetchBlobFolderData() {
         // Populate default values for selectedFolders if !is_admin
@@ -131,10 +157,9 @@ const Chat = () => {
                 if (!userFolderExists) {
                     newSelectedFolders.push(userData.userPrincipalName);
                 }
-
                 setSelectedFolders(newSelectedFolders);
             } catch (error) {
-                console.log(error);
+                handleError(error, "An error occurred fetching folder names");
             }
         }
     };
@@ -375,6 +400,16 @@ const Chat = () => {
         setActiveAnalysisPanelTab(undefined);
     };
 
+    const onModelSettingsOpen = async () => {
+        setIsModelConfigPanelOpen(true);
+        await fetchPromptTemplates();
+    };
+
+    const fetchPromptTemplates = async () => {
+        const templates: PromptTemplate[] = await getPromptTemplates();
+        setPromptTemplates(templates);
+    };
+
     const onChatHistoryOpen = async () => {
         setIsChatHistoryPanelOpen(true);
         const chatHistory: ConversationHistory = await getConversationHistory(userData.userPrincipalName)
@@ -387,7 +422,7 @@ const Chat = () => {
             setChatHistory(history => {
                 if (history) {
                     let updatedHistory = history.history;
-                    
+
                     // If the conversation is being archived, filter it out
                     if (archived) {
                         updatedHistory = updatedHistory.filter(conversation => conversation.conversation_id !== conversation_id);
@@ -402,7 +437,7 @@ const Chat = () => {
                             return conversation; // Return all other conversations unchanged
                         });
                     }
-    
+
                     // Return new state with updated or filtered history
                     return { ...history, history: updatedHistory };
                 };
@@ -412,7 +447,7 @@ const Chat = () => {
             // Update in Cosmos
             await updateConversation(userData.userPrincipalName, conversation_id, new_name, archived);
         } catch (error) {
-            console.error("An error occurred updating the conversation: ", error);
+            handleError(error, "An error occurred updating the conversation");
         }
     };
 
@@ -445,8 +480,8 @@ const Chat = () => {
                 lastQuestionRef.current = mostRecentQuestion; // Update the ref to the most recent question
             };
         } catch (error) {
-            lastQuestionRef.current = "An error occurred loading Conversation from History..."
-            console.error(lastQuestionRef.current, error);
+            lastQuestionRef.current = "An error occurred loading Conversation from History"
+            handleError(error, lastQuestionRef.current);
         }
         finally {
             setIsLoadingHistory(false);
@@ -459,7 +494,7 @@ const Chat = () => {
         setSuggestFollowupQuestions(overrides.suggest_followup_questions || suggestFollowupQuestions);
         setRetrieveCount(overrides.top || retrieveCount);
         setTopP(overrides.top_p || topP);
-        setPromptOverride(overrides.prompt_template || promptOverride);
+        setPromptOverride(overrides.prompt_template || "");
         setRetrievalMode(overrides.retrieval_mode || retrievalMode);
         setSelectedFolders(
             overrides.selected_folders === "All"
@@ -482,7 +517,7 @@ const Chat = () => {
             }
             return stopStream();
         } catch (e) {
-            console.log(e);
+            handleError(error, "An error occurred trying to stop the stream");
         }
     };
 
@@ -495,25 +530,22 @@ const Chat = () => {
         }
     };
 
-    const onPromptTemplatePickerChange = (promptTemplateName: string) => {
-        const template = promptTemplates.find(d => d.displayName === promptTemplateName);
-
-        if (template) {
+    const onPromptTemplatePickerChange = (template: PromptTemplate) => {
+        if (template.id) {
             const overrides: ChatAppRequestOverrides = {
                 response_length: template.response_length,
                 temperature: template.temperature,
                 top_p: template.top_p,
-                prompt_template: template.promptOverride,
-                retrieval_mode: template.retrievalMode
-
+                prompt_template: template.prompt_override,
+                retrieval_mode: template.retrieval_mode
             };
             setOverrides(overrides);
-            setSelectedPromptTemplate(template.displayName);
-            onGptDeploymentChange(template.deploymentName);
+            setSelectedPromptTemplate(template);
+            onGptDeploymentChange(template.deployment_name);
         }
     };
 
-    const onResetModelConfig = () => {
+    const onResetModelConfigButtonClicked = () => {
         setSelectedPromptTemplate(null);
         onGptDeploymentChange(defaultGptDeployment || "Unknown");
         setResponseLength(2048);
@@ -521,6 +553,37 @@ const Chat = () => {
         setTopP(1.0);
         setPromptOverride("");
         setRetrievalMode(RetrievalMode.Hybrid);
+    };
+
+    const onSaveModelConfigButtonClicked = () => {
+        setTemplateSaveName(selectedPromptTemplate ? selectedPromptTemplate.display_name : '');
+        setIsTemplateSaveDialogOpen(true);
+    };
+
+    const onSavePromptTemplate = async () => {
+        setIsTemplateSaving(true);
+
+        const promptTemplate: PromptTemplate = {
+            id: selectedPromptTemplate?.id || "",
+            user_id: userData.userPrincipalName,
+            display_name: templateSaveName,
+            deployment_name: selectedGptDeployment || defaultGptDeployment,
+            prompt_override: promptOverride,
+            response_length: responseLength,
+            temperature: responseTemp,
+            top_p: topP,
+            retrieval_mode: retrievalMode,
+        };
+        try {
+            await upsertPromptTemplate(promptTemplate);
+            toast.success("Prompt Template saved successfully!");
+            setIsTemplateSaveDialogOpen(false); // Close the dialog after success
+        } catch (error) {
+            handleError(error, "Failed to save the template. Please try again");
+        } finally {
+            await fetchPromptTemplates();
+            setIsTemplateSaving(false); // End saving whether it was successful or not
+        }
     };
 
     useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "smooth" }), [isLoading]);
@@ -532,15 +595,11 @@ const Chat = () => {
                 setdefaultGptDeployment(response.AZURE_OPENAI_CHATGPT_DEPLOYMENT);
                 setSelectedGptDeployment(response.AZURE_OPENAI_CHATGPT_DEPLOYMENT);
             })
-            .catch(err => console.log(err.message));
+            .catch(err => handleError(err, "Failed to fetch InfoData"));
 
         getGptDeployments()
             .then(setAllGptDeployments)
-            .catch(err => console.log(err.message));
-
-        getPromptTemplates()
-            .then(setPromptTemplates)
-            .catch(err => console.log(err.message));
+            .catch(err => handleError(err, "Failed to fetch GPT Deployments"));
 
         fetchBlobFolderData();
     }, []);
@@ -557,7 +616,7 @@ const Chat = () => {
             <div className={styles.commandsContainer}>
                 <ClearChatButton className={styles.commandButton} onClick={clearChat} disabled={!lastQuestionRef.current || isLoading || isLoadingHistory || isStreaming} />
                 <ChatHistoryButton className={styles.commandButton} onClick={onChatHistoryOpen} disabled={isLoading || isLoadingHistory || isStreaming} />
-                <ModelSettingsButton className={styles.commandButton} onClick={() => setIsModelConfigPanelOpen(!isModelConfigPanelOpen)} disabled={isLoading || isLoadingHistory || isStreaming} />
+                <ModelSettingsButton className={styles.commandButton} onClick={onModelSettingsOpen} disabled={isLoading || isLoadingHistory || isStreaming} />
                 <SettingsButton className={styles.commandButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} disabled={isLoading || isLoadingHistory || isStreaming} />
                 <InfoButton className={styles.commandButton} onClick={() => setIsInfoPanelOpen(!isInfoPanelOpen)} disabled={isLoading || isLoadingHistory || isStreaming} />
             </div>
@@ -663,7 +722,12 @@ const Chat = () => {
                         isBlocking={true}
                         onDismiss={() => onAnalysisPanelClose()}
                         closeButtonAriaLabel="Close"
-                        onRenderFooterContent={() => <DefaultButton onClick={() => onAnalysisPanelClose()}>Close</DefaultButton>}
+                        onRenderFooterContent={() =>
+                            <PrimaryButton
+                                className={styles.panelButton}
+                                onClick={() => onAnalysisPanelClose()}>
+                                Close
+                            </PrimaryButton>}
                         isFooterAtBottom={true}>
                         <AnalysisPanel
                             activeCitation={activeCitation}
@@ -683,7 +747,12 @@ const Chat = () => {
                     isBlocking={true}
                     onDismiss={() => setIsChatHistoryPanelOpen(false)}
                     closeButtonAriaLabel="Close"
-                    onRenderFooterContent={() => <DefaultButton onClick={() => setIsChatHistoryPanelOpen(false)}>Close</DefaultButton>}
+                    onRenderFooterContent={() =>
+                        <PrimaryButton
+                            className={styles.panelButton}
+                            onClick={() => setIsChatHistoryPanelOpen(false)}
+                            text="Close"
+                        />}
                     isFooterAtBottom={true}>
                     <ChatHistoryPanel
                         className={styles.chatSettingsSeparator}
@@ -701,8 +770,21 @@ const Chat = () => {
                     closeButtonAriaLabel="Close"
                     onRenderFooterContent={() =>
                         <div>
-                            <DefaultButton onClick={() => setIsModelConfigPanelOpen(false)}>Close</DefaultButton>
-                            <DefaultButton onClick={() => onResetModelConfig()}>Reset</DefaultButton>
+                            <PrimaryButton
+                                className={styles.panelButton}
+                                onClick={() => setIsModelConfigPanelOpen(false)}
+                                text="Close"
+                            />
+                            <DefaultButton
+                                className={styles.panelButton}
+                                onClick={() => onResetModelConfigButtonClicked()}
+                                text="Reset"
+                            />
+                            <DefaultButton
+                                className={styles.panelButton}
+                                onClick={() => onSaveModelConfigButtonClicked()}
+                                text="Save"
+                            />
                         </div>
                     }
                     isFooterAtBottom={true}>
@@ -711,6 +793,7 @@ const Chat = () => {
                         promptTemplates={promptTemplates}
                         selectedTemplate={selectedPromptTemplate}
                         onChange={onPromptTemplatePickerChange}
+                        userData={userData}
                     />
                     {selectedGptDeployment && (
                         <ModelPicker
@@ -740,6 +823,45 @@ const Chat = () => {
                         value={promptOverride}
                         onChange={onPromptOverrideChange}
                     />
+                    <Dialog
+                        hidden={!isTemplateSaveDialogOpen}
+                        onDismiss={() => setIsTemplateSaveDialogOpen(false)}
+                        dialogContentProps={{
+                            type: DialogType.normal,
+                            title: 'Create Prompt Template'
+                        }}
+                        modalProps={{
+                            isBlocking: true,
+                            styles: {
+                                main: {
+                                    maxWidth: '750px !important',
+                                    minWidth: '500px !important',
+                                },
+                            },
+                        }}>
+                        <p>
+                            Enter a name for your template.<br />
+                            Note: This will overwrite any other template with the same name.
+                        </p>
+                        <TextField
+                            value={templateSaveName}
+                            disabled={isTemplateSaving}
+                            onChange={(e, newValue) => setTemplateSaveName(newValue || '')} />
+                        <DialogFooter>
+                            <PrimaryButton
+                                className={styles.panelButton}
+                                disabled={isTemplateSaving}
+                                onClick={onSavePromptTemplate}
+                                text="Save"
+                            />
+                            <DefaultButton
+                                className={styles.panelButton}
+                                disabled={isTemplateSaving}
+                                onClick={() => setIsTemplateSaveDialogOpen(false)}
+                                text="Cancel"
+                            />
+                        </DialogFooter>
+                    </Dialog>
                 </Panel>
                 <Panel
                     type={PanelType.smallFixedFar}
@@ -748,7 +870,12 @@ const Chat = () => {
                     isBlocking={true}
                     onDismiss={() => setIsConfigPanelOpen(false)}
                     closeButtonAriaLabel="Close"
-                    onRenderFooterContent={() => <DefaultButton onClick={() => setIsConfigPanelOpen(false)}>Close</DefaultButton>}
+                    onRenderFooterContent={() =>
+                        <PrimaryButton
+                            className={styles.panelButton}
+                            onClick={() => setIsConfigPanelOpen(false)}
+                            text="Close"
+                        />}
                     isFooterAtBottom={true}>
                     <Checkbox
                         className={styles.chatSettingsSeparator}
@@ -796,7 +923,12 @@ const Chat = () => {
                     isBlocking={true}
                     onDismiss={() => setIsInfoPanelOpen(false)}
                     closeButtonAriaLabel="Close"
-                    onRenderFooterContent={() => <DefaultButton onClick={() => setIsInfoPanelOpen(false)}>Close</DefaultButton>}
+                    onRenderFooterContent={() =>
+                        <PrimaryButton
+                            className={styles.panelButton}
+                            onClick={() => setIsInfoPanelOpen(false)}
+                            text="Close"
+                        />}
                     isFooterAtBottom={true}>
                     <InfoContent />
                 </Panel>

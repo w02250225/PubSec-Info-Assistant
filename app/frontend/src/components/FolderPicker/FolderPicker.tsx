@@ -42,14 +42,14 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
     const textFieldId = useId('textField');
 
     const [teachingBubbleVisible, { toggle: toggleTeachingBubbleVisible }] = useBoolean(false);
-    const [options, setOptions] = useState<IComboBoxOption[]>([]);
-    const selectableOptions = options.filter(
+    const [comboBoxOptions, setComboBoxOptions] = useState<IComboBoxOption[]>([]);
+    const selectableOptions = comboBoxOptions.filter(
         option =>
             (option.itemType === SelectableOptionMenuItemType.Normal || option.itemType === undefined) && !option.disabled,
     );
     const comboBoxStyles: Partial<IComboBoxStyles> = { root: { maxWidth: 300 }, input: { cursor: 'pointer' } };
     const hostStyles: Partial<ITooltipHostStyles> = { root: { display: 'inline-block' } };
-    const addFolderIcon: IIconProps = { iconName: 'Add' };
+    const addFolderIcon: IIconProps = { iconName: 'Abdd' };
 
     allowNewFolders = allowFolderCreation as boolean;
 
@@ -71,9 +71,9 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
             // add the folder to the dropdown list and select it
             // This will be passed to the FilePicker component to determine the folder to upload to
             const trimVal = textField.defaultValue.trim()
-            const currentOptions = options;
+            const currentOptions = comboBoxOptions;
             currentOptions.push({ key: trimVal, text: trimVal });
-            setOptions(currentOptions);
+            setComboBoxOptions(currentOptions);
             onSelectedKeyChange([trimVal]);
             toggleTeachingBubbleVisible();
         }
@@ -120,7 +120,7 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
                 newOptions.push({ key: userData.userPrincipalName, text: "My Data" });
             }
 
-            setOptions(newOptions);
+            setComboBoxOptions(newOptions);
 
             if (!allowNewFolders) {
                 var filteredOptions = newOptions.filter(
@@ -220,7 +220,7 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
                 <ComboBox
                     multiSelect={allowNewFolders ? false : true}
                     selectedKey={selectedKeys ? selectedKeys : undefined}
-                    options={options}
+                    options={comboBoxOptions}
                     defaultSelectedKey={allowFolderCreation && !selectedKeys.length ? userData.userPrincipalName : undefined}
                     onChange={onChange}
                     styles={comboBoxStyles}

@@ -230,13 +230,15 @@ export type GptDeployment = {
 };
 
 export type PromptTemplate = {
-    displayName: string;
-    deploymentName: string;
-    promptOverride: string;
+    id?: string;
+    user_id: string;
+    display_name: string;
+    deployment_name: string;
+    prompt_override: string;
     response_length: number;
     temperature: number;
     top_p: number;
-    retrievalMode: RetrievalMode;
+    retrieval_mode: RetrievalMode;
 };
 
 export type TermsOfUse = {

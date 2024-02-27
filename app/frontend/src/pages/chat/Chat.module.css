@@ -138,6 +138,11 @@
     margin-bottom: 20px;
 }
 
+.panelButton {
+    margin-right: 5px;
+    margin-bottom: 5px;
+}
+
 .chatLogo {
     height: 125px;
     cursor: pointer;

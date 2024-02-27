@@ -290,7 +290,7 @@ export async function setGptDeployment(deployment: GptDeployment): Promise<void>
     if (!response.ok) {
         throw Error(parsedResponse.error || "An unknown error occurred");
     }
-}
+};
 
 export async function logout() {
     const response = await fetchWithSessionCheck("/logout", { method: "GET" });
@@ -298,7 +298,7 @@ export async function logout() {
     if (!response.ok) {
         throw new Error(response.statusText || "Unknown error");
     }
-}
+};
 
 export async function getUserData(): Promise<UserData> {
     const response = await fetchWithSessionCheck("/getUserData", {
@@ -315,7 +315,7 @@ export async function getUserData(): Promise<UserData> {
 
     const parsedResponse: UserData = await response.json();
     return parsedResponse;
-}
+};
 
 export async function getPromptTemplates(): Promise<PromptTemplate[]> {
     const response = await fetchWithSessionCheck("/getPromptTemplates", {
@@ -332,7 +332,18 @@ export async function getPromptTemplates(): Promise<PromptTemplate[]> {
 
     const parsedResponse: PromptTemplate[] = await response.json();
     return parsedResponse;
-}
+};
+
+
+export async function upsertPromptTemplate(prompt_template: PromptTemplate): Promise<Response> {
+    return await fetchWithSessionCheck("/upsertPromptTemplate", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ ...prompt_template })
+    });
+};
 
 export async function stopStream(): Promise<Response> {
     return await fetchWithSessionCheck(`/stopStream`, {
@@ -341,7 +352,7 @@ export async function stopStream(): Promise<Response> {
             "Content-Type": "application/json"
         }
     });
-}
+};
 
 export async function getTermsOfUse(): Promise<TermsOfUse> {
     const response = await fetchWithSessionCheck(`/termsOfUse`, {
@@ -358,7 +369,7 @@ export async function getTermsOfUse(): Promise<TermsOfUse> {
 
     const parsedResponse: TermsOfUse = await response.json();
     return parsedResponse;
-}
+};
 
 export async function acceptTermsOfUse(tou_version: string): Promise<Response> {
     return await fetchWithSessionCheck(`/termsOfUse`, {
@@ -368,7 +379,7 @@ export async function acceptTermsOfUse(tou_version: string): Promise<Response> {
         },
         body: JSON.stringify({ tou_version })
     });
-}
+};
 
 export async function deleteFile(file_path: string): Promise<Response> {
     return await fetchWithSessionCheck(`/deleteFile`, {
@@ -378,7 +389,7 @@ export async function deleteFile(file_path: string): Promise<Response> {
         },
         body: JSON.stringify({ file_path })
     });
-}
+};
 
 export async function updateFileTags(file_path: string, tags: string[]): Promise<Response> {
     return await fetchWithSessionCheck(`/updateFileTags`, {
@@ -388,7 +399,7 @@ export async function updateFileTags(file_path: string, tags: string[]): Promise
         },
         body: JSON.stringify({ file_path, tags })
     });
-}
+};
 
 export async function getFaq(): Promise<FaqContent> {
     const response = await fetchWithSessionCheck(`/getFaq`, {

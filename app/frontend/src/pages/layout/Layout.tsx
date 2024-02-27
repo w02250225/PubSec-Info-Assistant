@@ -3,6 +3,7 @@
 
 import { useEffect, useContext } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { ToastContainer } from 'react-toastify';
 
 import qtlogo from "../../assets/qt-logo.png";
 import { UserInfoMenu } from "../../components/UserInfoMenu"
@@ -63,7 +64,18 @@ const Layout = () => {
             <div className={styles.raibanner}>
                 <span className={styles.raiwarning}>AI-generated content may be incorrect</span>
             </div>
-
+            <ToastContainer
+                className={styles.toastContainer}
+                position="top-left"
+                autoClose={5000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+            />
             <Outlet />
 
         </div>
