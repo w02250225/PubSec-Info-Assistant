@@ -260,7 +260,7 @@ Always include citations if you reference the source documents. Use square brack
                 data_points.append("/".join(unquote(file_uri_parsed.path).split("/")[2:]) + " | " + self.nonewlines(doc[self.content_field]))
                 citation_lookup[f"File{idx}"] = {
                     "citation": unquote(f"https://{file_uri_parsed.netloc}/{self.content_storage_container}/{doc[self.chunk_file_field]}"),
-                    "source_path": "/".join(file_uri_parsed.path.split("/")[2:]), # remove 'upload' from the file uri
+                    "source_path": file_uri_parsed.path.lstrip("/"),
                     "page_number": str(doc[self.page_number_field][0]) or "0",
                 }
 

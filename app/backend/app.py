@@ -51,6 +51,7 @@ from quart import (
     url_for
 )
 from quart_cors import cors
+from core.config_helper import ConfigHelper
 from core.request_log import RequestLog
 from core.status_log import State, StatusClassification, StatusLog
 from core.userdata_log import UserDataLog
@@ -100,6 +101,8 @@ KB_FIELDS_CHUNKFILE = os.environ.get("KB_FIELDS_CHUNKFILE") or "chunk_file"
 
 COSMOSDB_URL = os.environ.get("COSMOSDB_URL")
 COSMODB_KEY = os.environ.get("COSMOSDB_KEY")
+COSMOSDB_CONFIG_DATABASE_NAME = os.environ.get("COSMOSDB_CONFIG_DATABASE_NAME")
+COSMOSDB_PROMPT_CONTAINER_NAME = os.environ.get("COSMOSDB_PROMPT_CONTAINER_NAME")
 COSMOSDB_REQUESTLOG_DATABASE_NAME = os.environ.get("COSMOSDB_REQUESTLOG_DATABASE_NAME")
 COSMOSDB_REQUESTLOG_CONTAINER_NAME = os.environ.get("COSMOSDB_REQUESTLOG_CONTAINER_NAME")
 COSMOSDB_LOG_DATABASE_NAME = os.environ.get("COSMOSDB_LOG_DATABASE_NAME") or "statusdb"
@@ -190,7 +193,6 @@ async def create_queue_client():
         message_encode_policy = TextBase64EncodePolicy()
     )
     
-
 EMBEDDING_MODEL_NAME = AZURE_OPENAI_EMBEDDINGS_MODEL_NAME
 EMBEDDING_MODEL_VERSION = AZURE_OPENAI_EMBEDDINGS_MODEL_VERSION
 ALL_GPT_DEPLOYMENTS = []
@@ -345,11 +347,11 @@ async def format_response(log_id: str,
 
             yield json.dumps(event, ensure_ascii=False) + "\n"
 
-    except Exception as e:
-        error_message = str(e)
+    except Exception as error:
+        error_message = str(error)
         response["error_message"] = error_message
-        logging.exception("Exception while generating response stream. %s", e)
-        yield json.dumps(error_dict(e))
+        logging.exception("Exception while generating response stream. %s", error)
+        yield json.dumps(error_dict(error))
 
     finally:
         if accumulated_content:
@@ -583,12 +585,14 @@ async def get_blob_sas():
     user_folder_pattern = re.compile(r"^[^@]+@[^@]+\.[^@]+$")
     user_id = session["user_data"].get("userPrincipalName", "Unknown User")
     is_admin = session["user_data"].get("is_admin", False)
-    file_path = urllib.parse.unquote(request_data.get("file_path"))
-    file_path_parts = file_path.split("/")
-    folder_name = file_path_parts[1] if len(file_path_parts) > 2 else None
-
-    # If user is admin or accessing a file from their own folder
-    if is_admin or (folder_name and user_folder_pattern.match(folder_name) and folder_name == user_id):
+    file_path_parts = urllib.parse.unquote(request_data.get("file_path")).split("/")
+    file_path = '/'.join(file_path_parts[1:]) # Remove container prefix
+    folder_name = file_path_parts[1]
+        
+    # Allow admins to access all files
+    # Users can only access files that are in
+    # their own folder, or a non-user folder
+    if is_admin or (folder_name == user_id) or (not user_folder_pattern.match(folder_name)):
         sas_token = generate_blob_sas(
             account_name=AZURE_BLOB_STORAGE_ACCOUNT,
             container_name=AZURE_BLOB_UPLOAD_CONTAINER,
@@ -606,7 +610,7 @@ async def get_blob_sas():
             ),
             expiry=datetime.utcnow() + timedelta(minutes=15),
         )
-        return jsonify({"url": f"{BLOB_CLIENT.url}{AZURE_BLOB_UPLOAD_CONTAINER}/{file_path}?{sas_token}"})
+        return jsonify({"url": f"{BLOB_CLIENT.url}{AZURE_BLOB_UPLOAD_CONTAINER}/{urllib.parse.quote(file_path)}?{sas_token}"})
     else:
         return jsonify({"error": "You do not have access to this file"})
 
@@ -807,12 +811,25 @@ async def set_gpt_deployment():
 async def get_prompt_templates():
     """Get a list of all Prompt Templates"""
     try:
-        blob_name = "prompt_templates.json"
-        template_data = await get_website_blob_json(blob_name)
+        user_id = session["user_data"].get("userPrincipalName", "Unknown User")
+        is_admin = session["user_data"].get("is_admin", False)
+        template_data = await current_app.config_helper.get_prompt_templates(user_id, is_admin)
         return jsonify(template_data)
     
     except Exception as error:
         logging.exception("Exception in /getPromptTemplates")
+        return jsonify({"error": str(error)}), 500
+
+
+@bp.route("/upsertPromptTemplate", methods=["POST"])
+async def upsert_prompt_template():
+    """Create or update a Prompt Template"""
+    try:
+        result = await current_app.config_helper.upsert_prompt_template()
+        return result
+    
+    except Exception as error:
+        logging.exception("Exception in /upsertPromptTemplate")
         return jsonify({"error": str(error)}), 500
 
 
@@ -860,8 +877,7 @@ async def delete_file():
         user_id = session["user_data"].get("userPrincipalName", "Unknown User")
         is_admin = session["user_data"].get("is_admin", False)
         file_path = request_data.get("file_path")
-        file_path_parts = file_path.split("/")
-        folder_name = file_path_parts[1] if len(file_path_parts) > 2 else None
+        folder_name = file_path.split("/")[0]
 
         if not is_admin and folder_name != user_id:
             return jsonify({"error": "Only Admin users can edit this file"}), 400
@@ -901,8 +917,7 @@ async def update_file_tags():
         user_id = session["user_data"].get("userPrincipalName", "Unknown User")
         is_admin = session["user_data"].get("is_admin", False)
         file_path = request_data.get("file_path")
-        file_path_parts = file_path.split("/")
-        folder_name = file_path_parts[1] if len(file_path_parts) > 2 else None
+        folder_name = file_path.split("/")[0]
         new_tags = request_data.get("tags")
 
         if not is_admin and folder_name != user_id:
@@ -1020,6 +1035,7 @@ def create_app():
     app.config["SESSION_PERMANENT"] = True
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=8)
     
+    config_helper = ConfigHelper(COSMOSDB_URL, COSMODB_KEY, COSMOSDB_CONFIG_DATABASE_NAME, COSMOSDB_PROMPT_CONTAINER_NAME)
     request_log = RequestLog(COSMOSDB_URL, COSMODB_KEY, COSMOSDB_REQUESTLOG_DATABASE_NAME, COSMOSDB_REQUESTLOG_CONTAINER_NAME)
     status_log = StatusLog(COSMOSDB_URL, COSMODB_KEY, COSMOSDB_LOG_DATABASE_NAME, COSMOSDB_LOG_CONTAINER_NAME)
     userdata_log = UserDataLog(COSMOSDB_URL, COSMODB_KEY, COSMOSDB_USER_DATABASE_NAME, COSMOSDB_USER_CONTAINER_NAME)
@@ -1040,11 +1056,13 @@ def create_app():
         BLOB_CONTAINER_EXPORT = BLOB_CLIENT.get_container_client(AZURE_BLOB_EXPORT_CONTAINER)
         BLOB_CONTAINER_WEBSITE = BLOB_CLIENT.get_container_client(AZURE_BLOB_WEBSITE_CONTAINER)
         
+        await config_helper.initialize()
         await request_log.initialize()
         await status_log.initialize()
         await userdata_log.initialize()
         await fetch_deployments()
 
+    app.config_helper = config_helper
     app.request_log = request_log
     app.status_log = status_log
     app.userdata_log = userdata_log

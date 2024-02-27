@@ -108,7 +108,7 @@ class RequestLog:
             gpt_deployment,
             request_body["messages"][0]["content"])
         
-        start_timestamp = str(start_time.strftime("%Y-%m-%d %H:%M:%S")),
+        start_timestamp = str(start_time.strftime("%Y-%m-%d %H:%M:%S"))
         
         return {
                 "id": document_id,
@@ -323,8 +323,7 @@ class RequestLog:
                 json_document = self._log_document[document_id]
             else:
                 # Fetch the document from Cosmos DB
-                cosmos_response = await self.container.read_item(item=document_id, partition_key=user_id)
-                json_document = cosmos_response
+                json_document = await self.container.read_item(item=document_id, partition_key=user_id)
 
             if conversation_name:
                 json_document["conversation_name"] = conversation_name
