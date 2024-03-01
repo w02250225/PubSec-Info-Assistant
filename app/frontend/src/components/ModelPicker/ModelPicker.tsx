@@ -59,7 +59,7 @@ export const ModelPicker = ({ className, deployments, selectedGptDeployment, onG
     }, [updateTimeout]);
 
     return (
-        <div className={`${styles.container} ${className ?? ""}`}>
+        <div className={`modelPicker ${styles.container} ${className ?? ""}`}>
             <Label>Model Selection&nbsp;
                 <FiHelpCircle
                     data-tooltip-id="ModelPicker-tooltip"

@@ -20,7 +20,10 @@ export const ChatHistoryButton = ({ className, onClick, disabled }: Props) => {
     };
 
     return (
-        <div className={`${styles.container} ${className ?? ""} ${disabled && styles.disabled}`} onClick={handleClick}>
+        <div
+            id="chatHistoryButton"
+            className={`${styles.container} ${className ?? ""} ${disabled && styles.disabled}`}
+            onClick={handleClick}>
             <History24Regular />
             <Text>{"History"}</Text>
         </div>

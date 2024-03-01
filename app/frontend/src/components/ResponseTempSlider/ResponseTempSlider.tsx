@@ -65,6 +65,7 @@ export const ResponseTempSlider = ({ className, onChange, value = 0 }: Props) =>
         />
       </Label>
       <TextField
+        id="responseTempSlider"
         className={styles.responseTempValue}
         value={displayValue}
         onChange={handleInputChange}

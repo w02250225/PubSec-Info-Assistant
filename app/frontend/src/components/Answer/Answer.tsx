@@ -25,7 +25,7 @@ interface Props {
     onSupportingContentClicked: () => void;
     onFollowupQuestionClicked?: (question: string) => void;
     showFollowupQuestions?: boolean;
-    onAdjustClick?: () => void;
+    onSettingsClick?: () => void;
     onRegenerateClick?: () => void;
 };
 
@@ -39,7 +39,7 @@ export const Answer = ({
     onSupportingContentClicked,
     onFollowupQuestionClicked,
     showFollowupQuestions,
-    onAdjustClick,
+    onSettingsClick,
     onRegenerateClick,
 }: Props) => {
     const followupQuestions = answer.choices[0].context.followup_questions;
@@ -221,17 +221,15 @@ export const Answer = ({
                     </span>
                 </div>
             </Stack.Item>
-
             <Stack.Item align="center">
-                <RAIPanel onAdjustClick={onAdjustClick}
+                <RAIPanel
+                    onSettingsClick={onSettingsClick}
                     onRegenerateClick={onRegenerateClick}
                     onExportClick={onExportClick}
                     onCopyAnswerClick={onCopyAnswerClick}
                     isStreaming={isStreaming}
                 />
             </Stack.Item>
-
-
         </Stack>
     );
 };

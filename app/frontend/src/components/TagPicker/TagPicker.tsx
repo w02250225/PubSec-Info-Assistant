@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 import { useState, useEffect } from 'react';
-import { TagPicker, ITag, IBasePickerSuggestionsProps } from '@fluentui/react/lib/Pickers';
-import { Label, TooltipHost, ITooltipHostStyles, Icon } from "@fluentui/react";
+import { TagPicker, ITag } from '@fluentui/react/lib/Pickers';
+import { Label, ITooltipHostStyles, Icon } from "@fluentui/react";
 import { FiHelpCircle } from 'react-icons/fi';
 import { mergeStyles } from '@fluentui/react/lib/Styling';
 import { useId } from '@fluentui/react-hooks';
@@ -13,24 +13,23 @@ import styles from "./TagPicker.module.css";
 var allowAddNew = false;
 
 interface Props {
+  className?: string;
   allowNewTags?: boolean;
   onSelectedTagsChange: (selectedTags: ITag[]) => void;
   preSelectedTags?: ITag[];
 }
 
-export const TagPickerInline = ({ allowNewTags, onSelectedTagsChange, preSelectedTags }: Props) => {
+export const TagPickerInline = ({ className, allowNewTags, onSelectedTagsChange, preSelectedTags }: Props) => {
 
+  allowAddNew = allowNewTags as boolean;
   const pickerId = useId('tag-inline-picker');
-  const tooltipId = useId('tagpicker-tooltip');
-  const hostStyles: Partial<ITooltipHostStyles> = { root: { display: 'inline-block' } };
   const newItem = mergeStyles({ color: '#f00', background: '#ddf', padding: '10px' });
   const existingItem = mergeStyles({ color: '#222', padding: '10px' });
 
   const [selectedTags, setSelectedTags] = useState<ITag[]>([]);
   const [tags, setTags] = useState<ITag[]>([]);
   const getTextFromItem = (item: ITag) => item.name;
-
-  allowAddNew = allowNewTags as boolean;
+  const tooltipHtml = allowAddNew ? "Tags to append to each document uploaded below. Max 10" : "Tags to filter documents by. Max 10"
 
   const listContainsTagList = (tag: ITag, tagList?: ITag[]): boolean => {
     if (!tagList || !tagList.length || tagList.length === 0) {
@@ -132,15 +131,14 @@ export const TagPickerInline = ({ allowNewTags, onSelectedTagsChange, preSelecte
   }, []);
 
   return (
-    <div className={styles.tagArea}>
+    <div className={`${styles.tagArea} ${className ?? ""}`}>
       <div className={styles.tagSelection}>
         <div className={allowAddNew ? styles.rootClass : styles.rootClassFilter}>
           <Label htmlFor={pickerId}>Tags&nbsp;
-            <TooltipHost content={allowAddNew ? "Tags to append to each document uploaded below. Max 10" : "Tags to filter documents by. Max 10"}
-              styles={hostStyles}
-              id={tooltipId}>
-              <FiHelpCircle></FiHelpCircle>
-            </TooltipHost>
+            <FiHelpCircle
+              data-tooltip-id="TagSelection-tooltip"
+              data-tooltip-html={tooltipHtml}>
+            </FiHelpCircle>
           </Label>
           <TagPicker
             className={styles.tagPicker}
@@ -162,6 +160,6 @@ export const TagPickerInline = ({ allowNewTags, onSelectedTagsChange, preSelecte
         </div>
 
       </div>
-    </div>
+    </div >
   );
 };

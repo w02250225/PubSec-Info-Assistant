@@ -4,8 +4,8 @@
 import { useRef, useState, useEffect, useContext } from "react";
 import { toast } from 'react-toastify';
 import {
-    Checkbox, Panel, DefaultButton, SpinButton, Separator, PanelType, IDropdownOption, Dropdown, Spinner,
-    SpinnerSize, PrimaryButton, Dialog, TextField, DialogFooter, DialogType
+    Checkbox, Panel, DefaultButton, SpinButton, PanelType, IDropdownOption, Dropdown, Spinner,
+    SpinnerSize, PrimaryButton, Dialog, TextField, DialogFooter, DialogType, Stack, StackItem, Label
 } from "@fluentui/react";
 import { ITag } from '@fluentui/react/lib/Pickers';
 import readNDJSONStream from "ndjson-readablestream";
@@ -29,8 +29,6 @@ import { ExampleList } from "../../components/Example";
 import { UserChatMessage } from "../../components/UserChatMessage";
 import { AnalysisPanel, AnalysisPanelTabs } from "../../components/AnalysisPanel";
 import { SettingsButton } from "../../components/SettingsButton";
-import { ModelSettingsButton } from "../../components/ModelSettingsButton"
-import { InfoButton } from "../../components/InfoButton";
 import { ClearChatButton } from "../../components/ClearChatButton";
 import { ResponseLengthButtonGroup } from "../../components/ResponseLengthButtonGroup";
 import { ResponseTempSlider } from "../../components/ResponseTempSlider";
@@ -48,7 +46,6 @@ import { ChatHistoryButton } from "../../components/ChatHistoryButton";
 const Chat = () => {
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
     const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
-    const [isModelConfigPanelOpen, setIsModelConfigPanelOpen] = useState(false);
     const [isAnalysisPanelOpen, setIsAnalysisPanelOpen] = useState(false);
     const [isChatHistoryPanelOpen, setIsChatHistoryPanelOpen] = useState(false);
     const [promptOverride, setPromptOverride] = useState<string>("");
@@ -400,8 +397,8 @@ const Chat = () => {
         setActiveAnalysisPanelTab(undefined);
     };
 
-    const onModelSettingsOpen = async () => {
-        setIsModelConfigPanelOpen(true);
+    const onConfigPanelOpen = async () => {
+        setIsConfigPanelOpen(true);
         await fetchPromptTemplates();
     };
 
@@ -489,6 +486,7 @@ const Chat = () => {
     };
 
     const setOverrides = (overrides: ChatAppRequestOverrides) => {
+        setSuggestFollowupQuestions(overrides.suggest_followup_questions || suggestFollowupQuestions);
         setResponseLength(overrides.response_length || responseLength);
         setResponseTemp(overrides.temperature || responseTemp);
         setSuggestFollowupQuestions(overrides.suggest_followup_questions || suggestFollowupQuestions);
@@ -531,12 +529,13 @@ const Chat = () => {
     };
 
     const onPromptTemplatePickerChange = (template: PromptTemplate) => {
-        if (template.id) {
+        if (template) {
             const overrides: ChatAppRequestOverrides = {
                 response_length: template.response_length,
                 temperature: template.temperature,
                 top_p: template.top_p,
                 prompt_template: template.prompt_override,
+                suggest_followup_questions: template.suggest_followup_questions,
                 retrieval_mode: template.retrieval_mode
             };
             setOverrides(overrides);
@@ -545,7 +544,8 @@ const Chat = () => {
         }
     };
 
-    const onResetModelConfigButtonClicked = () => {
+    const onResetConfigButtonClicked = () => {
+        setSuggestFollowupQuestions(true);
         setSelectedPromptTemplate(null);
         onGptDeploymentChange(defaultGptDeployment || "Unknown");
         setResponseLength(2048);
@@ -555,7 +555,7 @@ const Chat = () => {
         setRetrievalMode(RetrievalMode.Hybrid);
     };
 
-    const onSaveModelConfigButtonClicked = () => {
+    const onSaveConfigButtonClicked = () => {
         setTemplateSaveName(selectedPromptTemplate ? selectedPromptTemplate.display_name : '');
         setIsTemplateSaveDialogOpen(true);
     };
@@ -571,6 +571,7 @@ const Chat = () => {
             prompt_override: promptOverride,
             response_length: responseLength,
             temperature: responseTemp,
+            suggest_followup_questions: suggestFollowupQuestions,
             top_p: topP,
             retrieval_mode: retrievalMode,
         };
@@ -604,6 +605,8 @@ const Chat = () => {
         fetchBlobFolderData();
     }, []);
 
+
+
     const retrievalModeOptions: IDropdownOption[] = [
         { key: "hybrid", text: "Vectors + Text (Hybrid)", selected: retrievalMode == RetrievalMode.Hybrid, data: RetrievalMode.Hybrid },
         { key: "vectors", text: "Vectors", selected: retrievalMode == RetrievalMode.Vectors, data: RetrievalMode.Vectors },
@@ -614,11 +617,21 @@ const Chat = () => {
     return (
         <div className={styles.container}>
             <div className={styles.commandsContainer}>
-                <ClearChatButton className={styles.commandButton} onClick={clearChat} disabled={!lastQuestionRef.current || isLoading || isLoadingHistory || isStreaming} />
-                <ChatHistoryButton className={styles.commandButton} onClick={onChatHistoryOpen} disabled={isLoading || isLoadingHistory || isStreaming} />
-                <ModelSettingsButton className={styles.commandButton} onClick={onModelSettingsOpen} disabled={isLoading || isLoadingHistory || isStreaming} />
-                <SettingsButton className={styles.commandButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} disabled={isLoading || isLoadingHistory || isStreaming} />
-                <InfoButton className={styles.commandButton} onClick={() => setIsInfoPanelOpen(!isInfoPanelOpen)} disabled={isLoading || isLoadingHistory || isStreaming} />
+                <ClearChatButton
+                    className={styles.commandButton}
+                    onClick={clearChat}
+                    disabled={!lastQuestionRef.current || isLoading || isLoadingHistory || isStreaming}
+                />
+                <ChatHistoryButton
+                    className={styles.commandButton}
+                    onClick={onChatHistoryOpen}
+                    disabled={isLoading || isLoadingHistory || isStreaming}
+                />
+                <SettingsButton
+                    className={styles.commandButton}
+                    onClick={onConfigPanelOpen}
+                    disabled={isLoading || isLoadingHistory || isStreaming}
+                />
             </div>
             <div className={styles.chatRoot}>
                 <div className={styles.chatContainer}>
@@ -649,7 +662,7 @@ const Chat = () => {
                                                 onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab, index)}
                                                 onFollowupQuestionClicked={q => makeApiRequest(q)}
                                                 showFollowupQuestions={suggestFollowupQuestions && answers.length - 1 === index}
-                                                onAdjustClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
+                                                onSettingsClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
                                                 onRegenerateClick={() => makeApiRequest(answers[index][0])}
                                             />
                                         </div>
@@ -671,7 +684,7 @@ const Chat = () => {
                                                 onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab, index)}
                                                 onFollowupQuestionClicked={q => makeApiRequest(q)}
                                                 showFollowupQuestions={suggestFollowupQuestions && answers.length - 1 === index}
-                                                onAdjustClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
+                                                onSettingsClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
                                                 onRegenerateClick={() => makeApiRequest(answers[index][0])}
                                             />
                                         </div>
@@ -762,62 +775,109 @@ const Chat = () => {
                     />
                 </Panel>
                 <Panel
-                    type={PanelType.smallFixedFar}
-                    headerText="Model Settings"
-                    isOpen={isModelConfigPanelOpen}
+                    type={PanelType.medium}
+                    headerText="Adjust Settings"
+                    isOpen={isConfigPanelOpen}
                     isBlocking={true}
-                    onDismiss={() => setIsModelConfigPanelOpen(false)}
+                    onDismiss={() => setIsConfigPanelOpen(false)}
                     closeButtonAriaLabel="Close"
                     onRenderFooterContent={() =>
                         <div>
                             <PrimaryButton
                                 className={styles.panelButton}
-                                onClick={() => setIsModelConfigPanelOpen(false)}
+                                onClick={() => setIsConfigPanelOpen(false)}
                                 text="Close"
                             />
                             <DefaultButton
                                 className={styles.panelButton}
-                                onClick={() => onResetModelConfigButtonClicked()}
+                                onClick={() => onResetConfigButtonClicked()}
                                 text="Reset"
                             />
                             <DefaultButton
                                 className={styles.panelButton}
-                                onClick={() => onSaveModelConfigButtonClicked()}
+                                onClick={() => onSaveConfigButtonClicked()}
                                 text="Save"
                             />
                         </div>
                     }
                     isFooterAtBottom={true}>
-                    <PromptTemplatePicker
-                        className={styles.chatSettingsSeparator}
-                        promptTemplates={promptTemplates}
-                        selectedTemplate={selectedPromptTemplate}
-                        onChange={onPromptTemplatePickerChange}
-                        userData={userData}
-                    />
-                    {selectedGptDeployment && (
-                        <ModelPicker
-                            className={styles.chatSettingsSeparator}
-                            deployments={allGptDeployments}
-                            selectedGptDeployment={selectedGptDeployment}
-                            onGptDeploymentChange={onGptDeploymentChange}
-                        />
-                    )}
-                    <ResponseLengthButtonGroup
-                        className={styles.chatSettingsSeparator}
-                        onClick={onResponseLengthChange}
-                        value={responseLength}
-                    />
-                    <ResponseTempSlider
-                        className={styles.chatSettingsSeparator}
-                        onChange={setResponseTemp}
-                        value={responseTemp}
-                    />
-                    <TopPSlider
-                        className={styles.chatSettingsSeparator}
-                        onChange={setTopP}
-                        value={topP}
-                    />
+                    <Stack horizontal tokens={{ childrenGap: 20 }}>
+                        <StackItem grow align="start" styles={{ root: { width: "50%" } }}>
+                            <Label className={styles.panelSubHeaderText}>Model Settings</Label>
+                            <PromptTemplatePicker
+                                className={styles.chatSettingsSeparator}
+                                promptTemplates={promptTemplates}
+                                selectedTemplate={selectedPromptTemplate}
+                                onChange={onPromptTemplatePickerChange}
+                                userData={userData}
+                            />
+                            {selectedGptDeployment && (
+                                <ModelPicker
+                                    className={styles.chatSettingsSeparator}
+                                    deployments={allGptDeployments}
+                                    selectedGptDeployment={selectedGptDeployment}
+                                    onGptDeploymentChange={onGptDeploymentChange}
+                                />
+                            )}
+                            <ResponseLengthButtonGroup
+                                className={styles.chatSettingsSeparator}
+                                onClick={onResponseLengthChange}
+                                value={responseLength}
+                            />
+                            <ResponseTempSlider
+                                className={styles.chatSettingsSeparator}
+                                onChange={setResponseTemp}
+                                value={responseTemp}
+                            />
+                            <TopPSlider
+                                className={styles.chatSettingsSeparator}
+                                onChange={setTopP}
+                                value={topP}
+                            />
+                            <Checkbox
+                                className={styles.chatSettingsSeparator}
+                                checked={suggestFollowupQuestions}
+                                label="Suggest follow-up questions"
+                                onChange={onSuggestFollowupQuestionsChange}
+                            />
+                        </StackItem>
+                        <StackItem grow align="start" styles={{ root: { width: "50%" } }}>
+                            <Label className={styles.panelSubHeaderText}>Document Settings</Label>
+                            <Dropdown
+                                id="retrievalMode"
+                                className={styles.chatSettingsSeparator}
+                                label="Document search mode"
+                                options={retrievalModeOptions}
+                                onChange={onRetrievalModeChange}
+                            />
+                            {retrievalMode !== RetrievalMode.None &&
+                                <>
+                                    <SpinButton
+                                        id="retrieveCount"
+                                        className={styles.chatSettingsSeparator}
+                                        label="Documents to retrieve from search"
+                                        min={1}
+                                        max={20}
+                                        defaultValue={retrieveCount.toString()}
+                                        onChange={onRetrieveCountChange}
+                                    />
+                                    <FolderPicker
+                                        className={styles.chatSettingsSeparator}
+                                        allowFolderCreation={false}
+                                        onSelectedKeyChange={onSelectedKeyChanged}
+                                        selectedKeys={selectedFolders}
+                                        userData={userData}
+                                    />
+                                    <TagPickerInline
+                                        className={styles.chatSettingsSeparator}
+                                        allowNewTags={false}
+                                        onSelectedTagsChange={onSelectedTagsChange}
+                                        preSelectedTags={selectedTags}
+                                    />
+                                </>
+                            }
+                        </StackItem>
+                    </Stack>
                     <PromptOverride
                         className={styles.chatSettingsSeparator}
                         value={promptOverride}
@@ -862,59 +922,6 @@ const Chat = () => {
                             />
                         </DialogFooter>
                     </Dialog>
-                </Panel>
-                <Panel
-                    type={PanelType.smallFixedFar}
-                    headerText="Adjust answer generation"
-                    isOpen={isConfigPanelOpen}
-                    isBlocking={true}
-                    onDismiss={() => setIsConfigPanelOpen(false)}
-                    closeButtonAriaLabel="Close"
-                    onRenderFooterContent={() =>
-                        <PrimaryButton
-                            className={styles.panelButton}
-                            onClick={() => setIsConfigPanelOpen(false)}
-                            text="Close"
-                        />}
-                    isFooterAtBottom={true}>
-                    <Checkbox
-                        className={styles.chatSettingsSeparator}
-                        checked={suggestFollowupQuestions}
-                        label="Suggest follow-up questions"
-                        onChange={onSuggestFollowupQuestionsChange}
-                    />
-                    <Dropdown
-                        label="Document search mode"
-                        options={retrievalModeOptions}
-                        onChange={onRetrievalModeChange}
-                    />
-                    {retrievalMode !== RetrievalMode.None &&
-                        <>
-                            <SpinButton
-                                className={styles.chatSettingsSeparator}
-                                label="Documents to retrieve from search"
-                                min={1}
-                                max={50}
-                                defaultValue={retrieveCount.toString()}
-                                onChange={onRetrieveCountChange}
-                            />
-                            <Separator
-                                className={styles.chatSettingsSeparator}>
-                                Filter Search Results
-                            </Separator>
-                            <FolderPicker
-                                allowFolderCreation={false}
-                                onSelectedKeyChange={onSelectedKeyChanged}
-                                selectedKeys={selectedFolders}
-                                userData={userData}
-                            />
-                            <TagPickerInline
-                                allowNewTags={false}
-                                onSelectedTagsChange={onSelectedTagsChange}
-                                preSelectedTags={selectedTags}
-                            />
-                        </>
-                    }
                 </Panel>
                 <Panel
                     type={PanelType.smallFixedFar}

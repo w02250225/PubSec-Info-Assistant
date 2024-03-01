@@ -16,6 +16,10 @@ interface Props {
 export const PromptTemplatePicker = ({ className, promptTemplates, selectedTemplate, onChange, userData }: Props) => {
   const [filteredOptions, setFilteredOptions] = useState<IComboBoxOption[]>([]);
 
+  const tooltipHtml = `Prompt templates (text instructions and settings) can be used to assist in structuring the content and format of a response.<br />
+To make changes to an existing prompt template or to create new template, select <b>Save</b> after selecting the required settings and defining your prompt override.<br />
+Note: When making updates to your own existing prompt template, save the edits using the existing name.`
+
   const handleComboBoxChange = (
     event: React.FormEvent<IComboBox>,
     option?: IComboBoxOption,
@@ -89,8 +93,14 @@ export const PromptTemplatePicker = ({ className, promptTemplates, selectedTempl
 
   return (
     <div className={`${styles.container} ${className ?? ""}`}>
-      <Label>Prompt Template</Label>
+      <Label>Prompt Template&nbsp;
+        <FiHelpCircle
+          data-tooltip-id="TemplatePicker-tooltip"
+          data-tooltip-html={tooltipHtml}>
+        </FiHelpCircle>
+      </Label>
       <ComboBox
+        id="promptTemplatePicker"
         placeholder="Select a Template"
         options={filteredOptions}
         selectedKey={selectedTemplate?.id || null}

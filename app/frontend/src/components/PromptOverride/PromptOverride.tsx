@@ -23,6 +23,7 @@ export const PromptOverride = ({ className, onChange, value }: Props) => {
             </Label>
             <TextField
                 value={value}
+                rows={5}
                 multiline
                 autoAdjustHeight
                 onChange={onChange}
