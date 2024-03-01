@@ -2,6 +2,10 @@ param name string
 param location string = resourceGroup().location
 param kvAccessObjectId string
 @secure()
+param aadWebClientId string
+@secure()
+param aadWebClientSecret string
+@secure()
 param openaiServiceKey string
 param useExistingAOAIService bool
 param tags object = {}
@@ -36,6 +40,22 @@ resource openaiServiceKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' =
   name: 'AZURE-OPENAI-SERVICE-KEY'
   properties: {
     value: openaiServiceKey
+  }
+}
+
+resource aadWebClientIdSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: kv
+  name: 'CLIENT-ID'
+  properties: {
+    value: aadWebClientId
+  }
+}
+
+resource aadWebClientSecretSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: kv
+  name: 'CLIENT-SECRET'
+  properties: {
+    value: aadWebClientSecret
   }
 }
 

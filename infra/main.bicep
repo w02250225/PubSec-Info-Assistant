@@ -32,11 +32,7 @@ param openAiServiceName string = ''
 param openAiSkuName string = 'S0'
 param cosmosdbName string = ''
 param formRecognizerName string = ''
-#disable-next-line no-unused-params
-param enrichmentName string = ''
 param formRecognizerSkuName string = 'S0'
-#disable-next-line no-unused-params
-param enrichmentSkuName string = 'S0'
 param appServicePlanName string = ''
 param enrichmentAppServicePlanName string = ''
 param resourceGroupName string = ''
@@ -355,18 +351,6 @@ module formrecognizer 'core/ai/formrecognizer.bicep' = {
   }
 }
 
-// module enrichment 'core/ai/enrichment.bicep' = {
-//   scope: rg
-//   name: 'enrichment'
-//   params: {
-//     name: !empty(enrichmentName) ? enrichmentName : '${prefix}-enrichment-${abbrs.cognitiveServicesAccounts}${randomString}'
-//     location: location
-//     tags: tags
-//     sku: enrichmentSkuName
-//     isGovCloudDeployment: isGovCloudDeployment
-//   }
-// }
-
 module searchServices 'core/search/search-services.bicep' = {
   scope: rg
   name: 'search-services'
@@ -379,10 +363,6 @@ module searchServices 'core/search/search-services.bicep' = {
       name: searchServicesSkuName
     }
     semanticSearch: 'free'
-    // cogServicesName: !empty(cognitiveServicesForSearchName) ? cognitiveServicesForSearchName : '${prefix}-${abbrs.cognitiveServicesAccounts}${randomString}'
-    // cogServicesSku: {
-    //   name: cognitiveServicesForSearchSku
-    // }
     isGovCloudDeployment: isGovCloudDeployment
   }
 }
@@ -500,16 +480,16 @@ module cosmoslogdb 'core/db/cosmosdb.bicep' = {
   ]
 }
 
-module cosmosrequestsdb 'core/db/cosmosdb.bicep' = {
-  name: 'cosmosrequestsdb'
+module cosmosconversationdb 'core/db/cosmosdb.bicep' = {
+  name: 'cosmosconversationdb'
   scope: rg
   params: {
     name: !empty(cosmosdbName) ? cosmosdbName : '${prefix}-${abbrs.cosmosDBAccounts}${randomString}'
     keyVaultName: kvModule.outputs.keyVaultName
     location: location
     tags: tags
-    databaseName: 'requestdb'
-    containerName: 'requestcontainer'
+    databaseName: 'ConversationDB'
+    containerName: 'ConversationContainer'
     partitionKeyPath: [ '/user_id' ]
     partitionKeyVersion: 2
     autoscaleMaxThroughput: 2000
@@ -531,7 +511,24 @@ module cosmouserdb 'core/db/cosmosdb.bicep' = {
     partitionKeyVersion: 2
     autoscaleMaxThroughput: 2000
   }
-  dependsOn: [ cosmosrequestsdb ] // Cosmos doesn't like parallel deployments
+  dependsOn: [ cosmosconversationdb ] // Cosmos doesn't like parallel deployments
+}
+
+module cosmosconfigdb 'core/db/cosmosdb.bicep' ={
+  name: 'cosmosconfigdb'
+  scope: rg
+  params: {
+    name: !empty(cosmosdbName) ? cosmosdbName : '${prefix}-${abbrs.cosmosDBAccounts}${randomString}'
+    keyVaultName: kvModule.outputs.keyVaultName
+    location: location
+    tags: tags
+    databaseName: 'ConfigDB'
+    containerName: 'PromptContainer'
+    partitionKeyPath: [ '/user_id' ]
+    partitionKeyVersion: 2
+    autoscaleMaxThroughput: 2000
+  }
+  dependsOn: [ cosmouserdb ] // Cosmos doesn't like parallel deployments
 }
 
 // Function App
@@ -714,6 +711,8 @@ module kvModule 'core/security/keyvault.bicep' = {
     tags: tags
     kvAccessObjectId: kvAccessObjectId
     openaiServiceKey: azureOpenAIServiceKey
+    aadWebClientId: aadWebClientId
+    aadWebClientSecret: aadWebClientSecret
     useExistingAOAIService: useExistingAOAIService
   }
 }
@@ -734,10 +733,12 @@ output AZURE_OPENAI_CHAT_GPT_DEPLOYMENT string = !empty(chatGptDeploymentName) ?
 output AZURE_OPENAI_RESOURCE_GROUP string = azureOpenAIResourceGroup
 output AZURE_FUNCTION_APP_NAME string = functions.outputs.name
 output AZURE_COSMOSDB_URL string = cosmoslogdb.outputs.CosmosDBEndpointURL
+output COSMOSDB_CONFIG_DATABASE_NAME string = cosmosconfigdb.outputs.CosmosDBDatabaseName
+output COSMOSDB_PROMPT_CONTAINER_NAME string = cosmosconfigdb.outputs.CosmosDBContainerName
 output AZURE_COSMOSDB_LOG_DATABASE_NAME string = cosmoslogdb.outputs.CosmosDBDatabaseName
 output AZURE_COSMOSDB_LOG_CONTAINER_NAME string = cosmoslogdb.outputs.CosmosDBContainerName
-output AZURE_COSMOSDB_REQUEST_DATABASE_NAME string = cosmosrequestsdb.outputs.CosmosDBDatabaseName
-output AZURE_COSMOSDB_REQUEST_CONTAINER_NAME string = cosmosrequestsdb.outputs.CosmosDBContainerName
+output AZURE_COSMOSDB_REQUEST_DATABASE_NAME string = cosmosconversationdb.outputs.CosmosDBDatabaseName
+output AZURE_COSMOSDB_REQUEST_CONTAINER_NAME string = cosmosconversationdb.outputs.CosmosDBContainerName
 output AZURE_COSMOSDB_USER_DATABASE_NAME string = cosmouserdb.outputs.CosmosDBDatabaseName
 output AZURE_COSMOSDB_USER_CONTAINER_NAME string = cosmouserdb.outputs.CosmosDBContainerName
 output AZURE_FORM_RECOGNIZER_ENDPOINT string = formrecognizer.outputs.formRecognizerAccountEndpoint
@@ -750,6 +751,9 @@ output ENRICHMENT_ENDPOINT string = searchServices.outputs.endpoint
 output ENRICHMENT_NAME string = searchServices.outputs.name
 output TARGET_TRANSLATION_LANGUAGE string = targetTranslationLanguage
 output ENABLE_DEV_CODE bool = enableDevCode
+output CLIENT_ID string = aadWebClientId
+output MGMT_CLIENT_ID string = aadMgmtClientId
+output MGMT_SP_ID string = aadMgmtServicePrincipalId
 output AZURE_TENANT_ID string = tenantId
 output AZURE_SUBSCRIPTION_ID string = subscriptionId
 output IS_USGOV_DEPLOYMENT bool = isGovCloudDeployment
