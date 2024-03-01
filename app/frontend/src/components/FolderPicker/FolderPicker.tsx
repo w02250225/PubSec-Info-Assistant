@@ -9,18 +9,17 @@ import {
     IComboBoxOption,
     IComboBoxStyles,
     SelectableOptionMenuItemType,
-    TooltipHost,
-    ITooltipHostStyles,
     ActionButton,
     Label,
-    DirectionalHint
+    Dialog,
+    DialogFooter,
+    DialogType
 } from "@fluentui/react";
-import { TeachingBubble, ITeachingBubbleStyles } from '@fluentui/react/lib/TeachingBubble';
 import { FiHelpCircle } from 'react-icons/fi';
 import { ITextFieldStyleProps, ITextFieldStyles, TextField } from '@fluentui/react/lib/TextField';
 import { ILabelStyles, ILabelStyleProps } from '@fluentui/react/lib/Label';
 import { IIconProps } from '@fluentui/react';
-import { IButtonProps } from '@fluentui/react/lib/Button';
+import { DefaultButton, IButtonProps, PrimaryButton } from '@fluentui/react/lib/Button';
 import { BlobServiceClient } from "@azure/storage-blob";
 
 import { getBlobClientUrl, UserData } from "../../api";
@@ -29,59 +28,41 @@ import styles from "./FolderPicker.module.css";
 var allowNewFolders = false;
 
 interface Props {
+    className?: string;
     allowFolderCreation?: boolean;
     onSelectedKeyChange: (selectedFolders: string[]) => void;
     selectedKeys: string[];
     userData: UserData;
 }
 
-export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selectedKeys, userData }: Props) => {
+export const FolderPicker = ({ className, allowFolderCreation, onSelectedKeyChange, selectedKeys, userData }: Props) => {
 
-    const buttonId = useId('targetButton');
-    const tooltipId = useId('folderpicker-tooltip');
-    const textFieldId = useId('textField');
+    allowNewFolders = allowFolderCreation as boolean;
 
-    const [teachingBubbleVisible, { toggle: toggleTeachingBubbleVisible }] = useBoolean(false);
+    const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
+    const [newFolderText, setNewFolderText] = useState('');
     const [comboBoxOptions, setComboBoxOptions] = useState<IComboBoxOption[]>([]);
     const selectableOptions = comboBoxOptions.filter(
         option =>
             (option.itemType === SelectableOptionMenuItemType.Normal || option.itemType === undefined) && !option.disabled,
     );
     const comboBoxStyles: Partial<IComboBoxStyles> = { root: { maxWidth: 300 }, input: { cursor: 'pointer' } };
-    const hostStyles: Partial<ITooltipHostStyles> = { root: { display: 'inline-block' } };
-    const addFolderIcon: IIconProps = { iconName: 'Abdd' };
+    const addFolderIcon: IIconProps = { iconName: 'NewFolder' };
+    const tooltipHtml = allowNewFolders ? "Select a folder to upload documents into" : "Select a folder to filter the search by"
 
-    allowNewFolders = allowFolderCreation as boolean;
-
-    const teachingBubbleStyles: Partial<ITeachingBubbleStyles> = {
-        content: {
-            background: "#d3d3d3",
-            borderColor: "#696969"
-        },
-        headline: {
-            color: "#696969"
-        },
-    }
-
-    const teachingBubblePrimaryButtonClick = () => {
-        const textField = document.getElementById(textFieldId) as HTMLInputElement;
-        if (!textField.defaultValue || textField.defaultValue.trim() === '') {
+    const onCreateFolder = () => {
+        const newFolderValue = newFolderText.trim();
+        if (!newFolderValue || newFolderValue === '') {
             alert('Please enter a folder name.');
         } else {
             // add the folder to the dropdown list and select it
             // This will be passed to the FilePicker component to determine the folder to upload to
-            const trimVal = textField.defaultValue.trim()
             const currentOptions = comboBoxOptions;
-            currentOptions.push({ key: trimVal, text: trimVal });
+            currentOptions.push({ key: newFolderValue, text: newFolderValue });
             setComboBoxOptions(currentOptions);
-            onSelectedKeyChange([trimVal]);
-            toggleTeachingBubbleVisible();
+            onSelectedKeyChange([newFolderValue]);
+            setIsNewFolderDialogOpen(false);
         }
-    };
-
-    const examplePrimaryButtonProps: IButtonProps = {
-        children: 'Create folder',
-        onClick: teachingBubblePrimaryButtonClick,
     };
 
     async function fetchBlobFolderData() {
@@ -137,37 +118,12 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
         } catch (error) {
             console.log(error);
         }
-    }
+    };
 
     useEffect(() => {
         fetchBlobFolderData();
         onSelectedKeyChange([userData.userPrincipalName]);
     }, []);
-
-
-    function getStyles(props: ITextFieldStyleProps): Partial<ITextFieldStyles> {
-        const { required } = props;
-        return {
-            fieldGroup: [
-                { width: 300 },
-                required && {
-                    borderColor: "#F8f8ff",
-                },
-            ],
-            subComponentStyles: {
-                label: getLabelStyles,
-            },
-        };
-    }
-
-    function getLabelStyles(props: ILabelStyleProps): ILabelStyles {
-        const { required } = props;
-        return {
-            root: required && {
-                color: "#696969",
-            },
-        };
-    }
 
     const onChange = (
         event: React.FormEvent<IComboBox>,
@@ -208,16 +164,16 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
     };
 
     return (
-        <div className={styles.folderArea}>
+        <div className={`${styles.folderArea} ${className ?? ""}`}>
             <div className={styles.folderSelection}>
                 <Label>Folder Selection&nbsp;
-                    <TooltipHost content={allowNewFolders ? "Select a folder to upload documents into" : "Select a folder to filter the search by"}
-                        styles={hostStyles}
-                        id={tooltipId}>
-                        <FiHelpCircle></FiHelpCircle>
-                    </TooltipHost>
+                    <FiHelpCircle
+                        data-tooltip-id="FolderSelection-tooltip"
+                        data-tooltip-html={tooltipHtml}>
+                    </FiHelpCircle>
                 </Label>
                 <ComboBox
+                    id="folderPicker"
                     multiSelect={allowNewFolders ? false : true}
                     selectedKey={selectedKeys ? selectedKeys : undefined}
                     options={comboBoxOptions}
@@ -234,23 +190,31 @@ export const FolderPicker = ({ allowFolderCreation, onSelectedKeyChange, selecte
                     <ActionButton
                         iconProps={addFolderIcon}
                         allowDisabledFocus
-                        onClick={toggleTeachingBubbleVisible}
-                        id={buttonId}>
+                        onClick={() => setIsNewFolderDialogOpen(true)}>
                         Create new folder
                     </ActionButton>
-                    {teachingBubbleVisible && (
-                        <TeachingBubble
-                            target={`#${buttonId}`}
-                            primaryButtonProps={examplePrimaryButtonProps}
-                            onDismiss={toggleTeachingBubbleVisible}
-                            headline="Create new folder"
-                            calloutProps={{ directionalHint: DirectionalHint.topCenter }}
-                            styles={teachingBubbleStyles}
-                            hasCloseButton={true}
-                        >
-                            <TextField id={textFieldId} label='Folder Name:' required={true} styles={getStyles} />
-                        </TeachingBubble>
-                    )}
+                    <Dialog
+                        hidden={!isNewFolderDialogOpen}
+                        onDismiss={() => setIsNewFolderDialogOpen(false)}
+                        dialogContentProps={{
+                            type: DialogType.normal,
+                            title: 'Create New Folder',
+                        }}
+                        modalProps={{
+                            isBlocking: true,
+                            styles: {
+                                main: {
+                                    maxWidth: '500px !important',
+                                    minWidth: '400px !important',
+                                },
+                            },
+                        }}>
+                        <TextField value={newFolderText} onChange={(e, newValue) => setNewFolderText(newValue || '')} />
+                        <DialogFooter>
+                            <PrimaryButton onClick={onCreateFolder} text="Create" />
+                            <DefaultButton onClick={() => setIsNewFolderDialogOpen(false)} text="Cancel" />
+                        </DialogFooter>
+                    </Dialog>
                 </div>) : ""}
         </div>
     );

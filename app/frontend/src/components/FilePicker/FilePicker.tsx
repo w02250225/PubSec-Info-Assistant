@@ -1,155 +1,224 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { BlobServiceClient } from "@azure/storage-blob";
-import classNames from "classnames";
+import { BlobServiceClient, BlockBlobUploadOptions } from "@azure/storage-blob";
+import { toast } from 'react-toastify';
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DropZone } from "./DropZone"
 import styles from "./FilePicker.module.css";
 import { FilesList } from "./FilesList";
 import { getBlobClientUrl, logStatus, StatusLogClassification, StatusLogEntry, StatusLogState } from "../../api"
+import { PrimaryButton } from "@fluentui/react";
 
 interface Props {
   folderPath: string;
   tags: string[];
+};
+
+interface UploadFile {
+  id: string;
+  file: File;
+  status: 'pending' | 'uploading' | 'success' | 'error';
+  progress: number;
 }
 
-const FilePicker = ({ folderPath, tags }: Props) => {
+export const FilePicker = ({ folderPath, tags }: Props) => {
   const [files, setFiles] = useState<any>([]);
   const [progress, setProgress] = useState(0);
   const [uploadStarted, setUploadStarted] = useState(false);
   const folderName = folderPath;
   const tagList = tags;
 
+  function handleError(error: any, message: string) {
+    let errorMessage = message;
+    // Determine the specific error message
+    let specificErrorMessage = "An unexpected error occurred";
+    if (typeof error === 'string') {
+      specificErrorMessage = error;
+    } else if (error instanceof Error) {
+      specificErrorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null) {
+      const err = error as { response?: { data?: { error?: string; message?: string } } };
+      if (err.response && err.response.data) {
+        specificErrorMessage = err.response.data.error || err.response.data.message || specificErrorMessage;
+      }
+    }
+    // Display the error message as a toast notification
+    errorMessage = `${errorMessage}: ${specificErrorMessage}`;
+    toast.error(errorMessage);
+  };
+
   // handler called when files are selected via the Dropzone component
   const handleOnChange = useCallback((files: any) => {
-
     let filesArray = Array.from(files);
-
     filesArray = filesArray.map((file) => ({
       id: nanoid(),
-      file
+      file,
+      status: 'pending',
+      progress: 0,
     }));
-    setFiles(filesArray as any);
+    setFiles(filesArray as UploadFile[]);
     setProgress(0);
     setUploadStarted(false);
   }, []);
 
   // handle for removing files form the files list view
   const handleClearFile = useCallback((id: any) => {
-    setFiles((prev: any) => prev.filter((file: any) => file.id !== id));
+    setFiles((prev: UploadFile[]) => prev.filter((file: any) => file.id !== id));
   }, []);
-
-  // whether to show the progress bar or not
-  const canShowProgress = useMemo(() => files.length > 0, [files.length]);
 
   // execute the upload operation
   const handleUpload = useCallback(async () => {
     try {
-      const data = new FormData();
-      // console.log("files", files);
       setUploadStarted(true);
 
-      // create an instance of the BlobServiceClient
       const blobClientUrl = await getBlobClientUrl();
       const blobServiceClient = new BlobServiceClient(blobClientUrl);
-
       const containerClient = blobServiceClient.getContainerClient("upload");
-      var counter = 1;
-      files.forEach(async (indexedFile: any) => {
-        // add each file into Azure Blob Storage
-        var file = indexedFile.file as File;
-        var filePath = (folderName == "") ? file.name : folderName + "/" + file.name;
+
+      const uploadPromises = files.map(async (indexedFile: UploadFile, index: number) => {
+        // Mark file as uploading
+        setFiles((prevFiles: UploadFile[]) => prevFiles.map(f => f.id === indexedFile.id ? { ...f, status: 'uploading' } : f));
+
+        const file = indexedFile.file;
+        const filePath = folderName === "" ? file.name : `${folderName}/${file.name}`;
         const blobClient = containerClient.getBlockBlobClient(filePath);
-        // set mimetype as determined from browser with file upload control
-        const options = {
+
+        const options: BlockBlobUploadOptions = {
           blobHTTPHeaders: { blobContentType: file.type },
-          metadata: {}
         };
 
         if (tagList.length > 0) {
           options.metadata = { tags: tagList.join(',') };
+        };
+
+        try {
+          await blobClient.uploadData(file, options);
+
+          // Log status
+          const logEntry: StatusLogEntry = {
+            path: "upload/" + filePath,
+            status: "File uploaded from browser to Azure Blob Storage",
+            status_classification: StatusLogClassification.Info,
+            state: StatusLogState.Uploaded,
+            tags: tags
+          };
+          await logStatus(logEntry);
+
+          // Update the file status to 'success' and progress to 100 once upload is done
+          setFiles((prevFiles: UploadFile[]) => prevFiles.map((f) => {
+            if (f.id === indexedFile.id) {
+              return { ...f, status: 'success', progress: 100 };
+            }
+            return f;
+          }));
+        } catch (error) {
+          // Mark file as error
+          // Update the file status to 'error' and leave progress as is
+          setFiles((prevFiles: UploadFile[]) => prevFiles.map((f) => {
+            if (f.id === indexedFile.id) {
+              return { ...f, status: 'error' };
+            }
+            return f;
+          }));
+          handleError(error, `Upload failed for file: ${indexedFile.file.name}`,);
         }
 
-        // upload file
-        blobClient.uploadData(file, options);
-        //write status to log
-        var logEntry: StatusLogEntry = {
-          path: "upload/" + filePath,
-          status: "File uploaded from browser to Azure Blob Storage",
-          status_classification: StatusLogClassification.Info,
-          state: StatusLogState.Uploaded,
-          tags: tags
-        }
-        await logStatus(logEntry);
-
-        setProgress((counter / files.length) * 100);
-        counter++;
       });
 
-      setUploadStarted(false);
+      await Promise.all(uploadPromises);
     } catch (error) {
-      console.log(error);
-    }
-  }, [files.length]);
+      handleError(error, "An error occurred while uploading files");
 
-  // set progress to zero when there are no files
-  useEffect(() => {
-    if (files.length < 1) {
-      setProgress(0);
-    }
-  }, [files.length]);
+      // Set all files to error if something fails before the upload loop
+      setFiles((prevFiles: UploadFile[]) => prevFiles.map(file => ({
+        ...file,
+        status: 'error',
+        progress: 0
+      })));
 
-  // set uploadStarted to false when the upload is complete
-  useEffect(() => {
-    if (progress === 100) {
+    } finally {
       setUploadStarted(false);
     }
-  }, [progress]);
+
+  }, [files, folderName, tagList]);
+
+  const allowedFileTypes = [
+    // Documents
+    'application/pdf', '.pdf',
+    'text/html', '.htm', '.html',
+    'text/csv', '.csv',
+    'application/msword', '.doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '.docx',
+    'message/rfc822', '.eml',
+    'text/markdown', '.md',
+    'application/vnd.ms-outlook', '.msg',
+    'application/vnd.ms-powerpoint', '.ppt',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation', '.pptx',
+    'text/plain', '.txt',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '.xlsx',
+    'application/xml', '.xml',
+    'application/json', '.json',
+
+    // Video
+    'video/x-flv', '.flv',
+    'application/mxf', '.mxf',
+    '.gxf',
+    'video/MP2T', '.ts',
+    '.ps',
+    'video/3gpp', '.3gp', '.3gpp',
+    'video/mpeg', '.mpg',
+    'video/x-ms-wmv', '.wmv',
+    'video/x-ms-asf', '.asf',
+    'video/x-msvideo', '.avi',
+    'video/mp4', '.mp4', '.m4a', '.m4v',
+    '.isma', '.ismv',
+    '.dvr-ms',
+    'video/x-matroska', '.mkv',
+
+    // Audio
+    'audio/wav', '.wav',
+    'audio/x-m4a', '.m4a',
+    'audio/mp4', '.m4a',
+    'video/quicktime', '.mov',
+
+    // Images
+    'image/jpeg', '.jpg', '.jpeg',
+    'image/png', '.png',
+    'image/gif', '.gif',
+    'image/bmp', '.bmp',
+    'image/tiff', '.tif', '.tiff'
+  ];
 
   const uploadComplete = useMemo(() => progress === 100, [progress]);
 
   return (
     <div className={styles.wrapper}>
-      {/* canvas */}
       <div className={styles.canvas_wrapper}>
-        <DropZone onChange={handleOnChange} accept={files} />
+        <DropZone
+          onChange={handleOnChange}
+          accept={allowedFileTypes}
+        />
       </div>
 
-      {/* files listing */}
       {files.length ? (
         <div className={styles.files_list_wrapper}>
           <FilesList
             files={files}
             onClear={handleClearFile}
-            uploadComplete={uploadComplete}
           />
         </div>
       ) : null}
 
-      {/* progress bar */}
-      {canShowProgress ? (
-        <div className={styles.files_list_progress_wrapper}>
-          <progress value={progress} max={100} style={{ width: "100%" }} />
-        </div>
-      ) : null}
-
-      {/* upload button */}
       {files.length ? (
-        <button
+        <PrimaryButton
           onClick={handleUpload}
-          className={classNames(
-            styles.upload_button,
-            uploadComplete || uploadStarted ? styles.disabled : ""
-          )}
-          aria-label="upload files"
-        >
-          {`Upload ${files.length} Files`}
-        </button>
+          className={`${styles.upload_button} ${uploadComplete || uploadStarted ? styles.disabled : ''}`}
+          aria-label="Upload Files"
+          text={`Upload ${files.length} Files`}
+        />
       ) : null}
     </div>
   );
 };
-
-export { FilePicker };
