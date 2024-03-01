@@ -1,13 +1,13 @@
 .folderArea {
-    padding-bottom: 20px;
-  }
+  padding-bottom: 5px;
+}
 
-  .folderSelection {
-    padding-bottom: 5px;
-    justify-content: left;
-    text-align: left;
-  }
+.folderSelection {
+  padding-bottom: 5px;
+  justify-content: left;
+  text-align: left;
+}
 
-  .actionButton {
-    width: 180px;
-  }
+.actionButton {
+  width: 180px;
+}

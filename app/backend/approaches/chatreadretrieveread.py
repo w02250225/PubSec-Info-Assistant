@@ -257,7 +257,7 @@ Always include citations if you reference the source documents. Use square brack
                 # include the "FileX" moniker in the prompt, and the actual file name in the response
                 results.append(f"File{idx} " + "| " + self.nonewlines(doc[self.content_field]))
                 file_uri_parsed = urlparse(doc[self.source_file_field])
-                data_points.append("/".join(unquote(file_uri_parsed.path).split("/")[2:]) + " | " + self.nonewlines(doc[self.content_field]))
+                data_points.append(file_uri_parsed.path.lstrip("/") + " | " + self.nonewlines(doc[self.content_field]))
                 citation_lookup[f"File{idx}"] = {
                     "citation": unquote(f"https://{file_uri_parsed.netloc}/{self.content_storage_container}/{doc[self.chunk_file_field]}"),
                     "source_path": file_uri_parsed.path.lstrip("/"),

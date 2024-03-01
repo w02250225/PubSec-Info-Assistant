@@ -147,3 +147,41 @@
     height: 125px;
     cursor: pointer;
 }
+
+.panelSubHeaderText {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.tourTooltipContainer {
+    background: #f3f2f1;
+    max-width: 420px;
+    min-width: 290px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.tourTooltipContent {
+    margin: 16px;
+}
+
+.tourTooltipFooter {
+    padding: 8px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.tourTooltipTitle {
+    margin-bottom: 12px;
+}
+
+.tourTooltipBackButton {}
+
+.tourTooltipBackButton:disabled {
+    cursor: not-allowed;
+}
+
+.tourTooltipNextButton {
+    margin-left: auto;
+}

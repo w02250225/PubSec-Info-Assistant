@@ -62,7 +62,7 @@ const Layout = () => {
                 </div>
             </header>
             <div className={styles.raibanner}>
-                <span className={styles.raiwarning}>AI-generated content may be incorrect</span>
+                <span className={styles.raiwarning}>AI-generated content may be incorrect. You must only provide publicly available information to Coeus.</span>
             </div>
             <ToastContainer
                 className={styles.toastContainer}

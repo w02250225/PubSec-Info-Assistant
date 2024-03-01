@@ -7,14 +7,14 @@ import { Options16Filled, ArrowSync16Filled, ArrowExport16Filled, Clipboard16Fil
 import styles from "./RAIPanel.module.css";
 
 interface Props {
-    onAdjustClick?: () => void;
+    onSettingsClick?: () => void;
     onRegenerateClick?: () => void;
     onExportClick?: () => void;
     onCopyAnswerClick?: () => void;
     isStreaming?: boolean;
 }
 
-export const RAIPanel = ({ onAdjustClick, onRegenerateClick, onExportClick, onCopyAnswerClick, isStreaming }: Props) => {
+export const RAIPanel = ({ onSettingsClick, onRegenerateClick, onExportClick, onCopyAnswerClick, isStreaming }: Props) => {
     const [isCopied, setIsCopied] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
 
@@ -48,9 +48,9 @@ export const RAIPanel = ({ onAdjustClick, onRegenerateClick, onExportClick, onCo
 
     return (
         <div className={styles.adjustInputContainer}>
-            <div className={`${styles.adjustInput} ${isStreaming ? styles.disabled : ''}`} onClick={onAdjustClick}>
+            <div className={`${styles.adjustInput} ${isStreaming ? styles.disabled : ''}`} onClick={onSettingsClick}>
                 <Options16Filled primaryFill="rgba(133, 133, 133, 1)" />
-                <span className={styles.adjustInputText}>Adjust</span>
+                <span className={styles.adjustInputText}>Settings</span>
             </div>
             <div className={`${styles.adjustInput} ${isStreaming ? styles.disabled : ''}`} onClick={onRegenerateClick}>
                 <ArrowSync16Filled primaryFill="rgba(133, 133, 133, 1)" />

@@ -21,9 +21,12 @@ export const SettingsButton = ({ className, onClick, disabled }: Props) => {
     };
 
     return (
-        <div className={`${styles.container} ${className ?? ""} ${disabled && styles.disabled}`} onClick={handleClick}>
+        <div
+            id="settingsButton"
+            className={`${styles.container} ${className ?? ""} ${disabled && styles.disabled}`}
+            onClick={handleClick}>
             <Options24Filled />
-            <Text>{"Adjust"}</Text>
+            <Text>{"Settings"}</Text>
         </div>
     );
 };

@@ -35,6 +35,21 @@ export const Tooltips = () => {
         className={`${styles.tooltip}`}
         place="left"
         variant="info" />
+      <ReactTooltip
+        id="FolderSelection-tooltip"
+        className={`${styles.tooltip}`}
+        place="left"
+        variant="info" />
+      <ReactTooltip
+        id="TagSelection-tooltip"
+        className={`${styles.tooltip}`}
+        place="left"
+        variant="info" />
+      <ReactTooltip
+        id="TemplatePicker-tooltip"
+        className={`${styles.tooltip}`}
+        place="left"
+        variant="info" />
     </>
   );
 };

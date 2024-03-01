@@ -21,7 +21,10 @@ export const ClearChatButton = ({ className, disabled, onClick }: Props) => {
     };
 
     return (
-        <div className={`${styles.container} ${className ?? ""} ${disabled && styles.disabled}`} onClick={handleClick}>
+        <div
+            id="clearChatButton"
+            className={`${styles.container} ${className ?? ""} ${disabled && styles.disabled}`}
+            onClick={handleClick}>
             <Broom24Regular />
             <Text>{"Clear chat"}</Text>
         </div>

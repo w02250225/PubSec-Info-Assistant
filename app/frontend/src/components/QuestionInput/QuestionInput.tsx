@@ -93,7 +93,7 @@ export const QuestionInput = ({
         <Stack>
             <Stack.Item>
                 <Stack horizontal className={styles.questionInputContainer}>
-                    <div className={styles.questionClearButtonsContainer}>
+                    <div className={styles.questionClearButtonsContainer} data-tour="questionInput">
                         <div
                             className={`${styles.questionClearChatButton} ${clearChatDisabled ? styles.disablePointer : ''}`}
                             aria-label="Clear chat button"
@@ -105,6 +105,7 @@ export const QuestionInput = ({
                         </div>
                     </div>
                     <TextField
+                        id="questionInput"
                         className={styles.questionInputTextArea}
                         placeholder={placeholder}
                         multiline
@@ -122,6 +123,7 @@ export const QuestionInput = ({
                             </div>
                         ) : (
                             <div
+                                id="askQuestion"
                                 className={`${styles.questionInputSendButton} ${sendQuestionDisabled ? styles.questionInputSendButtonDisabled : ""}`}
                                 aria-label="Ask question button"
                                 onClick={sendQuestion}>

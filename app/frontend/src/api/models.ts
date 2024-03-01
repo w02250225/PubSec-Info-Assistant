@@ -237,6 +237,7 @@ export type PromptTemplate = {
     prompt_override: string;
     response_length: number;
     temperature: number;
+    suggest_followup_questions: boolean;
     top_p: number;
     retrieval_mode: RetrievalMode;
 };

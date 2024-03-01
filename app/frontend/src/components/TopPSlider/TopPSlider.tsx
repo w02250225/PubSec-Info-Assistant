@@ -62,6 +62,7 @@ export const TopPSlider = ({ className, onChange, value = 0 }: Props) => {
         />
       </Label>
       <TextField
+        id="topPSlider"
         className={`${styles.topPValue}`}
         value={displayValue}
         onChange={handleInputChange}
