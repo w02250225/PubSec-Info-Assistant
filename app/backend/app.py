@@ -19,11 +19,17 @@ import requests
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from approaches.chat import ChatApproach
 from azure.core.credentials import AzureKeyCredential
+<<<<<<< HEAD
 from azure.identity.aio import DefaultAzureCredential#, get_bearer_token_provider
 from azure.mgmt.cognitiveservices.aio import CognitiveServicesManagementClient
 from azure.monitor.opentelemetry import configure_azure_monitor
 from azure.search.documents.aio import SearchClient
 from azure.storage.blob.aio import BlobServiceClient
+=======
+from azure.identity import DefaultAzureCredential, AzureAuthorityHosts
+from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
+from azure.search.documents import SearchClient
+>>>>>>> refs/remotes/origin/main
 from azure.storage.blob import (
     AccountSasPermissions,
     BlobSasPermissions,
@@ -81,9 +87,11 @@ AZURE_OPENAI_RESOURCE_GROUP = os.environ.get("AZURE_OPENAI_RESOURCE_GROUP") or "
 AZURE_OPENAI_CHATGPT_MODEL_NAME = os.environ.get("AZURE_OPENAI_CHATGPT_MODEL_NAME") or ""
 AZURE_OPENAI_CHATGPT_MODEL_VERSION = os.environ.get("AZURE_OPENAI_CHATGPT_MODEL_VERSION") or ""
 USE_AZURE_OPENAI_EMBEDDINGS = str_to_bool.get(os.environ.get("USE_AZURE_OPENAI_EMBEDDINGS").lower()) or False
+
 EMBEDDING_DEPLOYMENT_NAME = os.environ.get("EMBEDDING_DEPLOYMENT_NAME") or ""
 AZURE_OPENAI_EMBEDDINGS_MODEL_NAME = os.environ.get("AZURE_OPENAI_EMBEDDINGS_MODEL_NAME") or ""
 AZURE_OPENAI_EMBEDDINGS_MODEL_VERSION = os.environ.get("AZURE_OPENAI_EMBEDDINGS_MODEL_VERSION") or ""
+AZURE_MANAGEMENT_URL = ( os.environ.get("AZURE_MANAGEMENT_URL") or "")
 
 AZURE_OPENAI_SERVICE_KEY = os.environ.get("AZURE_OPENAI_SERVICE_KEY")
 AZURE_OPENAI_API_VERSION = os.environ.get("AZURE_OPENAI_API_VERSION")
@@ -133,6 +141,7 @@ LOGOUT_URL = os.getenv("LOGOUT_URL") or "https://www.treasury.qld.gov.au/"
 os.environ["TZ"] = "Australia/Brisbane"
 time.tzset()
 
+<<<<<<< HEAD
 azure_credential = DefaultAzureCredential()
 azure_search_key_credential = AzureKeyCredential(AZURE_SEARCH_SERVICE_KEY)
 
@@ -152,6 +161,34 @@ def create_msal_client():
         CLIENT_ID,
         authority=AUTHORITY,
         client_credential=CLIENT_SECRET
+=======
+# Used by the OpenAI SDK
+openai.api_type = "azure"
+
+authority = AzureAuthorityHosts.AZURE_PUBLIC_CLOUD
+
+if (IS_GOV_CLOUD_DEPLOYMENT):
+    authority = AzureAuthorityHosts.AZURE_GOVERNMENT
+    openai.api_base = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.us"
+else:
+    openai.api_base = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com"
+
+openai.api_version = "2023-06-01-preview"
+
+# Use the current user identity to authenticate with Azure OpenAI, Cognitive Search and Blob Storage (no secrets needed,
+# just use 'az login' locally, and managed identity when deployed on Azure). If you need to use keys, use separate AzureKeyCredential instances with the
+# keys for each service
+# If you encounter a blocking error during a DefaultAzureCredntial resolution, you can exclude the problematic credential by using a parameter (ex. exclude_shared_token_cache_credential=True)
+azure_credential = DefaultAzureCredential(authority=authority)
+azure_search_key_credential = AzureKeyCredential(AZURE_SEARCH_SERVICE_KEY)
+
+# Setup StatusLog to allow access to CosmosDB for logging
+statusLog = StatusLog(
+    COSMOSDB_URL, COSMODB_KEY, COSMOSDB_LOG_DATABASE_NAME, COSMOSDB_LOG_CONTAINER_NAME
+)
+tagsHelper = TagsHelper(
+    COSMOSDB_URL, COSMODB_KEY, COSMOSDB_TAGS_DATABASE_NAME, COSMOSDB_TAGS_CONTAINER_NAME
+>>>>>>> refs/remotes/origin/main
 )
 
 
@@ -186,6 +223,7 @@ async def create_search_client():
 )
 
 
+<<<<<<< HEAD
 async def create_queue_client():
     return QueueClient.from_connection_string(
         conn_str = f"DefaultEndpointsProtocol=https;AccountName={AZURE_BLOB_STORAGE_ACCOUNT};AccountKey={AZURE_BLOB_STORAGE_KEY};EndpointSuffix=core.windows.net",
@@ -205,6 +243,17 @@ GPT_DEPLOYMENT = {
 async def fetch_deployments():
     """Set up OpenAI management client"""
     global GPT_DEPLOYMENT, EMBEDDING_MODEL_NAME, EMBEDDING_MODEL_VERSION
+=======
+# Python issue Logged > https://github.com/Azure/azure-sdk-for-python/issues/34337
+# Once fixed, this If statement can be removed. 
+if (IS_GOV_CLOUD_DEPLOYMENT):
+    model_name = AZURE_OPENAI_CHATGPT_MODEL_NAME
+    model_version = AZURE_OPENAI_CHATGPT_MODEL_VERSION
+    embedding_model_name = AZURE_OPENAI_EMBEDDINGS_MODEL_NAME
+    embedding_model_version = AZURE_OPENAI_EMBEDDINGS_VERSION
+else:
+    #Set up OpenAI management client
+>>>>>>> refs/remotes/origin/main
     openai_mgmt_client = CognitiveServicesManagementClient(
         credential=azure_credential,
         subscription_id=AZURE_SUBSCRIPTION_ID)

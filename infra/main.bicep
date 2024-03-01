@@ -13,6 +13,14 @@ param randomString string
 @description('Primary location for all resources')
 param location string
 
+param aadWebClientId string = ''
+@secure()
+param aadWebClientSecret string = ''
+param aadMgmtClientId string = ''
+param aadMgmtUrl string = ''
+@secure()
+param aadMgmtClientSecret string = ''
+param aadMgmtServicePrincipalId string = ''
 param buildNumber string = 'local'
 param isInAutomation bool = false
 param useExistingAOAIService bool
@@ -57,6 +65,7 @@ param chatWarningBannerText string = ''
 param chatGptModelName string = 'gpt-35-turbo-16k'
 param chatGptModelVersion string = '0613'
 param chatGptDeploymentCapacity int = 240
+param redirectUri string = ''
 // metadata in our chunking strategy adds about 180-200 tokens to the size of the chunks, 
 // our default target size is 750 tokens so the chunk files that get indexed will be around 950 tokens each
 param chunkTargetSize string = '750'
@@ -222,6 +231,7 @@ module enrichmentApp 'core/host/enrichmentappservice.bicep' = {
       MAX_EMBEDDING_REQUEUE_COUNT: 5
       TARGET_EMBEDDINGS_MODEL: useAzureOpenAIEmbeddings ? '${abbrs.openAIEmbeddingModel}${azureOpenAIEmbeddingDeploymentName}' : sentenceTransformersModelName
       WEBSITES_CONTAINER_START_TIME_LIMIT: 600
+      IS_GOV_CLOUD_DEPLOYMENT: isGovCloudDeployment
     }
   }
   dependsOn: [
@@ -256,6 +266,7 @@ module backend 'core/host/appservice.bicep' = {
       AZURE_BLOB_STORAGE_CONTAINER: containerName
       AZURE_BLOB_STORAGE_ENDPOINT: storage.outputs.primaryEndpoints.blob
       AZURE_BLOB_STORAGE_UPLOAD_CONTAINER: uploadContainerName
+      AZURE_MANAGEMENT_URL: aadMgmtUrl
       AZURE_OPENAI_CHATGPT_DEPLOYMENT: !empty(chatGptDeploymentName) ? chatGptDeploymentName : !empty(chatGptModelName) ? chatGptModelName : 'gpt-35-turbo-16k'
       AZURE_OPENAI_CHATGPT_MODEL_NAME: chatGptModelName
       AZURE_OPENAI_CHATGPT_MODEL_VERSION: chatGptModelVersion
@@ -267,7 +278,7 @@ module backend 'core/host/appservice.bicep' = {
       AZURE_SEARCH_SERVICE: searchServices.outputs.name
       AZURE_SEARCH_SERVICE_ENDPOINT: searchServices.outputs.endpoint
       AZURE_SUBSCRIPTION_ID: subscriptionId
-      AZURE_TENANT_ID: tenantId
+      TENANT_ID: tenantId
       CHAT_WARNING_BANNER_TEXT: chatWarningBannerText
       COSMOSDB_LOG_CONTAINER_NAME: cosmoslogdb.outputs.CosmosDBContainerName
       COSMOSDB_LOG_DATABASE_NAME: cosmoslogdb.outputs.CosmosDBDatabaseName
@@ -276,7 +287,8 @@ module backend 'core/host/appservice.bicep' = {
       ENRICHMENT_APPSERVICE_NAME: enrichmentApp.outputs.name
       IS_GOV_CLOUD_DEPLOYMENT: isGovCloudDeployment
       QUERY_TERM_LANGUAGE: queryTermLanguage
-      REDIRECT_URI: 'https://infoasst-web-kr839.azurewebsites.net/authorized'
+      REDIRECT_URI: redirectUri
+      SEARCH_INDEX_UPDATE_QUEUE: indexUpdateQueue
       TARGET_EMBEDDINGS_MODEL: useAzureOpenAIEmbeddings ? '${abbrs.openAIEmbeddingModel}${azureOpenAIEmbeddingDeploymentName}' : sentenceTransformersModelName
       USE_AZURE_OPENAI_EMBEDDINGS: useAzureOpenAIEmbeddings
     }

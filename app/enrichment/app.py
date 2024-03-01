@@ -55,13 +55,16 @@ ENV = {
     "AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME": None,
     "AZURE_OPENAI_API_VERSION": None,
     "AZURE_SEARCH_INDEX": None,
-    "AZURE_SEARCH_SERVICE_KEY": None,
     "AZURE_SEARCH_SERVICE": None,
+    "AZURE_SEARCH_SERVICE_ENDPOINT": None,
+    "AZURE_SEARCH_SERVICE_KEY": None,
     "BLOB_CONNECTION_STRING": None,
     "TARGET_EMBEDDINGS_MODEL": None,
     "EMBEDDING_VECTOR_SIZE": None,
-    "AZURE_SEARCH_SERVICE_ENDPOINT": None
+    "IS_GOV_CLOUD_DEPLOYMENT": None
 }
+
+str_to_bool = {'true': True, 'false': False}
 
 for key, value in ENV.items():
     new_value = os.getenv(key)
