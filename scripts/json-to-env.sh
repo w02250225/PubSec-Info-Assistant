@@ -121,6 +121,10 @@ jq -r  '
         {
             "path": "redirecT_URI",
             "env_var": "REDIRECT_URI"
+        },
+        {
+            "path": "searcH_INDEX_UPDATE_QUEUE",
+            "env_var": "SEARCH_INDEX_UPDATE_QUEUE"
         }
     ]
         as $env_vars_to_extract

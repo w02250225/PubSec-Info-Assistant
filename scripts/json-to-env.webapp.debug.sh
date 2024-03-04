@@ -130,7 +130,11 @@ jq -r  '
         {
             "path": "deploymenT_KEYVAULT_NAME",
             "env_var": "DEPLOYMENT_KEYVAULT_NAME"
-        }
+        },
+        {
+            "path": "searcH_INDEX_UPDATE_QUEUE",
+            "env_var": "SEARCH_INDEX_UPDATE_QUEUE"
+        },
     ]
         as $env_vars_to_extract
     |

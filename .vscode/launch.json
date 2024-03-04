@@ -27,7 +27,7 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "envFile": "${workspaceFolder}/scripts/environments/infrastructure.debug.env",
-            // "preLaunchTask": "pip_install"
+            "preLaunchTask": "pip_install"
         },
         {
             "name": "Python: Enrichment Webapp",

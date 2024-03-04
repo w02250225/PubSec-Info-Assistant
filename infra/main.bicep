@@ -713,6 +713,7 @@ module kvModule 'core/security/keyvault.bicep' = {
     openaiServiceKey: azureOpenAIServiceKey
     aadWebClientId: aadWebClientId
     aadWebClientSecret: aadWebClientSecret
+    // TODO enrichmentKey: cognitiveServices.list
     useExistingAOAIService: useExistingAOAIService
   }
 }
@@ -765,3 +766,4 @@ output USE_AZURE_OPENAI_EMBEDDINGS bool = useAzureOpenAIEmbeddings
 output EMBEDDING_DEPLOYMENT_NAME string = useAzureOpenAIEmbeddings ? azureOpenAIEmbeddingDeploymentName : sentenceTransformersModelName
 output ENRICHMENT_APPSERVICE_NAME string = enrichmentApp.outputs.name 
 output DEPLOYMENT_KEYVAULT_NAME string = kvModule.outputs.keyVaultName
+output SEARCH_INDEX_UPDATE_QUEUE string = indexUpdateQueue
