@@ -35,27 +35,23 @@ fi
 
 export RANDOM_STRING="${randomString,,}"
 
-if [ -n "${IS_USGOV_DEPLOYMENT}" ] && $IS_USGOV_DEPLOYMENT; then
-  az cloud set --name AzureUSGovernment 
-  auth_callback_url="https://infoasst-web-$RANDOM_STRING.azurewebsites.us/.auth/login/aad/callback"
-else
-  auth_callback_url="https://infoasst-web-$RANDOM_STRING.azurewebsites.net/.auth/login/aad/callback"
-fi
+auth_callback_url="https://infoasst-web-$RANDOM_STRING.azurewebsites.net/authorized"
 
-# add the random.txt to the state container
-#echo "az storage blob exists --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_ACCOUNT_KEY --container-name state --name ${WORKSPACE}.random.txt --output tsv --query exists"
-exists=$(az storage blob exists --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_ACCOUNT_KEY --container-name state --name ${WORKSPACE}.random.txt --output tsv --query exists)
-#echo "exists: $exists"
-if [ $exists == "true" ]; then
-  #echo "az storage blob download --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_ACCOUNT_KEY --container-name state --name ${WORKSPACE}.random.txt --query content --output tsv"
-  randomString=$(az storage blob download --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_ACCOUNT_KEY --container-name state --name ${WORKSPACE}.random.txt --query content --output tsv)
-  rm ../infra/.state/${WORKSPACE}/random.txt
-  echo $randomString >> ../infra/.state/${WORKSPACE}/random.txt
-else
-  #echo "az storage blob upload --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_ACCOUNT_KEY --container-name state --name ${WORKSPACE}.random.txt --file .state/${WORKSPACE}/random.txt"
-  upload=$(az storage blob upload --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_ACCOUNT_KEY --container-name state --name ${WORKSPACE}.random.txt --file ../infra/.state/${WORKSPACE}/random.txt)
+if [ -n "$AZURE_STORAGE_ACCOUNT" ]; then 
+  # add the random.txt to the state container
+  #echo "az storage blob exists --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_ACCOUNT_KEY --container-name state --name ${WORKSPACE}.random.txt --output tsv --query exists"
+  exists=$(az storage blob exists --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_ACCOUNT_KEY --container-name state --name ${WORKSPACE}.random.txt --output tsv --query exists)
+  #echo "exists: $exists"
+  if [ $exists == "true" ]; then
+    #echo "az storage blob download --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_ACCOUNT_KEY --container-name state --name ${WORKSPACE}.random.txt --query content --output tsv"
+    randomString=$(az storage blob download --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_ACCOUNT_KEY --container-name state --name ${WORKSPACE}.random.txt --query content --output tsv)
+    rm ../infra/.state/${WORKSPACE}/random.txt
+    echo $randomString >> ../infra/.state/${WORKSPACE}/random.txt
+  else
+    #echo "az storage blob upload --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_ACCOUNT_KEY --container-name state --name ${WORKSPACE}.random.txt --file .state/${WORKSPACE}/random.txt"
+    upload=$(az storage blob upload --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_ACCOUNT_KEY --container-name state --name ${WORKSPACE}.random.txt --file ../infra/.state/${WORKSPACE}/random.txt)
+  fi
 fi
-
 
 signedInUserId=$(az ad signed-in-user show --query id --output tsv)
 #if not in automation, create the app registration and service principal values
